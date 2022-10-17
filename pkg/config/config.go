@@ -7,15 +7,15 @@ import (
 )
 
 type Config struct {
-	Token          string         `env:"API_TOKEN,unset"`
+	Token          string         `env:"API_TOKEN,unset,required"`
 	Timeout        int            `env:"API_TIMEOUT" envDefault:"15"`
-	AllowedDomains AllowedDomains `env:"ALLOWED_DOMAINS"`
+	AllowedDomains AllowedDomains `env:"ALLOWED_DOMAINS,required"`
 	RecordTTL      int            `env:"RECORD_TTL" envDefault:"60"`
 	ListenAddr     string         `env:"LISTEN_ADDR" envDefault:":8081"`
 	TrustedProxies []string       `env:"TRUSTED_PROXIES" envDefault:""`
 	Debug          bool           `env:"DEBUG" envDefault:"false"`
-	CreateCname    string         `env:"CREATE_CNAME" envDefault:""`
-	CnameTTL       int            `env:"CNAME_TTL" envDefault:"86400"`
+	CreateCname    *string        `env:"CREATE_CNAME"`
+	CnameTTL       *int           `env:"CNAME_TTL"`
 }
 
 type AllowedDomains map[string][]*net.IPNet

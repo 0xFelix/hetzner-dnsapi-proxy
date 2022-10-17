@@ -99,12 +99,12 @@ func (d *Controller) UpdateDns() gin.HandlerFunc {
 		}
 
 		// create CNAME record
-		if len(d.cfg.CreateCname) > 0 {
+		if d.cfg.CreateCname != nil {
 
 			cNameRecord := hetzner.Record{
 				Name:   dnsRecord.OrigName,
 				Type:   "CNAME",
-				Value:  d.cfg.CreateCname,
+				Value:  *d.cfg.CreateCname,
 				ZoneId: record.ZoneId,
 				TTL:    d.cfg.CnameTTL,
 			}
@@ -157,7 +157,7 @@ func (d *Controller) getRecord(record *data.DnsRecord) (*hetzner.Record, error) 
 
 	r := hetzner.Record{
 		Name:   record.Name,
-		TTL:    d.cfg.RecordTTL,
+		TTL:    &d.cfg.RecordTTL,
 		Type:   record.Type,
 		Value:  record.Value,
 		ZoneId: zId,

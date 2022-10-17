@@ -48,7 +48,7 @@ func startServer(listenAddr string, r *gin.Engine) {
 
 func main() {
 	cfg := &config.Config{}
-	if err := env.Parse(cfg, env.Options{RequiredIfNoDef: true}); err != nil {
+	if err := env.Parse(cfg, env.Options{RequiredIfNoDef: false}); err != nil {
 		log.Fatal(err)
 	}
 
