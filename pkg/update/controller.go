@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -102,7 +103,7 @@ func (d *Controller) UpdateDns() gin.HandlerFunc {
 		if d.cfg.CreateCname != nil {
 
 			cNameRecord := hetzner.Record{
-				Name:   dnsRecord.OrigName,
+				Name:   strings.TrimSuffix(dnsRecord.OrigName, fmt.Sprintf(".%s", dnsRecord.Zone)),
 				Type:   "CNAME",
 				Value:  *d.cfg.CreateCname,
 				ZoneId: record.ZoneId,
