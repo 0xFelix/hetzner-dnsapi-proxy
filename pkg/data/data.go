@@ -17,6 +17,7 @@ const (
 )
 
 type DnsRecord struct {
+	OrigName string
 	FullName string
 	Name     string
 	Zone     string
@@ -68,13 +69,18 @@ func BindAcmeDns() gin.HandlerFunc {
 			return
 		}
 
+		origName := data.FullName
+
 		// prepend prefix if not already given
 		if !strings.HasPrefix(data.FullName, prefixAcmeChallenge) {
 			data.FullName = fmt.Sprintf("%s.%s", prefixAcmeChallenge, data.FullName)
+		} else {
+			origName = strings.TrimRight(data.FullName, ".")
 		}
 
 		name, zone := splitFullName(data.FullName)
 		c.Set(key.RECORD, &DnsRecord{
+			OrigName: origName,
 			FullName: data.FullName,
 			Name:     name,
 			Zone:     zone,
@@ -96,6 +102,7 @@ func BindHttpReq() gin.HandlerFunc {
 		data.FullName = strings.TrimRight(data.FullName, ".")
 		name, zone := splitFullName(data.FullName)
 		c.Set(key.RECORD, &DnsRecord{
+			OrigName: strings.TrimPrefix(data.FullName, fmt.Sprintf("%s.", prefixAcmeChallenge)),
 			FullName: data.FullName,
 			Name:     name,
 			Zone:     zone,

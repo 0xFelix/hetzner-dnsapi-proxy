@@ -14,6 +14,8 @@ type Config struct {
 	ListenAddr     string         `env:"LISTEN_ADDR" envDefault:":8081"`
 	TrustedProxies []string       `env:"TRUSTED_PROXIES" envDefault:""`
 	Debug          bool           `env:"DEBUG" envDefault:"false"`
+	CreateCname    string         `env:"CREATE_CNAME" envDefault:""`
+	CnameTTL       int            `env:"CNAME_TTL" envDefault:"86400"`
 }
 
 type AllowedDomains map[string][]*net.IPNet

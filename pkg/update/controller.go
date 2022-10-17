@@ -39,6 +39,20 @@ func NewController(cfg *config.Config) *Controller {
 	}
 }
 
+func (d *Controller) LogRequest() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		buf, _ := io.ReadAll(c.Request.Body)
+		rdr1 := io.NopCloser(bytes.NewBuffer(buf))
+		rdr2 := io.NopCloser(bytes.NewBuffer(buf))
+
+		log.Printf("HEADER %+v", c.Request.Header)
+		log.Printf("BODY   %s", readBody(rdr1))
+
+		c.Request.Body = rdr2
+		c.Next()
+	}
+}
+
 func (d *Controller) CheckPermissions() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		record := c.MustGet(key.RECORD).(*data.DnsRecord)
@@ -63,34 +77,82 @@ func (d *Controller) CheckPermissions() gin.HandlerFunc {
 
 func (d *Controller) UpdateDns() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		record := c.MustGet(key.RECORD).(*data.DnsRecord)
-		log.Printf("Received request to update '%s' data of '%s' to '%s'\n", record.Type, record.FullName, record.Value)
+		dnsRecord := c.MustGet(key.RECORD).(*data.DnsRecord)
+		log.Printf("Received request to update '%s' data of '%s' to '%s'\n", dnsRecord.Type, dnsRecord.FullName, dnsRecord.Value)
 
-		if err := d.do(record); err != nil {
-			log.Printf("Update failed: %v", err)
+		record, err := d.getRecord(dnsRecord)
+		if err != nil {
+			log.Printf("Get Record failed: %v", err)
+			_ = c.AbortWithError(http.StatusInternalServerError, err)
+		}
+
+		if record.Id == nil {
+			if err := d.createRecord(record); err != nil {
+				log.Printf("Create failed: %v", err)
+				_ = c.AbortWithError(http.StatusInternalServerError, err)
+			}
+		} else {
+			if err := d.updateRecord(record); err != nil {
+				log.Printf("Update failed: %v", err)
+				_ = c.AbortWithError(http.StatusInternalServerError, err)
+			}
+		}
+
+		// create CNAME record
+		if len(d.cfg.CreateCname) > 0 {
+
+			cNameRecord := hetzner.Record{
+				Name:   dnsRecord.OrigName,
+				Type:   "CNAME",
+				Value:  d.cfg.CreateCname,
+				ZoneId: record.ZoneId,
+				TTL:    d.cfg.CnameTTL,
+			}
+
+			if err := d.createRecord(&cNameRecord); err != nil {
+				log.Printf("Create CNAME failed: %v", err)
+			}
+
+		}
+	}
+}
+
+func (d *Controller) CleanDns() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		dnsRecord := c.MustGet(key.RECORD).(*data.DnsRecord)
+		log.Printf("Received request to clean '%s'\n", dnsRecord.FullName)
+
+		record, err := d.getRecord(dnsRecord)
+		if err != nil {
+			log.Printf("Get Record failed: %v", err)
+			_ = c.AbortWithError(http.StatusInternalServerError, err)
+		}
+
+		if err := d.cleanRecord(record); err != nil {
+			log.Printf("Clean failed: %v", err)
 			_ = c.AbortWithError(http.StatusInternalServerError, err)
 		}
 	}
 }
 
-func (d *Controller) do(record *data.DnsRecord) error {
+func (d *Controller) getRecord(record *data.DnsRecord) (*hetzner.Record, error) {
 	// Ensure only one simultaneous update sequence
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 
 	zIds, err := d.getZoneIds()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	zId := zIds[record.Zone]
 	if zId == "" {
-		return fmt.Errorf("could not find zone id for record %s", record.FullName)
+		return nil, fmt.Errorf("could not find zone id for record %s", record.FullName)
 	}
 
 	rIds, err := d.getRecordIds(zId, record.Type)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	r := hetzner.Record{
@@ -102,11 +164,11 @@ func (d *Controller) do(record *data.DnsRecord) error {
 	}
 
 	if rId, ok := rIds[record.Name]; ok {
-		r.Id = rId
-		return d.updateRecord(&r)
+		r.Id = &rId
+		return &r, nil
 	}
 
-	return d.createRecord(&r)
+	return &r, nil
 }
 
 func (d *Controller) getRequest(url string) ([]byte, error) {
@@ -187,7 +249,7 @@ func (d *Controller) getRecordIds(zoneId, recordType string) (map[string]string,
 	ids := map[string]string{}
 	for _, record := range r.Records {
 		if record.Type == recordType {
-			ids[record.Name] = record.Id
+			ids[record.Name] = *record.Id
 		}
 	}
 
@@ -200,6 +262,8 @@ func (d *Controller) createRecord(record *hetzner.Record) error {
 		return err
 	}
 
+	log.Println(string(body))
+
 	return d.jsonRequest(http.MethodPost, baseUrl+"/records", body)
 }
 
@@ -209,5 +273,17 @@ func (d *Controller) updateRecord(record *hetzner.Record) error {
 		return err
 	}
 
-	return d.jsonRequest(http.MethodPut, baseUrl+"/records/"+record.Id, body)
+	return d.jsonRequest(http.MethodPut, baseUrl+"/records/"+*record.Id, body)
+}
+
+func (d *Controller) cleanRecord(record *hetzner.Record) error {
+	return d.jsonRequest(http.MethodDelete, baseUrl+"/records/"+*record.Id, nil)
+}
+
+func readBody(reader io.Reader) string {
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(reader)
+
+	s := buf.String()
+	return s
 }
