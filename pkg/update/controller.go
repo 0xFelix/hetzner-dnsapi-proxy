@@ -40,20 +40,6 @@ func NewController(cfg *config.Config) *Controller {
 	}
 }
 
-func (d *Controller) LogRequest() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		buf, _ := io.ReadAll(c.Request.Body)
-		rdr1 := io.NopCloser(bytes.NewBuffer(buf))
-		rdr2 := io.NopCloser(bytes.NewBuffer(buf))
-
-		log.Printf("HEADER %+v", c.Request.Header)
-		log.Printf("BODY   %s", readBody(rdr1))
-
-		c.Request.Body = rdr2
-		c.Next()
-	}
-}
-
 func (d *Controller) CheckPermissions() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		record := c.MustGet(key.RECORD).(*data.DnsRecord)
@@ -205,6 +191,10 @@ func (d *Controller) jsonRequest(method, url string, body []byte) error {
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Auth-API-Token", d.cfg.Token)
 
+	if d.cfg.Debug {
+		log.Printf("%+v", req)
+	}
+
 	res, err := d.client.Do(req)
 	if err != nil {
 		return err
@@ -263,8 +253,6 @@ func (d *Controller) createRecord(record *hetzner.Record) error {
 		return err
 	}
 
-	log.Println(string(body))
-
 	return d.jsonRequest(http.MethodPost, baseUrl+"/records", body)
 }
 
@@ -279,12 +267,4 @@ func (d *Controller) updateRecord(record *hetzner.Record) error {
 
 func (d *Controller) cleanRecord(record *hetzner.Record) error {
 	return d.jsonRequest(http.MethodDelete, baseUrl+"/records/"+*record.Id, nil)
-}
-
-func readBody(reader io.Reader) string {
-	buf := new(bytes.Buffer)
-	buf.ReadFrom(reader)
-
-	s := buf.String()
-	return s
 }
