@@ -48,7 +48,7 @@ func startServer(listenAddr string, r *gin.Engine) {
 
 func main() {
 	cfg := &config.Config{}
-	if err := env.Parse(cfg, env.Options{RequiredIfNoDef: true}); err != nil {
+	if err := env.Parse(cfg, env.Options{RequiredIfNoDef: false}); err != nil {
 		log.Fatal(err)
 	}
 
@@ -66,7 +66,7 @@ func main() {
 	r.POST("/acmedns/update", buildChain(cfg, data.BindAcmeDns(), c.CheckPermissions(), c.UpdateDns(), status.OkAcmeDns)...)
 	r.POST("/acmedns/register", buildChain(cfg, status.Ok)...)
 	r.POST("/httpreq/present", buildChain(cfg, data.BindHttpReq(), c.CheckPermissions(), c.UpdateDns(), status.Ok)...)
-	r.POST("/httpreq/cleanup", buildChain(cfg, status.Ok)...)
+	r.POST("/httpreq/cleanup", buildChain(cfg, data.BindHttpReq(), c.CheckPermissions(), c.CleanDns(), status.Ok)...)
 
 	log.Printf("Starting hetzner-dnsapi-proxy, listening on %s\n", cfg.ListenAddr)
 	startServer(cfg.ListenAddr, r)
