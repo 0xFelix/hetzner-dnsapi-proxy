@@ -64,6 +64,10 @@ func BindAcmeDns() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		data := acmeDnsData{}
 
+		// overwrite Content-Type
+		// ACME.sh sends 'application/x-www-form-urlencoded' but body is json encoded
+		c.Request.Header.Set("Content-Type", "application/json")
+
 		if err := c.BindJSON(&data); err != nil {
 			_ = c.AbortWithError(http.StatusBadRequest, err)
 			return
