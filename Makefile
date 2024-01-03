@@ -12,7 +12,7 @@ vet: ## Run go vet against code.
 	go vet ./...
 
 GOLANGCI_LINT ?= $(LOCALBIN)/golangci-lint
-GOLANGCI_LINT_VERSION ?= v1.52.2
+GOLANGCI_LINT_VERSION ?= v1.55.2
 
 .PHONY: lint
 lint:

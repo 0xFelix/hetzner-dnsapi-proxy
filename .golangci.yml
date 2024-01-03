@@ -1,4 +1,5 @@
 # golangci configuration
+# Taken from https://github.com/kubevirt/kubevirt/blob/main/.golangci.yml
 
 linters-settings:
   dupl:
@@ -18,6 +19,13 @@ linters-settings:
       - opinionated
       - performance
       - style
+    disabled-checks:
+      - dupImport # https://github.com/go-critic/go-critic/issues/845
+      - ifElseChain
+      - octalLiteral
+      - paramTypeCombine
+      - whyNoLint
+      - wrapperFunc
     settings:
       hugeParam:
         sizeThreshold: 1024
@@ -25,6 +33,11 @@ linters-settings:
         sizeThreshold: 1024
   gocyclo:
     min-complexity: 15
+  gomnd:
+    settings:
+      mnd:
+        # don't include the "operation" and "assign"
+        checks: argument,case,condition,return
   govet:
     check-shadowing: true
   lll:
@@ -38,13 +51,15 @@ linters-settings:
     allow-unused: false # report any unused nolint directives
     require-explanation: false # don't require an explanation for nolint directives
     require-specific: false # don't require nolint directives to be specific about which linter is being skipped
+  stylecheck:
+    dot-import-whitelist:
+      - "github.com/onsi/ginkgo/v2"
+      - "github.com/onsi/gomega"
 
 linters:
   disable-all: true
   enable:
     - bodyclose
-    - deadcode
-    - depguard
     - dogsled
     - dupl
     - errcheck
@@ -71,15 +86,12 @@ linters:
     - nolintlint
     - rowserrcheck
     - staticcheck
-    - structcheck
     - stylecheck
     - typecheck
     - unconvert
     - unparam
     - unused
-    - varcheck
     - whitespace
-    - ginkgolinter
 
   # don't enable:
   # - asciicheck
