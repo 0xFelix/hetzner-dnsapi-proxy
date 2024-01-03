@@ -12,7 +12,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/caarlos0/env/v8"
+	"github.com/caarlos0/env/v10"
 	"github.com/gin-gonic/gin"
 
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/config"
