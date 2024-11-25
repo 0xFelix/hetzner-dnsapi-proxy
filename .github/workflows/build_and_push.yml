@@ -1,0 +1,30 @@
+name: Build and push container image
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build_and_push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Install podman
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y podman
+      - name: Get short commit SHA
+        run: echo "SHORT_SHA=$(echo ${GITHUB_SHA} | cut -c1-7)" >> $GITHUB_ENV
+      - name: Build container image
+        run: |
+          podman build -t ghcr.io/${{ github.repository_owner }}/${{ github.repository }}:${{ env.SHORT_SHA }} -t ghcr.io/${{ github.repository_owner }}/${{ github.repository }}:latest .
+      - name: Login to ghcr.io
+        run: |
+          echo ${{ secrets.GITHUB_TOKEN }} | podman login ghcr.io --username ${{ github.actor }} --password-stdin
+      - name: Push container image
+        run: |
+          podman push ghcr.io/${{ github.repository_owner }}/${{ github.repository }}:${{ env.SHORT_SHA }}
+          podman push ghcr.io/${{ github.repository_owner }}/${{ github.repository }}:latest
