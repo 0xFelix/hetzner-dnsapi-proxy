@@ -15,8 +15,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/common"
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/config"
-	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/data"
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/hetzner"
 )
 
@@ -49,7 +49,10 @@ func NewController(cfg *config.Config) *Controller {
 
 func (d *Controller) CheckPermissions() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		record := c.MustGet(data.KeyRecord).(*data.DNSRecord)
+		record, ok := c.MustGet(common.KeyDNSRecord).(*common.DNSRecord)
+		if !ok {
+			c.AbortWithStatus(http.StatusInternalServerError)
+		}
 
 		for domain, ipNets := range d.cfg.AllowedDomains {
 			if record.FullName != domain && !isSubDomain(record.FullName, domain) {
@@ -71,9 +74,12 @@ func (d *Controller) CheckPermissions() gin.HandlerFunc {
 
 func (d *Controller) UpdateDNS() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		record := c.MustGet(data.KeyRecord).(*data.DNSRecord)
-		log.Printf("Received request to update '%s' data of '%s' to '%s'\n", record.Type, record.FullName, record.Value)
+		record, ok := c.MustGet(common.KeyDNSRecord).(*common.DNSRecord)
+		if !ok {
+			c.AbortWithStatus(http.StatusInternalServerError)
+		}
 
+		log.Printf("Received request to update '%s' data of '%s' to '%s'\n", record.Type, record.FullName, record.Value)
 		if err := d.do(record); err != nil {
 			log.Printf("Update failed: %v", err)
 			_ = c.AbortWithError(http.StatusInternalServerError, err)
@@ -106,7 +112,7 @@ func isSubDomain(sub, parent string) bool {
 	return true
 }
 
-func (d *Controller) do(record *data.DNSRecord) error {
+func (d *Controller) do(record *common.DNSRecord) error {
 	// Ensure only one simultaneous update sequence
 	d.mutex.Lock()
 	defer d.mutex.Unlock()

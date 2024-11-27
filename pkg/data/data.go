@@ -10,23 +10,14 @@ import (
 
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/common"
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/config"
+	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/status"
 )
 
 const (
-	KeyRecord = "KeyRecord"
-
 	prefixAcmeChallenge = "_acme-challenge"
 	recordTypeA         = "A"
 	recordTypeTxt       = "TXT"
 )
-
-type DNSRecord struct {
-	FullName string
-	Name     string
-	Zone     string
-	Value    string
-	Type     string
-}
 
 type plainData struct {
 	FullName string `form:"hostname" json:"hostname" binding:"required"`
@@ -61,7 +52,7 @@ func BindPlain() gin.HandlerFunc {
 		}
 
 		name, zone := splitFullName(data.FullName)
-		c.Set(KeyRecord, &DNSRecord{
+		c.Set(common.KeyDNSRecord, &common.DNSRecord{
 			FullName: data.FullName,
 			Name:     name,
 			Zone:     zone,
@@ -86,7 +77,7 @@ func BindAcmeDNS() gin.HandlerFunc {
 		}
 
 		name, zone := splitFullName(data.FullName)
-		c.Set(KeyRecord, &DNSRecord{
+		c.Set(common.KeyDNSRecord, &common.DNSRecord{
 			FullName: data.FullName,
 			Name:     name,
 			Zone:     zone,
@@ -107,7 +98,7 @@ func BindHTTPReq() gin.HandlerFunc {
 
 		data.FullName = strings.TrimRight(data.FullName, ".")
 		name, zone := splitFullName(data.FullName)
-		c.Set(KeyRecord, &DNSRecord{
+		c.Set(common.KeyDNSRecord, &common.DNSRecord{
 			FullName: data.FullName,
 			Name:     name,
 			Zone:     zone,
@@ -129,7 +120,7 @@ func ShowDomainsDirectAdmin(allowedDomains config.AllowedDomains) gin.HandlerFun
 			values.Add("list", domain)
 		}
 
-		c.Data(http.StatusOK, common.ContentTypeURLEncoded, []byte(values.Encode()))
+		c.Data(http.StatusOK, "application/x-www-form-urlencoded", []byte(values.Encode()))
 	}
 }
 
@@ -144,7 +135,7 @@ func BindDirectAdmin() gin.HandlerFunc {
 
 		if data.Action != "add" {
 			c.Abort()
-			common.StatusOkDirectAdmin(c)
+			status.OkDirectAdmin(c)
 			return
 		}
 
@@ -161,7 +152,7 @@ func BindDirectAdmin() gin.HandlerFunc {
 		}
 
 		name, zone := splitFullName(fullName)
-		c.Set(KeyRecord, &DNSRecord{
+		c.Set(common.KeyDNSRecord, &common.DNSRecord{
 			FullName: fullName,
 			Name:     name,
 			Zone:     zone,
