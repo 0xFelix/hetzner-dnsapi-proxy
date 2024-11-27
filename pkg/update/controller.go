@@ -21,13 +21,7 @@ import (
 )
 
 const (
-	baseURL = "https://dns.hetzner.com/api/v1"
-
-	//#nosec G101
-	headerAuthAPIToken = "Auth-API-Token"
-	headerContentType  = "Content-Type"
-	contentTypeJSON    = "application/json"
-
+	baseURL        = "https://dns.hetzner.com/api/v1"
 	requestTimeout = 60
 )
 
@@ -103,7 +97,7 @@ func isSubDomain(sub, parent string) bool {
 
 	// All domain parts up to the asterisk must match
 	subPartsOffset := len(subParts) - len(parentParts)
-	for i := len(parentParts) - 1; i > 0; i-- {
+	for i := range len(parentParts) {
 		if parentParts[i] != subParts[i+subPartsOffset] {
 			return false
 		}
@@ -155,7 +149,7 @@ func (d *Controller) getRequest(url string) (body []byte, err error) {
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Add(headerAuthAPIToken, d.cfg.Token)
+	req.Header.Add("Auth-API-Token", d.cfg.Token)
 
 	res, err := d.client.Do(req)
 	if err != nil {
@@ -184,8 +178,8 @@ func (d *Controller) jsonRequest(method, url string, body []byte) (err error) {
 	if err != nil {
 		return err
 	}
-	req.Header.Add(headerContentType, contentTypeJSON)
-	req.Header.Add(headerAuthAPIToken, d.cfg.Token)
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Auth-API-Token", d.cfg.Token)
 
 	res, err := d.client.Do(req)
 	if err != nil {

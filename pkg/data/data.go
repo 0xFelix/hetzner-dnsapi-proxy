@@ -45,7 +45,6 @@ type directAdminData struct {
 func BindPlain() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		data := plainData{}
-
 		if err := c.Bind(&data); err != nil {
 			_ = c.AbortWithError(http.StatusBadRequest, err)
 			return
@@ -65,15 +64,13 @@ func BindPlain() gin.HandlerFunc {
 func BindAcmeDNS() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		data := acmeDNSData{}
-
 		if err := c.BindJSON(&data); err != nil {
 			_ = c.AbortWithError(http.StatusBadRequest, err)
 			return
 		}
 
-		// prepend prefix if not already given
 		if !strings.HasPrefix(data.FullName, prefixAcmeChallenge) {
-			data.FullName = fmt.Sprintf("%s.%s", prefixAcmeChallenge, data.FullName)
+			data.FullName = prefixAcmeChallenge + "." + data.FullName
 		}
 
 		name, zone := splitFullName(data.FullName)
@@ -90,13 +87,13 @@ func BindAcmeDNS() gin.HandlerFunc {
 func BindHTTPReq() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		data := httpReqData{}
-
 		if err := c.Bind(&data); err != nil {
 			_ = c.AbortWithError(http.StatusBadRequest, err)
 			return
 		}
 
 		data.FullName = strings.TrimRight(data.FullName, ".")
+
 		name, zone := splitFullName(data.FullName)
 		c.Set(common.KeyDNSRecord, &common.DNSRecord{
 			FullName: data.FullName,
@@ -127,7 +124,6 @@ func ShowDomainsDirectAdmin(allowedDomains config.AllowedDomains) gin.HandlerFun
 func BindDirectAdmin() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		data := directAdminData{}
-
 		if err := c.Bind(&data); err != nil {
 			_ = c.AbortWithError(http.StatusBadRequest, err)
 			return
@@ -144,11 +140,9 @@ func BindDirectAdmin() gin.HandlerFunc {
 			return
 		}
 
-		fullName := ""
+		fullName := data.Domain
 		if data.Name != "" {
 			fullName = data.Name + "." + data.Domain
-		} else {
-			fullName = data.Domain
 		}
 
 		name, zone := splitFullName(fullName)
@@ -166,7 +160,7 @@ func splitFullName(n string) (name, zone string) {
 	parts := strings.Split(n, ".")
 	length := len(parts)
 
-	for i := 0; i < length-2; i++ {
+	for i := range length - 1 {
 		name += parts[i]
 		if i < length-3 {
 			name += "."
