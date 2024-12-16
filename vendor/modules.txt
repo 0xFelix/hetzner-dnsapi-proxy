@@ -36,7 +36,7 @@ github.com/bytedance/sonic/utf8
 github.com/bytedance/sonic/loader
 github.com/bytedance/sonic/loader/internal/abi
 github.com/bytedance/sonic/loader/internal/rt
-# github.com/caarlos0/env/v11 v11.2.2
+# github.com/caarlos0/env/v11 v11.3.0
 ## explicit; go 1.18
 github.com/caarlos0/env/v11
 # github.com/cloudwego/base64x v0.1.4
