@@ -9,6 +9,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -45,21 +46,10 @@ func (d *Controller) CheckPermissions() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		record := c.MustGet(data.KeyRecord).(*data.DNSRecord)
 
-		for domain, ipNets := range d.cfg.AllowedDomains {
-			if record.FullName != domain && !isSubDomain(record.FullName, domain) {
-				continue
-			}
-
-			for _, ipNet := range ipNets {
-				ip := net.ParseIP(c.ClientIP())
-				if ip != nil && ipNet.Contains(ip) {
-					return
-				}
-			}
+		if !CheckPermissions(record.FullName, c.ClientIP(), d.cfg.AllowedDomains) {
+			log.Printf("Client '%s' is not allowed to update '%s' data of '%s' to '%s'\n", c.ClientIP(), record.Type, record.FullName, record.Value)
+			c.AbortWithStatus(http.StatusForbidden)
 		}
-
-		log.Printf("Client '%s' is not allowed to update '%s' data of '%s' to '%s'\n", c.ClientIP(), record.Type, record.FullName, record.Value)
-		c.AbortWithStatus(http.StatusForbidden)
 	}
 }
 
@@ -73,31 +63,6 @@ func (d *Controller) UpdateDNS() gin.HandlerFunc {
 			_ = c.AbortWithError(http.StatusInternalServerError, err)
 		}
 	}
-}
-
-func isSubDomain(sub, parent string) bool {
-	// Parent domain must be a wildcard domain
-	if parent[0] != '*' {
-		return false
-	}
-
-	parentParts := strings.Split(parent, ".")
-	subParts := strings.Split(sub, ".")
-
-	// The subdomain must have at least the same amount of parts as the parent domain
-	if len(subParts) < len(parentParts) {
-		return false
-	}
-
-	// All domain parts up to the asterisk must match
-	subPartsOffset := len(subParts) - len(parentParts)
-	for i := len(parentParts) - 1; i > 0; i-- {
-		if parentParts[i] != subParts[i+subPartsOffset] {
-			return false
-		}
-	}
-
-	return true
 }
 
 func (d *Controller) do(record *data.DNSRecord) error {
@@ -250,4 +215,35 @@ func (d *Controller) updateRecord(record *hetzner.Record) error {
 	}
 
 	return d.jsonRequest(http.MethodPut, d.cfg.BaseURL+"/records/"+record.ID, body)
+}
+
+func CheckPermissions(fqdn, clientIP string, allowedDomains config.AllowedDomains) bool {
+	for domain, ipNets := range allowedDomains {
+		if fqdn != domain && !IsSubDomain(fqdn, domain) {
+			continue
+		}
+		for _, ipNet := range ipNets {
+			ip := net.ParseIP(clientIP)
+			if ip != nil && ipNet.Contains(ip) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+func IsSubDomain(sub, parent string) bool {
+	subParts := strings.Split(sub, ".")
+	parentParts := strings.Split(parent, ".")
+
+	// Parent domain must be a wildcard domain
+	// The subdomain must have at least the same amount of parts as the parent domain
+	if parentParts[0] != "*" || len(subParts) < len(parentParts) {
+		return false
+	}
+
+	// All domain parts up to the asterisk must match
+	offset := len(subParts) - len(parentParts[1:])
+	return slices.Equal(parentParts[1:], subParts[offset:])
 }
