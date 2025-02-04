@@ -29,3 +29,7 @@ $(GOFUMPT): $(LOCALBIN)
 .PHONY: build
 build: ## Run go build against code.
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -tags timetzdata -tags=nomsgpack -o $(LOCALBIN)/hetzner-dnsapi-proxy .
+
+.PHONY: functest
+functest:
+	cd tests && go test -v -timeout 0 ./... -ginkgo.v -ginkgo.randomize-all
