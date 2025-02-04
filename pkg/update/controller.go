@@ -153,7 +153,9 @@ func (d *Controller) getRequest(url string) (body []byte, err error) {
 		return nil, err
 	}
 	defer func() {
-		err = res.Body.Close()
+		if closeErr := res.Body.Close(); closeErr != nil {
+			err = closeErr
+		}
 	}()
 
 	if res.StatusCode != http.StatusOK {
@@ -183,7 +185,9 @@ func (d *Controller) jsonRequest(method, url string, body []byte) (err error) {
 		return err
 	}
 	defer func() {
-		err = res.Body.Close()
+		if closeErr := res.Body.Close(); closeErr != nil {
+			err = closeErr
+		}
 	}()
 
 	if res.StatusCode != http.StatusOK {
