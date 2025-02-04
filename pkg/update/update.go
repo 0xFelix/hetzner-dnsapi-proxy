@@ -22,10 +22,7 @@ import (
 
 const (
 	headerAuthAPIToken = "Auth-API-Token" //#nosec G101
-	headerContentType  = "Content-Type"
-	contentTypeJSON    = "application/json"
-
-	requestTimeout = 60
+	requestTimeout     = 60
 )
 
 type Controller struct {
@@ -177,7 +174,7 @@ func (d *Controller) jsonRequest(method, url string, body []byte) (err error) {
 	if err != nil {
 		return err
 	}
-	req.Header.Add(headerContentType, contentTypeJSON)
+	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add(headerAuthAPIToken, d.cfg.Token)
 
 	res, err := d.client.Do(req)

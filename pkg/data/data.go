@@ -129,7 +129,7 @@ func ShowDomainsDirectAdmin(allowedDomains config.AllowedDomains) gin.HandlerFun
 			values.Add("list", domain)
 		}
 
-		c.Data(http.StatusOK, common.ContentTypeURLEncoded, []byte(values.Encode()))
+		c.Data(http.StatusOK, "application/x-www-form-urlencoded", []byte(values.Encode()))
 	}
 }
 

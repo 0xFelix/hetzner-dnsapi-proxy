@@ -30,12 +30,12 @@ func (out *AllowedDomains) UnmarshalText(text []byte) error {
 			return errors.New("failed to parse allowed domain, length of parts != 2")
 		}
 
-		_, ipv4Net, err := net.ParseCIDR(partSplit[1])
+		_, ipNet, err := net.ParseCIDR(partSplit[1])
 		if err != nil {
 			return err
 		}
 
-		allowedDomains[partSplit[0]] = append(allowedDomains[partSplit[0]], ipv4Net)
+		allowedDomains[partSplit[0]] = append(allowedDomains[partSplit[0]], ipNet)
 	}
 
 	*out = allowedDomains
