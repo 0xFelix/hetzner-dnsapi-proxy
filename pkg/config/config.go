@@ -7,6 +7,7 @@ import (
 )
 
 type Config struct {
+	BaseURL        string         `env:"API_BASE_URL" envDefault:"https://dns.hetzner.com/api/v1"`
 	Token          string         `env:"API_TOKEN,unset"`
 	Timeout        int            `env:"API_TIMEOUT" envDefault:"15"`
 	AllowedDomains AllowedDomains `env:"ALLOWED_DOMAINS"`

@@ -21,8 +21,6 @@ import (
 )
 
 const (
-	baseURL = "https://dns.hetzner.com/api/v1"
-
 	//#nosec G101
 	headerAuthAPIToken = "Auth-API-Token"
 	headerContentType  = "Content-Type"
@@ -197,7 +195,7 @@ func (d *Controller) jsonRequest(method, url string, body []byte) (err error) {
 }
 
 func (d *Controller) getZoneIds() (map[string]string, error) {
-	res, err := d.getRequest(baseURL + "/zones")
+	res, err := d.getRequest(d.cfg.BaseURL + "/zones")
 	if err != nil {
 		return nil, err
 	}
@@ -216,7 +214,7 @@ func (d *Controller) getZoneIds() (map[string]string, error) {
 }
 
 func (d *Controller) getRecordIds(zoneID, recordType string) (map[string]string, error) {
-	res, err := d.getRequest(baseURL + "/records?zone_id=" + zoneID)
+	res, err := d.getRequest(d.cfg.BaseURL + "/records?zone_id=" + zoneID)
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +240,7 @@ func (d *Controller) createRecord(record *hetzner.Record) error {
 		return err
 	}
 
-	return d.jsonRequest(http.MethodPost, baseURL+"/records", body)
+	return d.jsonRequest(http.MethodPost, d.cfg.BaseURL+"/records", body)
 }
 
 func (d *Controller) updateRecord(record *hetzner.Record) error {
@@ -251,5 +249,5 @@ func (d *Controller) updateRecord(record *hetzner.Record) error {
 		return err
 	}
 
-	return d.jsonRequest(http.MethodPut, baseURL+"/records/"+record.ID, body)
+	return d.jsonRequest(http.MethodPut, d.cfg.BaseURL+"/records/"+record.ID, body)
 }
