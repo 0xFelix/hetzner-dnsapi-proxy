@@ -166,7 +166,7 @@ func BindDirectAdmin() gin.HandlerFunc {
 			Name:     name,
 			Zone:     zone,
 			Value:    data.Value,
-			Type:     recordTypeTxt,
+			Type:     data.Type,
 		})
 	}
 }
