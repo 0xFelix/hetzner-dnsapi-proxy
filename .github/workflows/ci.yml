@@ -37,6 +37,7 @@ jobs:
         fi
 
   build:
+    name: Test build
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
@@ -47,3 +48,16 @@ jobs:
         go-version-file: go.mod
     - name: Build hetzner-dnsapi-proxy
       run: make build
+
+  functest:
+    name: Functional tests
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Install Golang
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: go.mod
+    - name: Run functional tests
+      run: make functest
