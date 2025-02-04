@@ -79,6 +79,13 @@ var _ = Describe("Plain", func() {
 				"hostname": []string{libapi.ARecordNameFull},
 			})).To(Equal(http.StatusBadRequest))
 		})
+
+		It("when hostname is malformed", func(ctx context.Context) {
+			Expect(doPlainRequest(ctx, server.URL+"/plain/update", url.Values{
+				"hostname": []string{libapi.TLD},
+				"ip":       []string{libapi.AUpdated},
+			})).To(Equal(http.StatusBadRequest))
+		})
 	})
 })
 

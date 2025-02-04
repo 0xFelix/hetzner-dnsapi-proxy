@@ -93,6 +93,13 @@ var _ = Describe("HTTPReq", func() {
 					"fqdn": libapi.TXTRecordNameFull,
 				})).To(Equal(http.StatusBadRequest))
 			})
+
+			It("when fqdn is malformed", func(ctx context.Context) {
+				Expect(doHTTPReqRequest(ctx, server.URL+"/httpreq/present", map[string]string{
+					"fqdn":  libapi.TLD,
+					"value": libapi.TXTUpdated,
+				})).To(Equal(http.StatusBadRequest))
+			})
 		})
 	})
 })

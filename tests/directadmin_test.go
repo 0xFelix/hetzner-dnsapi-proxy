@@ -166,6 +166,18 @@ var _ = Describe("DirectAdmin", func() {
 				Expect(statusCode).To(Equal(http.StatusBadRequest))
 				Expect(resData).To(BeEmpty())
 			})
+
+			It("when domain is malformed and name is empty", func(ctx context.Context) {
+				statusCode, resData := doDirectAdminRequest(ctx, server.URL+"/directadmin/CMD_API_DNS_CONTROL", url.Values{
+					"action": []string{"add"},
+					"domain": []string{libapi.TLD},
+					"type":   []string{libapi.RecordTypeTXT},
+					"name":   []string{""},
+					"value":  []string{libapi.TXTUpdated},
+				})
+				Expect(statusCode).To(Equal(http.StatusBadRequest))
+				Expect(resData).To(BeEmpty())
+			})
 		})
 	})
 })

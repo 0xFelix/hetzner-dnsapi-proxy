@@ -9,6 +9,7 @@ import (
 )
 
 const (
+	TLD                   = "tld"
 	ZoneName              = "test.tld"
 	ARecordName           = "asub"
 	ARecordNameFull       = "asub.test.tld"

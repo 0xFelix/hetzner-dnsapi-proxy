@@ -98,6 +98,14 @@ var _ = Describe("AcmeDNS", func() {
 			})
 			Expect(statusCode).To(Equal(http.StatusBadRequest))
 		})
+
+		It("when subdomain is malformed", func(ctx context.Context) {
+			statusCode, _ := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", map[string]string{
+				"subdomain": libapi.TLD,
+				"txt":       libapi.TXTUpdated,
+			})
+			Expect(statusCode).To(Equal(http.StatusBadRequest))
+		})
 	})
 })
 

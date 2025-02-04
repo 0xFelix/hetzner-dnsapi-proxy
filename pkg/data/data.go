@@ -15,7 +15,7 @@ import (
 const (
 	KeyRecord = "KeyRecord"
 
-	prefixAcmeChallenge = "_acme-challenge"
+	prefixAcmeChallenge = "_acme-challenge."
 	recordTypeA         = "A"
 	recordTypeTXT       = "TXT"
 )
@@ -85,15 +85,16 @@ func BindAcmeDNS() gin.HandlerFunc {
 			return
 		}
 
-		// prepend prefix if not already given
-		if !strings.HasPrefix(data.FullName, prefixAcmeChallenge) {
-			data.FullName = fmt.Sprintf("%s.%s", prefixAcmeChallenge, data.FullName)
-		}
-
 		name, zone, err := SplitFQDN(data.FullName)
 		if err != nil {
 			_ = c.AbortWithError(http.StatusBadRequest, err)
 			return
+		}
+
+		// prepend prefix if not already given
+		if !strings.HasPrefix(data.FullName, prefixAcmeChallenge) {
+			data.FullName = prefixAcmeChallenge + data.FullName
+			name = prefixAcmeChallenge + name
 		}
 
 		c.Set(KeyRecord, &DNSRecord{
