@@ -29,8 +29,8 @@ type DNSRecord struct {
 }
 
 type plainData struct {
-	FullName string `form:"hostname" json:"hostname" binding:"required"`
-	Value    string `form:"ip" json:"ip" binding:"required"`
+	FullName string `form:"hostname" binding:"required"`
+	Value    string `form:"ip" binding:"required"`
 }
 
 type acmeDNSData struct {
@@ -39,8 +39,8 @@ type acmeDNSData struct {
 }
 
 type httpReqData struct {
-	FullName string `form:"fqdn" json:"fqdn" binding:"required"`
-	Value    string `form:"value" json:"value" binding:"required"`
+	FullName string `json:"fqdn" binding:"required"`
+	Value    string `json:"value" binding:"required"`
 }
 
 type directAdminData struct {
