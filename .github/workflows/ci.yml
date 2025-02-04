@@ -49,6 +49,19 @@ jobs:
     - name: Build hetzner-dnsapi-proxy
       run: make build
 
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Install Golang
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Run unit tests
+        run: make test
+
   functest:
     name: Functional tests
     runs-on: ubuntu-latest

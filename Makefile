@@ -20,6 +20,10 @@ lint: ## Download golangci-lint if necessary and run it against the code.
 	test -s $(GOLANGCI_LINT) || curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(LOCALBIN)
 	CGO_ENABLED=0 $(GOLANGCI_LINT) run --timeout 5m
 
+.PHONY: test
+test: ## Run unit tests against the code in pkg.
+	cd pkg && go test -v -timeout 0 ./... -ginkgo.v -ginkgo.randomize-all
+
 .PHONY: functest
 functest: ## Run functional tests against the code.
 	cd tests && go test -v -timeout 0 ./... -ginkgo.v -ginkgo.randomize-all
