@@ -60,7 +60,12 @@ func BindPlain() gin.HandlerFunc {
 			return
 		}
 
-		name, zone := splitFullName(data.FullName)
+		name, zone, err := SplitFQDN(data.FullName)
+		if err != nil {
+			_ = c.AbortWithError(http.StatusBadRequest, err)
+			return
+		}
+
 		c.Set(KeyRecord, &DNSRecord{
 			FullName: data.FullName,
 			Name:     name,
@@ -85,7 +90,12 @@ func BindAcmeDNS() gin.HandlerFunc {
 			data.FullName = fmt.Sprintf("%s.%s", prefixAcmeChallenge, data.FullName)
 		}
 
-		name, zone := splitFullName(data.FullName)
+		name, zone, err := SplitFQDN(data.FullName)
+		if err != nil {
+			_ = c.AbortWithError(http.StatusBadRequest, err)
+			return
+		}
+
 		c.Set(KeyRecord, &DNSRecord{
 			FullName: data.FullName,
 			Name:     name,
@@ -106,7 +116,12 @@ func BindHTTPReq() gin.HandlerFunc {
 		}
 
 		data.FullName = strings.TrimRight(data.FullName, ".")
-		name, zone := splitFullName(data.FullName)
+		name, zone, err := SplitFQDN(data.FullName)
+		if err != nil {
+			_ = c.AbortWithError(http.StatusBadRequest, err)
+			return
+		}
+
 		c.Set(KeyRecord, &DNSRecord{
 			FullName: data.FullName,
 			Name:     name,
@@ -160,7 +175,12 @@ func BindDirectAdmin() gin.HandlerFunc {
 			fullName = data.Domain
 		}
 
-		name, zone := splitFullName(fullName)
+		name, zone, err := SplitFQDN(fullName)
+		if err != nil {
+			_ = c.AbortWithError(http.StatusBadRequest, err)
+			return
+		}
+
 		c.Set(KeyRecord, &DNSRecord{
 			FullName: fullName,
 			Name:     name,
@@ -171,18 +191,17 @@ func BindDirectAdmin() gin.HandlerFunc {
 	}
 }
 
-func splitFullName(n string) (name, zone string) {
-	parts := strings.Split(n, ".")
+func SplitFQDN(fqdn string) (name, zone string, err error) {
+	parts := strings.Split(fqdn, ".")
 	length := len(parts)
 
-	for i := 0; i < length-2; i++ {
-		name += parts[i]
-		if i < length-3 {
-			name += "."
-		}
+	const zoneParts = 2
+	if length < zoneParts {
+		return "", "", fmt.Errorf("invalid fqdn: %s", fqdn)
 	}
 
-	zone = fmt.Sprintf("%s.%s", parts[length-2], parts[length-1])
+	name = strings.Join(parts[:length-zoneParts], ".")
+	zone = strings.Join(parts[length-zoneParts:], ".")
 
 	return
 }
