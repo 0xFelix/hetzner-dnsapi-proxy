@@ -178,6 +178,24 @@ var _ = Describe("DirectAdmin", func() {
 				Expect(statusCode).To(Equal(http.StatusBadRequest))
 				Expect(resData).To(BeEmpty())
 			})
+
+			DescribeTable("when access is denied", func(ctx context.Context, domain, name, recordType string) {
+				server = libserver.NewNoAllowedDomains(api.URL())
+				statusCode, resData := doDirectAdminRequest(ctx, server.URL+"/directadmin/CMD_API_DNS_CONTROL", url.Values{
+					"action": []string{"add"},
+					"domain": []string{domain},
+					"type":   []string{recordType},
+					"name":   []string{name},
+					"value":  []string{"something"},
+				})
+				Expect(statusCode).To(Equal(http.StatusForbidden))
+				Expect(resData).To(BeEmpty())
+			},
+				Entry("A record with fqdn in domain", libapi.ARecordNameFull, "", libapi.RecordTypeA),
+				Entry("A record with fqdn from name and domain", libapi.ZoneName, libapi.ARecordName, libapi.RecordTypeA),
+				Entry("TXT record with fqdn in domain", libapi.TXTRecordNameFull, "", libapi.RecordTypeTXT),
+				Entry("TXT recordd with fqdn from name and domain", libapi.ZoneName, libapi.TXTRecordName, libapi.RecordTypeTXT),
+			)
 		})
 	})
 })

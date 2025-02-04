@@ -100,6 +100,17 @@ var _ = Describe("HTTPReq", func() {
 					"value": libapi.TXTUpdated,
 				})).To(Equal(http.StatusBadRequest))
 			})
+
+			DescribeTable("when access is denied", func(ctx context.Context, fqdn string) {
+				server = libserver.NewNoAllowedDomains(api.URL())
+				Expect(doHTTPReqRequest(ctx, server.URL+"/httpreq/present", map[string]string{
+					"fqdn":  fqdn,
+					"value": libapi.TXTUpdated,
+				})).To(Equal(http.StatusForbidden))
+			},
+				Entry("with dot suffix", libapi.TXTRecordNameFull+"."),
+				Entry("without dot suffix", libapi.TXTRecordNameFull),
+			)
 		})
 	})
 })

@@ -106,6 +106,18 @@ var _ = Describe("AcmeDNS", func() {
 			})
 			Expect(statusCode).To(Equal(http.StatusBadRequest))
 		})
+
+		DescribeTable("when access is denied", func(ctx context.Context, subdomain string) {
+			server = libserver.NewNoAllowedDomains(api.URL())
+			statusCode, _ := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", map[string]string{
+				"subdomain": subdomain,
+				"txt":       libapi.TXTUpdated,
+			})
+			Expect(statusCode).To(Equal(http.StatusForbidden))
+		},
+			Entry("with prefix", libapi.TXTRecordNameFull),
+			Entry("without prefix", libapi.TXTRecordNameNoPrefix),
+		)
 	})
 })
 

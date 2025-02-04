@@ -86,6 +86,14 @@ var _ = Describe("Plain", func() {
 				"ip":       []string{libapi.AUpdated},
 			})).To(Equal(http.StatusBadRequest))
 		})
+
+		It("when access is denied", func(ctx context.Context) {
+			server = libserver.NewNoAllowedDomains(api.URL())
+			Expect(doPlainRequest(ctx, server.URL+"/plain/update", url.Values{
+				"hostname": []string{libapi.ARecordNameFull},
+				"ip":       []string{libapi.AUpdated},
+			})).To(Equal(http.StatusForbidden))
+		})
 	})
 })
 

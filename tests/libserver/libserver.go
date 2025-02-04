@@ -31,6 +31,14 @@ func New(url string, ttl int) (server *httptest.Server, token string) {
 	)), token
 }
 
+func NewNoAllowedDomains(url string) *httptest.Server {
+	return httptest.NewServer(app.New(
+		&config.Config{
+			BaseURL: url + "/v1",
+		},
+	))
+}
+
 func randString(n int) string {
 	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 	s := make([]rune, n)
