@@ -21,8 +21,7 @@ import (
 )
 
 const (
-	//#nosec G101
-	headerAuthAPIToken = "Auth-API-Token"
+	headerAuthAPIToken = "Auth-API-Token" //#nosec G101
 	headerContentType  = "Content-Type"
 	contentTypeJSON    = "application/json"
 

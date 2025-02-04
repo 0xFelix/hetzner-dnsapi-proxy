@@ -17,7 +17,7 @@ const (
 
 	prefixAcmeChallenge = "_acme-challenge"
 	recordTypeA         = "A"
-	recordTypeTxt       = "TXT"
+	recordTypeTXT       = "TXT"
 )
 
 type DNSRecord struct {
@@ -91,7 +91,7 @@ func BindAcmeDNS() gin.HandlerFunc {
 			Name:     name,
 			Zone:     zone,
 			Value:    data.Value,
-			Type:     recordTypeTxt,
+			Type:     recordTypeTXT,
 		})
 	}
 }
@@ -112,7 +112,7 @@ func BindHTTPReq() gin.HandlerFunc {
 			Name:     name,
 			Zone:     zone,
 			Value:    data.Value,
-			Type:     recordTypeTxt,
+			Type:     recordTypeTXT,
 		})
 	}
 }
@@ -148,7 +148,7 @@ func BindDirectAdmin() gin.HandlerFunc {
 			return
 		}
 
-		if data.Type != recordTypeTxt {
+		if data.Type != recordTypeA && data.Type != recordTypeTXT {
 			c.AbortWithStatus(http.StatusBadRequest)
 			return
 		}
