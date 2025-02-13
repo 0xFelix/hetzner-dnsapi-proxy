@@ -58,7 +58,9 @@ var _ = Describe("DirectAdmin", func() {
 				"value":  []string{value},
 			})
 			Expect(statusCode).To(Equal(http.StatusOK))
-			Expect(resData).To(Equal(statusOK))
+			values, err := url.ParseQuery(resData)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(values).To(Equal(statusOK))
 		},
 			Entry("A record with fqdn in domain",
 				libapi.ARecordNameFull, "", libapi.RecordTypeA, libapi.AUpdated, libapi.NewARecord),
@@ -85,7 +87,9 @@ var _ = Describe("DirectAdmin", func() {
 				"value":  []string{value},
 			})
 			Expect(statusCode).To(Equal(http.StatusOK))
-			Expect(resData).To(Equal(statusOK))
+			values, err := url.ParseQuery(resData)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(values).To(Equal(statusOK))
 		},
 			Entry("A record with fqdn in domain",
 				libapi.ARecordNameFull, "", libapi.RecordTypeA, libapi.AUpdated, libapi.UpdatedARecord),
@@ -109,7 +113,9 @@ var _ = Describe("DirectAdmin", func() {
 				"action": []string{action},
 			})
 			Expect(statusCode).To(Equal(http.StatusOK))
-			Expect(resData).To(Equal(statusOK))
+			values, err := url.ParseQuery(resData)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(values).To(Equal(statusOK))
 		},
 			Entry("delete", "delete"),
 			Entry("update", "update"),
@@ -119,7 +125,9 @@ var _ = Describe("DirectAdmin", func() {
 		It("should return allowed domains", func(ctx context.Context) {
 			statusCode, resData := doDirectAdminRequest(ctx, server.URL+"/directadmin/CMD_API_SHOW_DOMAINS", nil)
 			Expect(statusCode).To(Equal(http.StatusOK))
-			Expect(resData).To(Equal(url.Values{
+			values, err := url.ParseQuery(resData)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(values).To(Equal(url.Values{
 				"list": []string{"*"},
 			}))
 		})
@@ -133,6 +141,8 @@ var _ = Describe("DirectAdmin", func() {
 		})
 
 		Context("should fail", func() {
+			const domanActionMissing = "domain or action is missing\n"
+
 			It("when domain is missing", func(ctx context.Context) {
 				statusCode, resData := doDirectAdminRequest(ctx, server.URL+"/directadmin/CMD_API_DNS_CONTROL", url.Values{
 					"action": []string{"add"},
@@ -141,7 +151,7 @@ var _ = Describe("DirectAdmin", func() {
 					"value":  []string{libapi.TXTUpdated},
 				})
 				Expect(statusCode).To(Equal(http.StatusBadRequest))
-				Expect(resData).To(BeEmpty())
+				Expect(resData).To(Equal(domanActionMissing))
 			})
 
 			It("when action is missing", func(ctx context.Context) {
@@ -152,7 +162,7 @@ var _ = Describe("DirectAdmin", func() {
 					"value":  []string{libapi.TXTUpdated},
 				})
 				Expect(statusCode).To(Equal(http.StatusBadRequest))
-				Expect(resData).To(BeEmpty())
+				Expect(resData).To(Equal(domanActionMissing))
 			})
 
 			It("when type is not A or TXT", func(ctx context.Context) {
@@ -164,7 +174,7 @@ var _ = Describe("DirectAdmin", func() {
 					"value":  []string{libapi.TXTUpdated},
 				})
 				Expect(statusCode).To(Equal(http.StatusBadRequest))
-				Expect(resData).To(BeEmpty())
+				Expect(resData).To(Equal("type can only be A or TXT\n"))
 			})
 
 			It("when domain is malformed and name is empty", func(ctx context.Context) {
@@ -176,7 +186,7 @@ var _ = Describe("DirectAdmin", func() {
 					"value":  []string{libapi.TXTUpdated},
 				})
 				Expect(statusCode).To(Equal(http.StatusBadRequest))
-				Expect(resData).To(BeEmpty())
+				Expect(resData).To(Equal("invalid fqdn: tld\n"))
 			})
 
 			DescribeTable("when access is denied", func(ctx context.Context, domain, name, recordType string) {
@@ -200,7 +210,7 @@ var _ = Describe("DirectAdmin", func() {
 	})
 })
 
-func doDirectAdminRequest(ctx context.Context, serverURL string, data url.Values) (int, url.Values) {
+func doDirectAdminRequest(ctx context.Context, serverURL string, data url.Values) (statusCode int, resData string) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, serverURL, http.NoBody)
 	Expect(err).ToNot(HaveOccurred())
 	req.URL.RawQuery = data.Encode()
@@ -213,8 +223,5 @@ func doDirectAdminRequest(ctx context.Context, serverURL string, data url.Values
 	Expect(err).ToNot(HaveOccurred())
 	Expect(res.Body.Close()).To(Succeed())
 
-	resData, err := url.ParseQuery(string(resBody))
-	Expect(err).ToNot(HaveOccurred())
-
-	return res.StatusCode, resData
+	return res.StatusCode, string(resBody)
 }

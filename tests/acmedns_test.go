@@ -46,11 +46,13 @@ var _ = Describe("AcmeDNS", func() {
 				libapi.PostRecord(token, libapi.NewTXTRecord()),
 			)
 
-			statusCode, resData := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", map[string]string{
+			statusCode, resBody := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", map[string]string{
 				"subdomain": subdomain,
 				"txt":       libapi.TXTUpdated,
 			})
 			Expect(statusCode).To(Equal(http.StatusOK))
+			var resData map[string]string
+			Expect(json.Unmarshal(resBody, &resData)).To(Succeed())
 			Expect(resData).To(gstruct.MatchAllKeys(gstruct.Keys{
 				"txt": Equal(libapi.TXTUpdated),
 			}))
@@ -66,11 +68,13 @@ var _ = Describe("AcmeDNS", func() {
 				libapi.PutRecord(token, libapi.UpdatedTXTRecord()),
 			)
 
-			statusCode, resData := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", map[string]string{
+			statusCode, resBody := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", map[string]string{
 				"subdomain": subdomain,
 				"txt":       libapi.TXTUpdated,
 			})
 			Expect(statusCode).To(Equal(http.StatusOK))
+			var resData map[string]string
+			Expect(json.Unmarshal(resBody, &resData)).To(Succeed())
 			Expect(resData).To(gstruct.MatchAllKeys(gstruct.Keys{
 				"txt": Equal(libapi.TXTUpdated),
 			}))
@@ -81,39 +85,45 @@ var _ = Describe("AcmeDNS", func() {
 	})
 
 	Context("should make no api calls and should fail", func() {
+		const subdomainTXTMissing = "subdomain or txt is missing\n"
+
 		AfterEach(func() {
 			Expect(api.ReceivedRequests()).To(HaveLen(0))
 		})
 
 		It("when subdomain is missing", func(ctx context.Context) {
-			statusCode, _ := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", map[string]string{
+			statusCode, resBody := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", map[string]string{
 				"txt": libapi.TXTUpdated,
 			})
 			Expect(statusCode).To(Equal(http.StatusBadRequest))
+			Expect(string(resBody)).To(Equal(subdomainTXTMissing))
 		})
 
 		It("when txt is missing", func(ctx context.Context) {
-			statusCode, _ := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", map[string]string{
+			statusCode, resBody := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", map[string]string{
 				"subdomain": libapi.TXTRecordNameFull,
 			})
 			Expect(statusCode).To(Equal(http.StatusBadRequest))
+			Expect(string(resBody)).To(Equal(subdomainTXTMissing))
 		})
 
 		It("when subdomain is malformed", func(ctx context.Context) {
-			statusCode, _ := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", map[string]string{
+			statusCode, resBody := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", map[string]string{
 				"subdomain": libapi.TLD,
 				"txt":       libapi.TXTUpdated,
 			})
 			Expect(statusCode).To(Equal(http.StatusBadRequest))
+			Expect(string(resBody)).To(Equal("invalid fqdn: tld\n"))
 		})
 
 		DescribeTable("when access is denied", func(ctx context.Context, subdomain string) {
 			server = libserver.NewNoAllowedDomains(api.URL())
-			statusCode, _ := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", map[string]string{
+			statusCode, resBody := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", map[string]string{
 				"subdomain": subdomain,
 				"txt":       libapi.TXTUpdated,
 			})
 			Expect(statusCode).To(Equal(http.StatusForbidden))
+			Expect(resBody).To(BeEmpty())
 		},
 			Entry("with prefix", libapi.TXTRecordNameFull),
 			Entry("without prefix", libapi.TXTRecordNameNoPrefix),
@@ -121,7 +131,7 @@ var _ = Describe("AcmeDNS", func() {
 	})
 })
 
-func doAcmeDNSRequest(ctx context.Context, url string, data map[string]string) (statusCode int, resData map[string]string) {
+func doAcmeDNSRequest(ctx context.Context, url string, data map[string]string) (statusCode int, resBody []byte) {
 	body, err := json.Marshal(data)
 	Expect(err).ToNot(HaveOccurred())
 
@@ -133,15 +143,9 @@ func doAcmeDNSRequest(ctx context.Context, url string, data map[string]string) (
 	res, err := c.Do(req)
 	Expect(err).ToNot(HaveOccurred())
 
-	resBody, err := io.ReadAll(res.Body)
+	resBody, err = io.ReadAll(res.Body)
 	Expect(err).ToNot(HaveOccurred())
 	Expect(res.Body.Close()).To(Succeed())
 
-	if res.StatusCode == http.StatusOK {
-		Expect(json.Unmarshal(resBody, &resData)).To(Succeed())
-	} else {
-		Expect(resBody).To(BeEmpty())
-	}
-
-	return res.StatusCode, resData
+	return res.StatusCode, resBody
 }
