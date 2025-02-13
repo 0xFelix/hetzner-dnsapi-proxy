@@ -17,7 +17,7 @@ func New(url string, ttl int) (server *httptest.Server, token string) {
 	token = randString(tokenLength)
 
 	_, ipNet, err := net.ParseCIDR("127.0.0.1/32")
-	Expect(err).NotTo(HaveOccurred())
+	Expect(err).ToNot(HaveOccurred())
 
 	return httptest.NewServer(app.New(
 		&config.Config{

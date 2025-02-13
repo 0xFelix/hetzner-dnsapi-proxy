@@ -10,15 +10,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/caarlos0/env/v11"
-
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/app"
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/config"
 )
 
 func main() {
-	cfg := &config.Config{}
-	if err := env.ParseWithOptions(cfg, env.Options{RequiredIfNoDef: true}); err != nil {
+	cfg, err := config.ParseEnv()
+	if err != nil {
 		log.Fatal(err)
 	}
 
