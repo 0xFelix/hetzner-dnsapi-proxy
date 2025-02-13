@@ -11,7 +11,6 @@ Get the container image from [ghcr.io](https://github.com/0xFelix/hetzner-dnsapi
 ## TODO
 
 - More elaborate authentication / authorization mechanism
-- Rewrite with Go >=1.22 HTTP router
 
 ## Supported DNS APIs
 
