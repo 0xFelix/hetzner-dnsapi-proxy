@@ -10,7 +10,7 @@ import (
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/config"
 )
 
-func NewAuthorizer(allowedDomains config.AllowedDomains) func(http.Handler) http.Handler {
+func NewAuthorizer(cfg *config.Config) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			data, err := reqDataFromContext(r.Context())
@@ -20,8 +20,8 @@ func NewAuthorizer(allowedDomains config.AllowedDomains) func(http.Handler) http
 				return
 			}
 
-			if !CheckPermission(data.FullName, r.RemoteAddr, allowedDomains) {
-				log.Printf("client '%s' is not allowed to update '%s' data of '%s' to '%s'\n",
+			if !CheckPermission(cfg, data, r.RemoteAddr) {
+				log.Printf("client '%s' is not allowed to update '%s' data of '%s' to '%s'",
 					r.RemoteAddr, data.Type, data.FullName, data.Value)
 				w.WriteHeader(http.StatusForbidden)
 				return
@@ -32,7 +32,34 @@ func NewAuthorizer(allowedDomains config.AllowedDomains) func(http.Handler) http
 	}
 }
 
-func CheckPermission(fqdn, clientIP string, allowedDomains config.AllowedDomains) bool {
+func CheckPermission(cfg *config.Config, data *ReqData, remoteAddr string) bool {
+	if !config.AuthMethodIsValid(cfg.Auth.Method) {
+		log.Printf("invalid auth method: %s", cfg.Auth.Method)
+		return false
+	}
+
+	allowedAllowedDomains := CheckAllowedDomains(data.FullName, remoteAddr, cfg.Auth.AllowedDomains)
+	if cfg.Auth.Method == config.AuthMethodAllowedDomains {
+		return allowedAllowedDomains
+	}
+
+	allowedUsers := CheckUsers(data.FullName, data.Username, data.Password, cfg.Auth.Users)
+	if cfg.Auth.Method == config.AuthMethodUsers {
+		return allowedUsers
+	}
+
+	if cfg.Auth.Method == config.AuthMethodBoth {
+		return allowedAllowedDomains && allowedUsers
+	}
+
+	if cfg.Auth.Method == config.AuthMethodAny {
+		return allowedAllowedDomains || allowedUsers
+	}
+
+	return false
+}
+
+func CheckAllowedDomains(fqdn, clientIP string, allowedDomains config.AllowedDomains) bool {
 	for domain, ipNets := range allowedDomains {
 		if fqdn != domain && !IsSubDomain(fqdn, domain) {
 			continue
@@ -41,6 +68,22 @@ func CheckPermission(fqdn, clientIP string, allowedDomains config.AllowedDomains
 			ip := net.ParseIP(clientIP)
 			if ip != nil && ipNet.Contains(ip) {
 				return true
+			}
+		}
+	}
+	return false
+}
+
+func CheckUsers(fqdn, username, password string, users []config.User) bool {
+	if fqdn == "" || username == "" || password == "" {
+		return false
+	}
+	for _, user := range users {
+		if user.Username == username && user.Password == password {
+			for _, domain := range user.Domains {
+				if fqdn == domain || IsSubDomain(fqdn, domain) {
+					return true
+				}
 			}
 		}
 	}

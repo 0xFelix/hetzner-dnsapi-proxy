@@ -12,29 +12,42 @@ import (
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/config"
 )
 
-func New(url string, ttl int) (server *httptest.Server, token string) {
-	const tokenLength = 10
-	token = randString(tokenLength)
-
-	_, ipNet, err := net.ParseCIDR("127.0.0.1/32")
-	Expect(err).ToNot(HaveOccurred())
+func New(url string, ttl int) (server *httptest.Server, token, username, password string) {
+	const randLength = 10
+	token = randString(randLength)
+	username = randString(randLength)
+	password = randString(randLength)
 
 	return httptest.NewServer(app.New(
 		&config.Config{
 			BaseURL: url + "/v1",
 			Token:   token,
-			AllowedDomains: config.AllowedDomains{
-				"*": []*net.IPNet{ipNet},
+			Auth: config.Auth{
+				Method: config.AuthMethodBoth,
+				AllowedDomains: config.AllowedDomains{
+					"*": []*net.IPNet{{
+						IP:   net.IPv4(127, 0, 0, 1),           //nolint:mnd
+						Mask: net.IPv4Mask(255, 255, 255, 255), //nolint:mnd
+					}},
+				},
+				Users: []config.User{{
+					Username: username,
+					Password: password,
+					Domains:  []string{"*"},
+				}},
 			},
 			RecordTTL: ttl,
 		},
-	)), token
+	)), token, username, password
 }
 
 func NewNoAllowedDomains(url string) *httptest.Server {
 	return httptest.NewServer(app.New(
 		&config.Config{
 			BaseURL: url + "/v1",
+			Auth: config.Auth{
+				Method: config.AuthMethodAllowedDomains,
+			},
 		},
 	))
 }

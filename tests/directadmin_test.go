@@ -18,9 +18,11 @@ import (
 
 var _ = Describe("DirectAdmin", func() {
 	var (
-		api    *ghttp.Server
-		server *httptest.Server
-		token  string
+		api      *ghttp.Server
+		server   *httptest.Server
+		token    string
+		username string
+		password string
 
 		statusOK = url.Values{
 			"error": []string{"0"},
@@ -30,7 +32,7 @@ var _ = Describe("DirectAdmin", func() {
 
 	BeforeEach(func() {
 		api = ghttp.NewServer()
-		server, token = libserver.New(api.URL(), libapi.DefaultTTL)
+		server, token, username, password = libserver.New(api.URL(), libapi.DefaultTTL)
 	})
 
 	AfterEach(func() {
@@ -50,13 +52,15 @@ var _ = Describe("DirectAdmin", func() {
 				libapi.PostRecord(token, record()),
 			)
 
-			statusCode, resData := doDirectAdminRequest(ctx, server.URL+"/directadmin/CMD_API_DNS_CONTROL", url.Values{
-				"domain": []string{domain},
-				"action": []string{"add"},
-				"type":   []string{recordType},
-				"name":   []string{name},
-				"value":  []string{value},
-			})
+			statusCode, resData := doDirectAdminRequest(ctx, server.URL+"/directadmin/CMD_API_DNS_CONTROL", username, password,
+				url.Values{
+					"domain": []string{domain},
+					"action": []string{"add"},
+					"type":   []string{recordType},
+					"name":   []string{name},
+					"value":  []string{value},
+				},
+			)
 			Expect(statusCode).To(Equal(http.StatusOK))
 			values, err := url.ParseQuery(resData)
 			Expect(err).ToNot(HaveOccurred())
@@ -79,13 +83,15 @@ var _ = Describe("DirectAdmin", func() {
 				libapi.PutRecord(token, record()),
 			)
 
-			statusCode, resData := doDirectAdminRequest(ctx, server.URL+"/directadmin/CMD_API_DNS_CONTROL", url.Values{
-				"domain": []string{domain},
-				"action": []string{"add"},
-				"type":   []string{recordType},
-				"name":   []string{name},
-				"value":  []string{value},
-			})
+			statusCode, resData := doDirectAdminRequest(ctx, server.URL+"/directadmin/CMD_API_DNS_CONTROL", username, password,
+				url.Values{
+					"domain": []string{domain},
+					"action": []string{"add"},
+					"type":   []string{recordType},
+					"name":   []string{name},
+					"value":  []string{value},
+				},
+			)
 			Expect(statusCode).To(Equal(http.StatusOK))
 			values, err := url.ParseQuery(resData)
 			Expect(err).ToNot(HaveOccurred())
@@ -108,10 +114,12 @@ var _ = Describe("DirectAdmin", func() {
 		})
 
 		DescribeTable("should succeed on action action than add with", func(ctx context.Context, action string) {
-			statusCode, resData := doDirectAdminRequest(ctx, server.URL+"/directadmin/CMD_API_DNS_CONTROL", url.Values{
-				"domain": []string{libapi.ARecordNameFull},
-				"action": []string{action},
-			})
+			statusCode, resData := doDirectAdminRequest(ctx, server.URL+"/directadmin/CMD_API_DNS_CONTROL", username, password,
+				url.Values{
+					"domain": []string{libapi.ARecordNameFull},
+					"action": []string{action},
+				},
+			)
 			Expect(statusCode).To(Equal(http.StatusOK))
 			values, err := url.ParseQuery(resData)
 			Expect(err).ToNot(HaveOccurred())
@@ -123,7 +131,7 @@ var _ = Describe("DirectAdmin", func() {
 		)
 
 		It("should return allowed domains", func(ctx context.Context) {
-			statusCode, resData := doDirectAdminRequest(ctx, server.URL+"/directadmin/CMD_API_SHOW_DOMAINS", nil)
+			statusCode, resData := doDirectAdminRequest(ctx, server.URL+"/directadmin/CMD_API_SHOW_DOMAINS", username, password, nil)
 			Expect(statusCode).To(Equal(http.StatusOK))
 			values, err := url.ParseQuery(resData)
 			Expect(err).ToNot(HaveOccurred())
@@ -133,9 +141,11 @@ var _ = Describe("DirectAdmin", func() {
 		})
 
 		It("should succeed on calls to CMD_API_DOMAIN_POINTER", func(ctx context.Context) {
-			statusCode, resData := doDirectAdminRequest(ctx, server.URL+"/directadmin/CMD_API_DOMAIN_POINTER", url.Values{
-				"domain": []string{libapi.ZoneName},
-			})
+			statusCode, resData := doDirectAdminRequest(ctx, server.URL+"/directadmin/CMD_API_DOMAIN_POINTER", username, password,
+				url.Values{
+					"domain": []string{libapi.ZoneName},
+				},
+			)
 			Expect(statusCode).To(Equal(http.StatusOK))
 			Expect(resData).To(BeEmpty())
 		})
@@ -144,60 +154,70 @@ var _ = Describe("DirectAdmin", func() {
 			const domanActionMissing = "domain or action is missing\n"
 
 			It("when domain is missing", func(ctx context.Context) {
-				statusCode, resData := doDirectAdminRequest(ctx, server.URL+"/directadmin/CMD_API_DNS_CONTROL", url.Values{
-					"action": []string{"add"},
-					"type":   []string{libapi.RecordTypeTXT},
-					"name":   []string{libapi.TXTRecordName},
-					"value":  []string{libapi.TXTUpdated},
-				})
+				statusCode, resData := doDirectAdminRequest(ctx, server.URL+"/directadmin/CMD_API_DNS_CONTROL", username, password,
+					url.Values{
+						"action": []string{"add"},
+						"type":   []string{libapi.RecordTypeTXT},
+						"name":   []string{libapi.TXTRecordName},
+						"value":  []string{libapi.TXTUpdated},
+					},
+				)
 				Expect(statusCode).To(Equal(http.StatusBadRequest))
 				Expect(resData).To(Equal(domanActionMissing))
 			})
 
 			It("when action is missing", func(ctx context.Context) {
-				statusCode, resData := doDirectAdminRequest(ctx, server.URL+"/directadmin/CMD_API_DNS_CONTROL", url.Values{
-					"domain": []string{libapi.ZoneName},
-					"type":   []string{libapi.RecordTypeTXT},
-					"name":   []string{libapi.TXTRecordName},
-					"value":  []string{libapi.TXTUpdated},
-				})
+				statusCode, resData := doDirectAdminRequest(ctx, server.URL+"/directadmin/CMD_API_DNS_CONTROL", username, password,
+					url.Values{
+						"domain": []string{libapi.ZoneName},
+						"type":   []string{libapi.RecordTypeTXT},
+						"name":   []string{libapi.TXTRecordName},
+						"value":  []string{libapi.TXTUpdated},
+					},
+				)
 				Expect(statusCode).To(Equal(http.StatusBadRequest))
 				Expect(resData).To(Equal(domanActionMissing))
 			})
 
 			It("when type is not A or TXT", func(ctx context.Context) {
-				statusCode, resData := doDirectAdminRequest(ctx, server.URL+"/directadmin/CMD_API_DNS_CONTROL", url.Values{
-					"action": []string{"add"},
-					"domain": []string{libapi.ZoneName},
-					"type":   []string{"madeup"},
-					"name":   []string{libapi.TXTRecordName},
-					"value":  []string{libapi.TXTUpdated},
-				})
+				statusCode, resData := doDirectAdminRequest(ctx, server.URL+"/directadmin/CMD_API_DNS_CONTROL", username, password,
+					url.Values{
+						"action": []string{"add"},
+						"domain": []string{libapi.ZoneName},
+						"type":   []string{"madeup"},
+						"name":   []string{libapi.TXTRecordName},
+						"value":  []string{libapi.TXTUpdated},
+					},
+				)
 				Expect(statusCode).To(Equal(http.StatusBadRequest))
 				Expect(resData).To(Equal("type can only be A or TXT\n"))
 			})
 
 			It("when domain is malformed and name is empty", func(ctx context.Context) {
-				statusCode, resData := doDirectAdminRequest(ctx, server.URL+"/directadmin/CMD_API_DNS_CONTROL", url.Values{
-					"action": []string{"add"},
-					"domain": []string{libapi.TLD},
-					"type":   []string{libapi.RecordTypeTXT},
-					"name":   []string{""},
-					"value":  []string{libapi.TXTUpdated},
-				})
+				statusCode, resData := doDirectAdminRequest(ctx, server.URL+"/directadmin/CMD_API_DNS_CONTROL", username, password,
+					url.Values{
+						"action": []string{"add"},
+						"domain": []string{libapi.TLD},
+						"type":   []string{libapi.RecordTypeTXT},
+						"name":   []string{""},
+						"value":  []string{libapi.TXTUpdated},
+					},
+				)
 				Expect(statusCode).To(Equal(http.StatusBadRequest))
 				Expect(resData).To(Equal("invalid fqdn: tld\n"))
 			})
 
 			DescribeTable("when access is denied", func(ctx context.Context, domain, name, recordType string) {
 				server = libserver.NewNoAllowedDomains(api.URL())
-				statusCode, resData := doDirectAdminRequest(ctx, server.URL+"/directadmin/CMD_API_DNS_CONTROL", url.Values{
-					"action": []string{"add"},
-					"domain": []string{domain},
-					"type":   []string{recordType},
-					"name":   []string{name},
-					"value":  []string{"something"},
-				})
+				statusCode, resData := doDirectAdminRequest(ctx, server.URL+"/directadmin/CMD_API_DNS_CONTROL", username, password,
+					url.Values{
+						"action": []string{"add"},
+						"domain": []string{domain},
+						"type":   []string{recordType},
+						"name":   []string{name},
+						"value":  []string{"something"},
+					},
+				)
 				Expect(statusCode).To(Equal(http.StatusForbidden))
 				Expect(resData).To(BeEmpty())
 			},
@@ -210,9 +230,10 @@ var _ = Describe("DirectAdmin", func() {
 	})
 })
 
-func doDirectAdminRequest(ctx context.Context, serverURL string, data url.Values) (statusCode int, resData string) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, serverURL, http.NoBody)
+func doDirectAdminRequest(ctx context.Context, url, username, password string, data url.Values) (statusCode int, resData string) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	Expect(err).ToNot(HaveOccurred())
+	req.SetBasicAuth(username, password)
 	req.URL.RawQuery = data.Encode()
 
 	c := &http.Client{}

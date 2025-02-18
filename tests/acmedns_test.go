@@ -19,14 +19,16 @@ import (
 
 var _ = Describe("AcmeDNS", func() {
 	var (
-		api    *ghttp.Server
-		server *httptest.Server
-		token  string
+		api      *ghttp.Server
+		server   *httptest.Server
+		token    string
+		username string
+		password string
 	)
 
 	BeforeEach(func() {
 		api = ghttp.NewServer()
-		server, token = libserver.New(api.URL(), libapi.DefaultTTL)
+		server, token, username, password = libserver.New(api.URL(), libapi.DefaultTTL)
 	})
 
 	AfterEach(func() {
@@ -46,10 +48,12 @@ var _ = Describe("AcmeDNS", func() {
 				libapi.PostRecord(token, libapi.NewTXTRecord()),
 			)
 
-			statusCode, resBody := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", map[string]string{
-				"subdomain": subdomain,
-				"txt":       libapi.TXTUpdated,
-			})
+			statusCode, resBody := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", username, password,
+				map[string]string{
+					"subdomain": subdomain,
+					"txt":       libapi.TXTUpdated,
+				},
+			)
 			Expect(statusCode).To(Equal(http.StatusOK))
 			var resData map[string]string
 			Expect(json.Unmarshal(resBody, &resData)).To(Succeed())
@@ -68,10 +72,12 @@ var _ = Describe("AcmeDNS", func() {
 				libapi.PutRecord(token, libapi.UpdatedTXTRecord()),
 			)
 
-			statusCode, resBody := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", map[string]string{
-				"subdomain": subdomain,
-				"txt":       libapi.TXTUpdated,
-			})
+			statusCode, resBody := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", username, password,
+				map[string]string{
+					"subdomain": subdomain,
+					"txt":       libapi.TXTUpdated,
+				},
+			)
 			Expect(statusCode).To(Equal(http.StatusOK))
 			var resData map[string]string
 			Expect(json.Unmarshal(resBody, &resData)).To(Succeed())
@@ -92,36 +98,44 @@ var _ = Describe("AcmeDNS", func() {
 		})
 
 		It("when subdomain is missing", func(ctx context.Context) {
-			statusCode, resBody := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", map[string]string{
-				"txt": libapi.TXTUpdated,
-			})
+			statusCode, resBody := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", username, password,
+				map[string]string{
+					"txt": libapi.TXTUpdated,
+				},
+			)
 			Expect(statusCode).To(Equal(http.StatusBadRequest))
 			Expect(string(resBody)).To(Equal(subdomainTXTMissing))
 		})
 
 		It("when txt is missing", func(ctx context.Context) {
-			statusCode, resBody := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", map[string]string{
-				"subdomain": libapi.TXTRecordNameFull,
-			})
+			statusCode, resBody := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", username, password,
+				map[string]string{
+					"subdomain": libapi.TXTRecordNameFull,
+				},
+			)
 			Expect(statusCode).To(Equal(http.StatusBadRequest))
 			Expect(string(resBody)).To(Equal(subdomainTXTMissing))
 		})
 
 		It("when subdomain is malformed", func(ctx context.Context) {
-			statusCode, resBody := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", map[string]string{
-				"subdomain": libapi.TLD,
-				"txt":       libapi.TXTUpdated,
-			})
+			statusCode, resBody := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", username, password,
+				map[string]string{
+					"subdomain": libapi.TLD,
+					"txt":       libapi.TXTUpdated,
+				},
+			)
 			Expect(statusCode).To(Equal(http.StatusBadRequest))
 			Expect(string(resBody)).To(Equal("invalid fqdn: tld\n"))
 		})
 
 		DescribeTable("when access is denied", func(ctx context.Context, subdomain string) {
 			server = libserver.NewNoAllowedDomains(api.URL())
-			statusCode, resBody := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", map[string]string{
-				"subdomain": subdomain,
-				"txt":       libapi.TXTUpdated,
-			})
+			statusCode, resBody := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", username, password,
+				map[string]string{
+					"subdomain": subdomain,
+					"txt":       libapi.TXTUpdated,
+				},
+			)
 			Expect(statusCode).To(Equal(http.StatusForbidden))
 			Expect(resBody).To(BeEmpty())
 		},
@@ -131,13 +145,15 @@ var _ = Describe("AcmeDNS", func() {
 	})
 })
 
-func doAcmeDNSRequest(ctx context.Context, url string, data map[string]string) (statusCode int, resBody []byte) {
+func doAcmeDNSRequest(ctx context.Context, url, username, password string, data map[string]string) (statusCode int, resBody []byte) {
 	body, err := json.Marshal(data)
 	Expect(err).ToNot(HaveOccurred())
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	Expect(err).ToNot(HaveOccurred())
 	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("X-Api-User", username)
+	req.Header.Add("X-Api-Key", password)
 
 	c := &http.Client{}
 	res, err := c.Do(req)

@@ -22,7 +22,7 @@ func (lrw *loggingResponseWriter) WriteHeader(code int) {
 }
 
 func New(cfg *config.Config) http.Handler {
-	authorizer := middleware.NewAuthorizer(cfg.AllowedDomains)
+	authorizer := middleware.NewAuthorizer(cfg)
 	updater := middleware.NewUpdater(cfg)
 
 	mux := http.NewServeMux()
@@ -35,7 +35,7 @@ func New(cfg *config.Config) http.Handler {
 	mux.Handle("POST /httpreq/cleanup",
 		handle(cfg, middleware.StatusOk))
 	mux.Handle("GET /directadmin/CMD_API_SHOW_DOMAINS",
-		handle(cfg, middleware.NewShowDomainsDirectAdmin(cfg.AllowedDomains)))
+		handle(cfg, middleware.NewShowDomainsDirectAdmin(cfg)))
 	mux.Handle("GET /directadmin/CMD_API_DOMAIN_POINTER",
 		handle(cfg, middleware.StatusOk))
 	mux.Handle("GET /directadmin/CMD_API_DNS_CONTROL",

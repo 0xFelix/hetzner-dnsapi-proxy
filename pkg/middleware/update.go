@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -44,7 +45,7 @@ func NewUpdater(cfg *config.Config) func(http.Handler) http.Handler {
 				return
 			}
 
-			log.Printf("received request to update '%s' data of '%s' to '%s'\n", data.Type, data.FullName, data.Value)
+			log.Printf("received request to update '%s' data of '%s' to '%s'", data.Type, data.FullName, data.Value)
 			if err := u.update(data); err != nil {
 				log.Printf("failed to update record: %v", err)
 				w.WriteHeader(http.StatusInternalServerError)
@@ -56,7 +57,7 @@ func NewUpdater(cfg *config.Config) func(http.Handler) http.Handler {
 	}
 }
 
-func (u *updater) update(data *reqData) error {
+func (u *updater) update(data *ReqData) error {
 	// Ensure only one simultaneous update sequence
 	u.m.Lock()
 	defer u.m.Unlock()
@@ -107,9 +108,7 @@ func (u *updater) getRequest(url string) ([]byte, error) {
 		return nil, err
 	}
 	defer func() {
-		if closeErr := res.Body.Close(); closeErr != nil {
-			err = closeErr
-		}
+		err = errors.Join(err, res.Body.Close())
 	}()
 
 	if res.StatusCode != http.StatusOK {
@@ -140,9 +139,7 @@ func (u *updater) jsonRequest(method, url string, body []byte) error {
 		return err
 	}
 	defer func() {
-		if closeErr := res.Body.Close(); closeErr != nil {
-			err = closeErr
-		}
+		err = errors.Join(err, res.Body.Close())
 	}()
 
 	if res.StatusCode != http.StatusOK {

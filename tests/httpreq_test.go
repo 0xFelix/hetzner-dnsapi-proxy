@@ -17,14 +17,16 @@ import (
 
 var _ = Describe("HTTPReq", func() {
 	var (
-		api    *ghttp.Server
-		server *httptest.Server
-		token  string
+		api      *ghttp.Server
+		server   *httptest.Server
+		token    string
+		username string
+		password string
 	)
 
 	BeforeEach(func() {
 		api = ghttp.NewServer()
-		server, token = libserver.New(api.URL(), libapi.DefaultTTL)
+		server, token, username, password = libserver.New(api.URL(), libapi.DefaultTTL)
 	})
 
 	AfterEach(func() {
@@ -44,10 +46,12 @@ var _ = Describe("HTTPReq", func() {
 				libapi.PostRecord(token, libapi.NewTXTRecord()),
 			)
 
-			Expect(doHTTPReqRequest(ctx, server.URL+"/httpreq/present", map[string]string{
-				"fqdn":  fqdn,
-				"value": libapi.TXTUpdated,
-			})).To(Equal(http.StatusOK))
+			Expect(doHTTPReqRequest(ctx, server.URL+"/httpreq/present", username, password,
+				map[string]string{
+					"fqdn":  fqdn,
+					"value": libapi.TXTUpdated,
+				},
+			)).To(Equal(http.StatusOK))
 		},
 			Entry("with dot suffix", libapi.TXTRecordNameFull+"."),
 			Entry("without dot suffix", libapi.TXTRecordNameFull),
@@ -60,10 +64,12 @@ var _ = Describe("HTTPReq", func() {
 				libapi.PutRecord(token, libapi.UpdatedTXTRecord()),
 			)
 
-			Expect(doHTTPReqRequest(ctx, server.URL+"/httpreq/present", map[string]string{
-				"fqdn":  fqdn,
-				"value": libapi.TXTUpdated,
-			})).To(Equal(http.StatusOK))
+			Expect(doHTTPReqRequest(ctx, server.URL+"/httpreq/present", username, password,
+				map[string]string{
+					"fqdn":  fqdn,
+					"value": libapi.TXTUpdated,
+				},
+			)).To(Equal(http.StatusOK))
 		},
 			Entry("with dot suffix", libapi.TXTRecordNameFull+"."),
 			Entry("without dot suffix", libapi.TXTRecordNameFull),
@@ -83,30 +89,38 @@ var _ = Describe("HTTPReq", func() {
 
 		Context("should fail", func() {
 			It("when fqdn is missing", func(ctx context.Context) {
-				Expect(doHTTPReqRequest(ctx, server.URL+"/httpreq/present", map[string]string{
-					"value": libapi.TXTUpdated,
-				})).To(Equal(http.StatusBadRequest))
+				Expect(doHTTPReqRequest(ctx, server.URL+"/httpreq/present", username, password,
+					map[string]string{
+						"value": libapi.TXTUpdated,
+					},
+				)).To(Equal(http.StatusBadRequest))
 			})
 
 			It("when value is missing", func(ctx context.Context) {
-				Expect(doHTTPReqRequest(ctx, server.URL+"/httpreq/present", map[string]string{
-					"fqdn": libapi.TXTRecordNameFull,
-				})).To(Equal(http.StatusBadRequest))
+				Expect(doHTTPReqRequest(ctx, server.URL+"/httpreq/present", username, password,
+					map[string]string{
+						"fqdn": libapi.TXTRecordNameFull,
+					},
+				)).To(Equal(http.StatusBadRequest))
 			})
 
 			It("when fqdn is malformed", func(ctx context.Context) {
-				Expect(doHTTPReqRequest(ctx, server.URL+"/httpreq/present", map[string]string{
-					"fqdn":  libapi.TLD,
-					"value": libapi.TXTUpdated,
-				})).To(Equal(http.StatusBadRequest))
+				Expect(doHTTPReqRequest(ctx, server.URL+"/httpreq/present", username, password,
+					map[string]string{
+						"fqdn":  libapi.TLD,
+						"value": libapi.TXTUpdated,
+					},
+				)).To(Equal(http.StatusBadRequest))
 			})
 
 			DescribeTable("when access is denied", func(ctx context.Context, fqdn string) {
 				server = libserver.NewNoAllowedDomains(api.URL())
-				Expect(doHTTPReqRequest(ctx, server.URL+"/httpreq/present", map[string]string{
-					"fqdn":  fqdn,
-					"value": libapi.TXTUpdated,
-				})).To(Equal(http.StatusForbidden))
+				Expect(doHTTPReqRequest(ctx, server.URL+"/httpreq/present", username, password,
+					map[string]string{
+						"fqdn":  fqdn,
+						"value": libapi.TXTUpdated,
+					},
+				)).To(Equal(http.StatusForbidden))
 			},
 				Entry("with dot suffix", libapi.TXTRecordNameFull+"."),
 				Entry("without dot suffix", libapi.TXTRecordNameFull),
@@ -115,13 +129,14 @@ var _ = Describe("HTTPReq", func() {
 	})
 })
 
-func doHTTPReqRequest(ctx context.Context, url string, data map[string]string) int {
+func doHTTPReqRequest(ctx context.Context, url, username, password string, data map[string]string) int {
 	body, err := json.Marshal(data)
 	Expect(err).ToNot(HaveOccurred())
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	Expect(err).ToNot(HaveOccurred())
 	req.Header.Add("Content-Type", "application/json")
+	req.SetBasicAuth(username, password)
 
 	c := &http.Client{}
 	res, err := c.Do(req)
