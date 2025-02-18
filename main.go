@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"flag"
 	"log"
 	"net/http"
 	"os"
@@ -15,12 +16,26 @@ import (
 )
 
 func main() {
-	cfg, err := config.ParseEnv()
+	configFile := flag.String("c", "", "Path to config file")
+	flag.Parse()
+
+	var (
+		cfg *config.Config
+		err error
+	)
+	if *configFile == "" {
+		log.Printf("Reading config file: %s", *configFile)
+		cfg, err = config.ReadFile(*configFile)
+	} else {
+		log.Printf("Config file not set, parsing config from environment")
+		cfg, err = config.ParseEnv()
+	}
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Printf("Authorization method set to: %s", cfg.Auth.Method)
 
-	log.Printf("Starting hetzner-dnsapi-proxy, listening on %s\n", cfg.ListenAddr)
+	log.Printf("Starting hetzner-dnsapi-proxy, listening on %s", cfg.ListenAddr)
 	if err := runServer(cfg.ListenAddr, app.New(cfg)); err != nil {
 		log.Fatal("Error running server:", err)
 	}
