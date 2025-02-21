@@ -23,6 +23,9 @@ func NewAuthorizer(cfg *config.Config) func(http.Handler) http.Handler {
 			if !CheckPermission(cfg, data, r.RemoteAddr) {
 				log.Printf("client '%s' is not allowed to update '%s' data of '%s' to '%s'",
 					r.RemoteAddr, data.Type, data.FullName, data.Value)
+				if cfg.Auth.Method != config.AuthMethodAllowedDomains && data.BasicAuth {
+					w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
+				}
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}

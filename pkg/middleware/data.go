@@ -6,13 +6,14 @@ import (
 )
 
 type ReqData struct {
-	FullName string
-	Name     string
-	Zone     string
-	Value    string
-	Type     string
-	Username string
-	Password string
+	FullName  string
+	Name      string
+	Zone      string
+	Value     string
+	Type      string
+	Username  string
+	Password  string
+	BasicAuth bool
 }
 
 // key is an unexported type for keys defined in this package.
