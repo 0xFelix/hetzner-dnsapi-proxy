@@ -12,7 +12,7 @@ $(GOFUMPT): $(LOCALBIN)
 
 .PHONY: fmt
 fmt: gofumpt ## Run go mod tidy and gofumpt against the code.
-	go mod tidy -compat=1.23
+	go mod tidy -compat=1.24
 	$(GOFUMPT) -w -extra .
 
 .PHONY: lint
