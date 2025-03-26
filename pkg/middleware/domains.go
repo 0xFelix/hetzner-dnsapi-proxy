@@ -47,13 +47,14 @@ func GetDomains(cfg *config.Config, remoteAddr, username, password string) map[s
 	}
 
 	domains := map[string]struct{}{}
-	if cfg.Auth.Method == config.AuthMethodBoth {
+	switch cfg.Auth.Method {
+	case config.AuthMethodBoth:
 		for domain := range domainsAllowedDomains {
 			if _, ok := domainsUsers[domain]; ok {
 				domains[domain] = struct{}{}
 			}
 		}
-	} else if cfg.Auth.Method == config.AuthMethodAny {
+	case config.AuthMethodAny:
 		maps.Copy(domains, domainsAllowedDomains)
 		maps.Copy(domains, domainsUsers)
 	}
