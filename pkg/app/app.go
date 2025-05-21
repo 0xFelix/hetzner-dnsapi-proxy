@@ -11,14 +11,21 @@ import (
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/middleware"
 )
 
-type loggingResponseWriter struct {
+// LoggingResponseWriter is an exported wrapper around http.ResponseWriter to capture status code.
+type LoggingResponseWriter struct {
 	http.ResponseWriter
-	statusCode int
+	StatusCode int // Exported for testing
 }
 
-func (lrw *loggingResponseWriter) WriteHeader(code int) {
-	lrw.statusCode = code
+// WriteHeader captures the status code and calls the underlying WriteHeader.
+func (lrw *LoggingResponseWriter) WriteHeader(code int) {
+	lrw.StatusCode = code
 	lrw.ResponseWriter.WriteHeader(code)
+}
+
+// NewLoggingResponseWriter creates a new LoggingResponseWriter. Exported for testing.
+func NewLoggingResponseWriter(w http.ResponseWriter) *LoggingResponseWriter {
+	return &LoggingResponseWriter{ResponseWriter: w, StatusCode: http.StatusOK}
 }
 
 func New(cfg *config.Config) http.Handler {
@@ -51,9 +58,9 @@ func handle(cfg *config.Config, handlers ...func(http.Handler) http.Handler) htt
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		lrw := &loggingResponseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+		lrw := NewLoggingResponseWriter(w) // Use constructor
 		chain(handlers).ServeHTTP(lrw, r)
-		logRequest(r, start, lrw.statusCode)
+		LogRequest(r, start, lrw.StatusCode) // Use exported LogRequest
 	})
 }
 
@@ -64,7 +71,8 @@ func chain(handlers []func(http.Handler) http.Handler) http.Handler {
 	return handlers[0](chain(handlers[1:]))
 }
 
-func logRequest(r *http.Request, start time.Time, statusCode int) {
+// LogRequest is an exported function to log request details.
+func LogRequest(r *http.Request, start time.Time, statusCode int) {
 	const methodWidth = 8
 	methodPadding := strings.Repeat(" ", methodWidth-len(r.Method))
 	log.Printf(

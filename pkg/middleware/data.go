@@ -5,6 +5,8 @@ import (
 	"errors"
 )
 
+// ReqData is an exported struct holding request-specific data.
+// (Assuming it was previously unexported or named differently like `reqData`)
 type ReqData struct {
 	FullName  string
 	Name      string
@@ -21,17 +23,18 @@ type ReqData struct {
 type key int
 
 // reqDataKey is the key for ReqData values in Contexts.
-// It is unexported; clients use newContextWithReqData and reqDataFromContext
-// instead of using this key directly.
-var reqDataKey key
+// It remains unexported as access is through exported functions.
+var reqDataKey key //nolint:gochecknoglobals // Used for context key
 
-// newContextWithReqData returns a new Context that stores a ReqData pointer as a value.
-func newContextWithReqData(ctx context.Context, data *ReqData) context.Context {
+// NewContextWithReqData returns a new Context that stores a ReqData pointer as a value.
+// (Exported version of newContextWithReqData)
+func NewContextWithReqData(ctx context.Context, data *ReqData) context.Context {
 	return context.WithValue(ctx, reqDataKey, data)
 }
 
-// reqDataFromContext returns the pointer to a ReqData stored in a Context.
-func reqDataFromContext(ctx context.Context) (*ReqData, error) {
+// ReqDataFromContext returns the pointer to a ReqData stored in a Context.
+// (Exported version of reqDataFromContext)
+func ReqDataFromContext(ctx context.Context) (*ReqData, error) {
 	data, ok := ctx.Value(reqDataKey).(*ReqData)
 	if !ok {
 		return nil, errors.New("ReqData not found in context")
