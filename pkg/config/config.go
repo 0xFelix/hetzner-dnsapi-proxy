@@ -44,6 +44,7 @@ type Config struct {
 	ListenAddr     string   `yaml:"listenAddr"`
 	TrustedProxies []string `yaml:"trustedProxies"`
 	Debug          bool     `yaml:"debug"`
+	CloudAPI       bool     `yaml:"cloudAPI"`
 }
 
 type Auth struct {
@@ -78,6 +79,7 @@ func NewConfig() *Config {
 	}
 }
 
+//nolint:gocyclo
 func ParseEnv() (*Config, error) {
 	cfg := NewConfig()
 	cfg.Auth.Method = AuthMethodAllowedDomains
@@ -136,6 +138,14 @@ func ParseEnv() (*Config, error) {
 			return nil, fmt.Errorf("failed to parse DEBUG: %v", err)
 		}
 		cfg.Debug = debugBool
+	}
+
+	if cloudAPI, ok := os.LookupEnv("CLOUD_API"); ok {
+		cloudAPIBool, err := strconv.ParseBool(cloudAPI)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse CLOUD_API: %v", err)
+		}
+		cfg.CloudAPI = cloudAPIBool
 	}
 
 	return cfg, nil

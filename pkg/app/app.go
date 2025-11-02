@@ -5,10 +5,13 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/config"
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/middleware"
+	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/middleware/clean"
+	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/middleware/update"
 )
 
 type loggingResponseWriter struct {
@@ -23,7 +26,9 @@ func (lrw *loggingResponseWriter) WriteHeader(code int) {
 
 func New(cfg *config.Config) http.Handler {
 	authorizer := middleware.NewAuthorizer(cfg)
-	updater := middleware.NewUpdater(cfg)
+	m := &sync.Mutex{}
+	updater := update.New(cfg, m)
+	cleaner := clean.New(cfg, m)
 
 	mux := http.NewServeMux()
 	mux.Handle("GET /plain/update",
@@ -33,7 +38,7 @@ func New(cfg *config.Config) http.Handler {
 	mux.Handle("POST /httpreq/present",
 		handle(cfg, middleware.ContentTypeJSON, middleware.BindHTTPReq, authorizer, updater, middleware.StatusOk))
 	mux.Handle("POST /httpreq/cleanup",
-		handle(cfg, middleware.StatusOk))
+		handle(cfg, middleware.ContentTypeJSON, middleware.BindHTTPReq, authorizer, cleaner, middleware.StatusOk))
 	mux.Handle("GET /directadmin/CMD_API_SHOW_DOMAINS",
 		handle(cfg, middleware.NewShowDomainsDirectAdmin(cfg)))
 	mux.Handle("GET /directadmin/CMD_API_DOMAIN_POINTER",
