@@ -1,4 +1,4 @@
-package middleware
+package data
 
 import (
 	"context"
@@ -26,12 +26,12 @@ type key int
 var reqDataKey key
 
 // newContextWithReqData returns a new Context that stores a ReqData pointer as a value.
-func newContextWithReqData(ctx context.Context, data *ReqData) context.Context {
+func NewContextWithReqData(ctx context.Context, data *ReqData) context.Context {
 	return context.WithValue(ctx, reqDataKey, data)
 }
 
 // reqDataFromContext returns the pointer to a ReqData stored in a Context.
-func reqDataFromContext(ctx context.Context) (*ReqData, error) {
+func ReqDataFromContext(ctx context.Context) (*ReqData, error) {
 	data, ok := ctx.Value(reqDataKey).(*ReqData)
 	if !ok {
 		return nil, errors.New("ReqData not found in context")

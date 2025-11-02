@@ -7,12 +7,13 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/config"
+	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/data"
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/middleware"
 )
 
 var _ = Describe("CheckPermission", func() {
-	DescribeTable("should allow access", func(cfg *config.Config, data *middleware.ReqData, remoteAddr string) {
-		Expect(middleware.CheckPermission(cfg, data, remoteAddr)).To(BeTrue())
+	DescribeTable("should allow access", func(cfg *config.Config, reqData *data.ReqData, remoteAddr string) {
+		Expect(middleware.CheckPermission(cfg, reqData, remoteAddr)).To(BeTrue())
 	},
 		Entry("with auth method allowedDomains",
 			&config.Config{
@@ -26,7 +27,7 @@ var _ = Describe("CheckPermission", func() {
 					}},
 				},
 			},
-			&middleware.ReqData{
+			&data.ReqData{
 				FullName: "example.com",
 			},
 			"127.0.0.1",
@@ -42,7 +43,7 @@ var _ = Describe("CheckPermission", func() {
 					}},
 				},
 			},
-			&middleware.ReqData{
+			&data.ReqData{
 				FullName: "example.com",
 				Username: "username",
 				Password: "password",
@@ -66,7 +67,7 @@ var _ = Describe("CheckPermission", func() {
 					}},
 				},
 			},
-			&middleware.ReqData{
+			&data.ReqData{
 				FullName: "example.com",
 				Username: "username",
 				Password: "password",
@@ -85,7 +86,7 @@ var _ = Describe("CheckPermission", func() {
 					}},
 				},
 			},
-			&middleware.ReqData{
+			&data.ReqData{
 				FullName: "example.com",
 			},
 			"127.0.0.1",
@@ -101,7 +102,7 @@ var _ = Describe("CheckPermission", func() {
 					}},
 				},
 			},
-			&middleware.ReqData{
+			&data.ReqData{
 				FullName: "example.com",
 				Username: "username",
 				Password: "password",
@@ -110,8 +111,8 @@ var _ = Describe("CheckPermission", func() {
 		),
 	)
 
-	DescribeTable("should deny access", func(cfg *config.Config, data *middleware.ReqData, remoteAddr string) {
-		Expect(middleware.CheckPermission(cfg, data, remoteAddr)).To(BeFalse())
+	DescribeTable("should deny access", func(cfg *config.Config, reqData *data.ReqData, remoteAddr string) {
+		Expect(middleware.CheckPermission(cfg, reqData, remoteAddr)).To(BeFalse())
 	},
 		Entry("with auth method allowedDomains and missing allowed domains",
 			&config.Config{
@@ -124,7 +125,7 @@ var _ = Describe("CheckPermission", func() {
 					}},
 				},
 			},
-			&middleware.ReqData{
+			&data.ReqData{
 				FullName: "example.com",
 				Username: "username",
 				Password: "password",
@@ -143,7 +144,7 @@ var _ = Describe("CheckPermission", func() {
 					}},
 				},
 			},
-			&middleware.ReqData{
+			&data.ReqData{
 				FullName: "example.com",
 				Username: "username",
 				Password: "password",
@@ -161,7 +162,7 @@ var _ = Describe("CheckPermission", func() {
 					}},
 				},
 			},
-			&middleware.ReqData{
+			&data.ReqData{
 				FullName: "example.com",
 				Username: "username",
 				Password: "password",
@@ -180,7 +181,7 @@ var _ = Describe("CheckPermission", func() {
 					}},
 				},
 			},
-			&middleware.ReqData{
+			&data.ReqData{
 				FullName: "example.com",
 				Username: "username",
 				Password: "password",
@@ -193,7 +194,7 @@ var _ = Describe("CheckPermission", func() {
 					Method: config.AuthMethodBoth,
 				},
 			},
-			&middleware.ReqData{
+			&data.ReqData{
 				FullName: "example.com",
 				Username: "username",
 				Password: "password",
@@ -217,7 +218,7 @@ var _ = Describe("CheckPermission", func() {
 					}},
 				},
 			},
-			&middleware.ReqData{
+			&data.ReqData{
 				FullName: "example.com",
 				Username: "username",
 				Password: "password",
@@ -241,7 +242,7 @@ var _ = Describe("CheckPermission", func() {
 					}},
 				},
 			},
-			&middleware.ReqData{
+			&data.ReqData{
 				FullName: "example.com",
 				Username: "username",
 				Password: "password",

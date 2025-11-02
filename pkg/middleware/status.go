@@ -5,6 +5,8 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+
+	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/data"
 )
 
 const failedWriteResponseFmt = "failed to write response: %v"
@@ -17,7 +19,7 @@ func StatusOk(_ http.Handler) http.Handler {
 
 func StatusOkAcmeDNS(_ http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		data, err := reqDataFromContext(r.Context())
+		reqData, err := data.ReqDataFromContext(r.Context())
 		if err != nil {
 			log.Printf("%v", err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -25,7 +27,7 @@ func StatusOkAcmeDNS(_ http.Handler) http.Handler {
 		}
 
 		resData, err := json.Marshal(map[string]string{
-			"txt": data.Value,
+			"txt": reqData.Value,
 		})
 		if err != nil {
 			log.Printf("failed to marshal response: %v", err)

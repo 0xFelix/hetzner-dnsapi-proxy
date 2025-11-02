@@ -8,22 +8,23 @@ import (
 	"strings"
 
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/config"
+	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/data"
 )
 
 func NewAuthorizer(cfg *config.Config) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			data, err := reqDataFromContext(r.Context())
+			reqData, err := data.ReqDataFromContext(r.Context())
 			if err != nil {
 				log.Printf("%v", err)
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
 
-			if !CheckPermission(cfg, data, r.RemoteAddr) {
+			if !CheckPermission(cfg, reqData, r.RemoteAddr) {
 				log.Printf("client '%s' is not allowed to update '%s' data of '%s' to '%s'",
-					r.RemoteAddr, data.Type, data.FullName, data.Value)
-				if cfg.Auth.Method != config.AuthMethodAllowedDomains && data.BasicAuth {
+					r.RemoteAddr, reqData.Type, reqData.FullName, reqData.Value)
+				if cfg.Auth.Method != config.AuthMethodAllowedDomains && reqData.BasicAuth {
 					w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
 				}
 				w.WriteHeader(http.StatusUnauthorized)
@@ -35,18 +36,18 @@ func NewAuthorizer(cfg *config.Config) func(http.Handler) http.Handler {
 	}
 }
 
-func CheckPermission(cfg *config.Config, data *ReqData, remoteAddr string) bool {
+func CheckPermission(cfg *config.Config, reqData *data.ReqData, remoteAddr string) bool {
 	if !config.AuthMethodIsValid(cfg.Auth.Method) {
 		log.Printf("invalid auth method: %s", cfg.Auth.Method)
 		return false
 	}
 
-	allowedAllowedDomains := CheckAllowedDomains(data.FullName, remoteAddr, cfg.Auth.AllowedDomains)
+	allowedAllowedDomains := CheckAllowedDomains(reqData.FullName, remoteAddr, cfg.Auth.AllowedDomains)
 	if cfg.Auth.Method == config.AuthMethodAllowedDomains {
 		return allowedAllowedDomains
 	}
 
-	allowedUsers := CheckUsers(data.FullName, data.Username, data.Password, cfg.Auth.Users)
+	allowedUsers := CheckUsers(reqData.FullName, reqData.Username, reqData.Password, cfg.Auth.Users)
 	if cfg.Auth.Method == config.AuthMethodUsers {
 		return allowedUsers
 	}

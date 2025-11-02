@@ -81,11 +81,16 @@ var _ = Describe("HTTPReq", func() {
 			Expect(api.ReceivedRequests()).To(BeEmpty())
 		})
 
-		It("should succeed cleaning up", func() {
-			res, err := http.Post(server.URL+"/httpreq/cleanup", "application/json", nil)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(res.StatusCode).To(Equal(http.StatusOK))
-		})
+		DescribeTable("should succeed cleaning up", func(ctx context.Context, fqdn string) {
+			Expect(doHTTPReqRequest(ctx, server.URL+"/httpreq/cleanup", username, password,
+				map[string]string{
+					"fqdn": fqdn,
+				},
+			)).To(Equal(http.StatusOK))
+		},
+			Entry("with dot suffix", libapi.TXTRecordNameFull+"."),
+			Entry("without dot suffix", libapi.TXTRecordNameFull),
+		)
 
 		Context("should fail", func() {
 			It("when fqdn is missing", func(ctx context.Context) {

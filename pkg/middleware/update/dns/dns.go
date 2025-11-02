@@ -1,4 +1,4 @@
-package middleware
+package dns
 
 import (
 	"bytes"
@@ -7,96 +7,75 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"sync"
 	"time"
 
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/config"
+	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/data"
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/hetzner"
 )
 
 const (
 	headerAuthAPIToken = "Auth-API-Token" //#nosec G101
-	requestTimeout     = 60
+	headerContentType  = "Content-Type"
+	applicationJSON    = "application/json"
 	requestFailedFmt   = "%s request failed with status code %d"
 )
 
 type updater struct {
 	cfg    *config.Config
 	client http.Client
-	m      sync.Mutex
+	m      *sync.Mutex
 }
 
-func NewUpdater(cfg *config.Config) func(http.Handler) http.Handler {
-	u := &updater{
+func New(cfg *config.Config, m *sync.Mutex) *updater {
+	return &updater{
 		cfg: cfg,
 		client: http.Client{
 			Timeout: time.Duration(cfg.Timeout) * time.Second,
 		},
-	}
-
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			data, err := reqDataFromContext(r.Context())
-			if err != nil {
-				log.Printf("%v", err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-
-			log.Printf("received request to update '%s' data of '%s' to '%s'", data.Type, data.FullName, data.Value)
-			if err := u.update(data); err != nil {
-				log.Printf("failed to update record: %v", err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-
-			next.ServeHTTP(w, r)
-		})
+		m: m,
 	}
 }
 
-func (u *updater) update(data *ReqData) error {
+func (u *updater) Update(ctx context.Context, reqData *data.ReqData) error {
 	// Ensure only one simultaneous update sequence
 	u.m.Lock()
 	defer u.m.Unlock()
 
-	zIDs, err := u.getZoneIds()
+	zIDs, err := u.getZoneIds(ctx)
 	if err != nil {
 		return err
 	}
 
-	zID := zIDs[data.Zone]
+	zID := zIDs[reqData.Zone]
 	if zID == "" {
-		return fmt.Errorf("could not find zone id for record %s", data.FullName)
+		return fmt.Errorf("could not find zone id for record %s", reqData.FullName)
 	}
 
-	rIDs, err := u.getRecordIds(zID, data.Type)
+	rIDs, err := u.getRecordIds(ctx, zID, reqData.Type)
 	if err != nil {
 		return err
 	}
 
 	r := hetzner.Record{
-		Name:   data.Name,
+		Name:   reqData.Name,
 		TTL:    u.cfg.RecordTTL,
-		Type:   data.Type,
-		Value:  data.Value,
+		Type:   reqData.Type,
+		Value:  reqData.Value,
 		ZoneID: zID,
 	}
 
-	if rID, ok := rIDs[data.Name]; ok {
+	if rID, ok := rIDs[reqData.Name]; ok {
 		r.ID = rID
-		return u.updateRecord(&r)
+		return u.updateRecord(ctx, &r)
 	}
 
-	return u.createRecord(&r)
+	return u.createRecord(ctx, &r)
 }
 
-func (u *updater) getRequest(url string) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout*time.Second)
-	defer cancel()
-
+func (u *updater) getRequest(ctx context.Context, url string) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return nil, err
@@ -123,10 +102,7 @@ func (u *updater) getRequest(url string) ([]byte, error) {
 	return body, err
 }
 
-func (u *updater) jsonRequest(method, url string, body []byte) error {
-	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout*time.Second)
-	defer cancel()
-
+func (u *updater) jsonRequest(ctx context.Context, method, url string, body []byte) error {
 	req, err := http.NewRequestWithContext(ctx, method, url, bytes.NewReader(body))
 	if err != nil {
 		return err
@@ -149,8 +125,8 @@ func (u *updater) jsonRequest(method, url string, body []byte) error {
 	return nil
 }
 
-func (u *updater) getZoneIds() (map[string]string, error) {
-	res, err := u.getRequest(u.cfg.BaseURL + "/zones")
+func (u *updater) getZoneIds(ctx context.Context) (map[string]string, error) {
+	res, err := u.getRequest(ctx, u.cfg.BaseURL+"/zones")
 	if err != nil {
 		return nil, err
 	}
@@ -168,8 +144,8 @@ func (u *updater) getZoneIds() (map[string]string, error) {
 	return ids, nil
 }
 
-func (u *updater) getRecordIds(zoneID, recordType string) (map[string]string, error) {
-	res, err := u.getRequest(u.cfg.BaseURL + "/records?zone_id=" + zoneID)
+func (u *updater) getRecordIds(ctx context.Context, zoneID, recordType string) (map[string]string, error) {
+	res, err := u.getRequest(ctx, u.cfg.BaseURL+"/records?zone_id="+zoneID)
 	if err != nil {
 		return nil, err
 	}
@@ -189,20 +165,20 @@ func (u *updater) getRecordIds(zoneID, recordType string) (map[string]string, er
 	return ids, nil
 }
 
-func (u *updater) createRecord(record *hetzner.Record) error {
+func (u *updater) createRecord(ctx context.Context, record *hetzner.Record) error {
 	body, err := json.Marshal(record)
 	if err != nil {
 		return err
 	}
 
-	return u.jsonRequest(http.MethodPost, u.cfg.BaseURL+"/records", body)
+	return u.jsonRequest(ctx, http.MethodPost, u.cfg.BaseURL+"/records", body)
 }
 
-func (u *updater) updateRecord(record *hetzner.Record) error {
+func (u *updater) updateRecord(ctx context.Context, record *hetzner.Record) error {
 	body, err := json.Marshal(record)
 	if err != nil {
 		return err
 	}
 
-	return u.jsonRequest(http.MethodPut, u.cfg.BaseURL+"/records/"+record.ID, body)
+	return u.jsonRequest(ctx, http.MethodPut, u.cfg.BaseURL+"/records/"+record.ID, body)
 }

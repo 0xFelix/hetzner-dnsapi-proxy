@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 	"strings"
+
+	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/data"
 )
 
 const (
@@ -37,8 +39,8 @@ func BindPlain(next http.Handler) http.Handler {
 
 		username, password, _ := r.BasicAuth()
 		next.ServeHTTP(w, r.WithContext(
-			newContextWithReqData(r.Context(),
-				&ReqData{
+			data.NewContextWithReqData(r.Context(),
+				&data.ReqData{
 					FullName:  hostname,
 					Name:      name,
 					Zone:      zone,
@@ -55,22 +57,22 @@ func BindPlain(next http.Handler) http.Handler {
 
 func BindAcmeDNS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		data := &struct {
+		d := &struct {
 			Subdomain string `json:"subdomain"`
 			TXT       string `json:"txt"`
 		}{}
-		if err := json.NewDecoder(r.Body).Decode(data); err != nil {
+		if err := json.NewDecoder(r.Body).Decode(d); err != nil {
 			log.Printf(failedParseRequestFmt, err)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
-		if data.Subdomain == "" || data.TXT == "" {
+		if d.Subdomain == "" || d.TXT == "" {
 			http.Error(w, "subdomain or txt is missing", http.StatusBadRequest)
 			return
 		}
 
-		name, zone, err := SplitFQDN(data.Subdomain)
+		name, zone, err := SplitFQDN(d.Subdomain)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -78,18 +80,18 @@ func BindAcmeDNS(next http.Handler) http.Handler {
 
 		// prepend prefix if not already given
 		const prefixAcmeChallenge = "_acme-challenge."
-		if !strings.HasPrefix(data.Subdomain, prefixAcmeChallenge) {
-			data.Subdomain = prefixAcmeChallenge + data.Subdomain
+		if !strings.HasPrefix(d.Subdomain, prefixAcmeChallenge) {
+			d.Subdomain = prefixAcmeChallenge + d.Subdomain
 			name = prefixAcmeChallenge + name
 		}
 
 		next.ServeHTTP(w, r.WithContext(
-			newContextWithReqData(r.Context(),
-				&ReqData{
-					FullName:  data.Subdomain,
+			data.NewContextWithReqData(r.Context(),
+				&data.ReqData{
+					FullName:  d.Subdomain,
 					Name:      name,
 					Zone:      zone,
-					Value:     data.TXT,
+					Value:     d.TXT,
 					Type:      recordTypeTXT,
 					Username:  r.Header.Get("X-Api-User"),
 					Password:  r.Header.Get("X-Api-Key"),
@@ -102,22 +104,27 @@ func BindAcmeDNS(next http.Handler) http.Handler {
 
 func BindHTTPReq(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		data := &struct {
+		d := &struct {
 			FQDN  string `json:"fqdn"`
 			Value string `json:"value"`
 		}{}
-		if err := json.NewDecoder(r.Body).Decode(data); err != nil {
+		if err := json.NewDecoder(r.Body).Decode(d); err != nil {
 			log.Printf(failedParseRequestFmt, err)
 			w.WriteHeader(http.StatusBadRequest)
 		}
 
-		if data.FQDN == "" || data.Value == "" {
-			http.Error(w, "fqdn or value is missing", http.StatusBadRequest)
+		if d.FQDN == "" {
+			http.Error(w, "fqdn is missing", http.StatusBadRequest)
 			return
 		}
 
-		data.FQDN = strings.TrimRight(data.FQDN, ".")
-		name, zone, err := SplitFQDN(data.FQDN)
+		if r.URL.Path == "/httpreq/present" && d.Value == "" {
+			http.Error(w, "value is missing", http.StatusBadRequest)
+			return
+		}
+
+		d.FQDN = strings.TrimRight(d.FQDN, ".")
+		name, zone, err := SplitFQDN(d.FQDN)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -125,12 +132,12 @@ func BindHTTPReq(next http.Handler) http.Handler {
 
 		username, password, _ := r.BasicAuth()
 		next.ServeHTTP(w, r.WithContext(
-			newContextWithReqData(r.Context(),
-				&ReqData{
-					FullName:  data.FQDN,
+			data.NewContextWithReqData(r.Context(),
+				&data.ReqData{
+					FullName:  d.FQDN,
 					Name:      name,
 					Zone:      zone,
-					Value:     data.Value,
+					Value:     d.Value,
 					Type:      recordTypeTXT,
 					Username:  username,
 					Password:  password,
@@ -180,8 +187,8 @@ func BindDirectAdmin(next http.Handler) http.Handler {
 
 		username, password, _ := r.BasicAuth()
 		next.ServeHTTP(w, r.WithContext(
-			newContextWithReqData(r.Context(),
-				&ReqData{
+			data.NewContextWithReqData(r.Context(),
+				&data.ReqData{
 					FullName:  fqdn,
 					Name:      name,
 					Zone:      zone,
