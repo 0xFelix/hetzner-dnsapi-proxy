@@ -35,10 +35,6 @@ var _ = Describe("HTTPReq", func() {
 	})
 
 	Context("should succeed", func() {
-		AfterEach(func() {
-			Expect(api.ReceivedRequests()).To(HaveLen(3))
-		})
-
 		DescribeTable("creating a new record", func(ctx context.Context, fqdn string) {
 			api.AppendHandlers(
 				libapi.GetZones(token, libapi.Zones()),
@@ -52,6 +48,8 @@ var _ = Describe("HTTPReq", func() {
 					"value": libapi.TXTUpdated,
 				},
 			)).To(Equal(http.StatusOK))
+
+			Expect(api.ReceivedRequests()).To(HaveLen(3))
 		},
 			Entry("with dot suffix", libapi.TXTRecordNameFull+"."),
 			Entry("without dot suffix", libapi.TXTRecordNameFull),
@@ -70,6 +68,19 @@ var _ = Describe("HTTPReq", func() {
 					"value": libapi.TXTUpdated,
 				},
 			)).To(Equal(http.StatusOK))
+
+			Expect(api.ReceivedRequests()).To(HaveLen(3))
+		},
+			Entry("with dot suffix", libapi.TXTRecordNameFull+"."),
+			Entry("without dot suffix", libapi.TXTRecordNameFull),
+		)
+
+		DescribeTable("cleaning up a record", func(ctx context.Context, fqdn string) {
+			Expect(doHTTPReqRequest(ctx, server.URL+"/httpreq/cleanup", username, password,
+				map[string]string{
+					"fqdn": fqdn,
+				},
+			)).To(Equal(http.StatusOK))
 		},
 			Entry("with dot suffix", libapi.TXTRecordNameFull+"."),
 			Entry("without dot suffix", libapi.TXTRecordNameFull),
@@ -79,12 +90,6 @@ var _ = Describe("HTTPReq", func() {
 	Context("should make no api calls and", func() {
 		AfterEach(func() {
 			Expect(api.ReceivedRequests()).To(BeEmpty())
-		})
-
-		It("should succeed cleaning up", func() {
-			res, err := http.Post(server.URL+"/httpreq/cleanup", "application/json", nil)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(res.StatusCode).To(Equal(http.StatusOK))
 		})
 
 		Context("should fail", func() {

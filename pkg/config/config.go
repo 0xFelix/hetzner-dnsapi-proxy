@@ -44,6 +44,7 @@ type Config struct {
 	ListenAddr     string   `yaml:"listenAddr"`
 	TrustedProxies []string `yaml:"trustedProxies"`
 	Debug          bool     `yaml:"debug"`
+	CloudAPI       bool     `yaml:"cloudAPI"`
 }
 
 type Auth struct {
