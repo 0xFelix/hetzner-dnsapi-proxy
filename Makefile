@@ -11,8 +11,7 @@ $(GOFUMPT): $(LOCALBIN)
 	test -s $(LOCALBIN)/gofumpt || GOBIN=$(LOCALBIN) go install mvdan.cc/gofumpt@latest
 
 .PHONY: fmt
-fmt: gofumpt ## Run go mod tidy and gofumpt against the code.
-	go mod tidy -compat=1.24
+fmt: gofumpt ## Run gofumpt against the code.
 	$(GOFUMPT) -w -extra .
 
 .PHONY: lint
@@ -33,5 +32,6 @@ build: ## Build the hetzner-dnsapi-proxy binary.
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -tags timetzdata -tags=nomsgpack -o $(LOCALBIN)/hetzner-dnsapi-proxy .
 
 .PHONY: vendor
-vendor: ## Run go mod vendor and vendor dependencies.
+vendor: ## Run go mod tidy and go mod vendor and vendor dependencies.
+	go mod tidy
 	go mod vendor
