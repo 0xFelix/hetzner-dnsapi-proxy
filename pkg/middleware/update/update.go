@@ -8,7 +8,6 @@ import (
 
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/config"
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/data"
-	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/hetzner"
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/middleware/update/cloud"
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/middleware/update/dns"
 )
@@ -34,11 +33,8 @@ func New(cfg *config.Config, m *sync.Mutex) func(http.Handler) http.Handler {
 				return
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), hetzner.RequestTimeout)
-			defer cancel()
-
 			log.Printf("received request to update '%s' data of '%s' to '%s'", reqData.Type, reqData.FullName, reqData.Value)
-			if err := u.Update(ctx, reqData); err != nil {
+			if err := u.Update(r.Context(), reqData); err != nil {
 				log.Printf("failed to update record: %v", err)
 				w.WriteHeader(http.StatusInternalServerError)
 				return

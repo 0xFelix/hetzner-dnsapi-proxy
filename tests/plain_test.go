@@ -10,7 +10,9 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
 
-	"github.com/0xfelix/hetzner-dnsapi-proxy/tests/libapi"
+	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/hetzner"
+	"github.com/0xfelix/hetzner-dnsapi-proxy/tests/libcloudapi"
+	"github.com/0xfelix/hetzner-dnsapi-proxy/tests/libdnsapi"
 	"github.com/0xfelix/hetzner-dnsapi-proxy/tests/libserver"
 )
 
@@ -25,7 +27,6 @@ var _ = Describe("Plain", func() {
 
 	BeforeEach(func() {
 		api = ghttp.NewServer()
-		server, token, username, password = libserver.New(api.URL(), libapi.DefaultTTL)
 	})
 
 	AfterEach(func() {
@@ -33,67 +34,82 @@ var _ = Describe("Plain", func() {
 		api.Close()
 	})
 
-	Context("should succeed", func() {
-		AfterEach(func() {
-			Expect(api.ReceivedRequests()).To(HaveLen(3))
-		})
+	DescribeTable("should succeed", func(ctx context.Context, cloudAPI bool, expectedRequests int, prepareHandlers func()) {
+		server, token, username, password = libserver.New(api.URL(), libdnsapi.DefaultTTL, libserver.WithCloudAPI(cloudAPI))
+		prepareHandlers()
 
-		It("creating a new record", func(ctx context.Context) {
+		Expect(doPlainRequest(ctx, server.URL+"/plain/update", username, password, url.Values{
+			"hostname": []string{libdnsapi.ARecordNameFull},
+			"ip":       []string{libdnsapi.AUpdated},
+		})).To(Equal(http.StatusOK))
+
+		Expect(api.ReceivedRequests()).To(HaveLen(expectedRequests))
+	},
+		Entry("DNS API: creating a new record", false, 3, func() {
 			api.AppendHandlers(
-				libapi.GetZones(token, libapi.Zones()),
-				libapi.GetRecords(token, libapi.ZoneID, nil),
-				libapi.PostRecord(token, libapi.NewARecord()),
+				libdnsapi.GetZones(token, libdnsapi.Zones()),
+				libdnsapi.GetRecords(token, libdnsapi.ZoneID, nil),
+				libdnsapi.PostRecord(token, libdnsapi.NewARecord()),
 			)
-
-			Expect(doPlainRequest(ctx, server.URL+"/plain/update", username, password, url.Values{
-				"hostname": []string{libapi.ARecordNameFull},
-				"ip":       []string{libapi.AUpdated},
-			})).To(Equal(http.StatusOK))
-		})
-
-		It("updating an existing record", func(ctx context.Context) {
+		}),
+		Entry("DNS API: updating an existing record", false, 3, func() {
 			api.AppendHandlers(
-				libapi.GetZones(token, libapi.Zones()),
-				libapi.GetRecords(token, libapi.ZoneID, libapi.Records()),
-				libapi.PutRecord(token, libapi.UpdatedARecord()),
+				libdnsapi.GetZones(token, libdnsapi.Zones()),
+				libdnsapi.GetRecords(token, libdnsapi.ZoneID, libdnsapi.Records()),
+				libdnsapi.PutRecord(token, libdnsapi.UpdatedARecord()),
 			)
-
-			Expect(doPlainRequest(ctx, server.URL+"/plain/update", username, password, url.Values{
-				"hostname": []string{libapi.ARecordNameFull},
-				"ip":       []string{libapi.AUpdated},
-			})).To(Equal(http.StatusOK))
-		})
-	})
+		}),
+		Entry("Cloud API: creating a new record", true, 3, func() {
+			api.AppendHandlers(
+				libcloudapi.GetZone(token, libdnsapi.Zones()[0]),
+				libcloudapi.GetRRSetNotFound(token, libdnsapi.Zones()[0], libdnsapi.ARecordName, "A"),
+				libcloudapi.CreateRRSet(token, libdnsapi.Zones()[0], libdnsapi.NewARecord()),
+			)
+		}),
+		Entry("Cloud API: updating an existing record", true, 4, func() {
+			api.AppendHandlers(
+				libcloudapi.GetZone(token, libdnsapi.Zones()[0]),
+				libcloudapi.GetRRSet(token, libdnsapi.Zones()[0], libdnsapi.Records()[0]),
+				libcloudapi.ChangeRRSetTTL(token, libdnsapi.Zones()[0], libdnsapi.UpdatedARecord()),
+				libcloudapi.SetRRSetRecords(token, libdnsapi.Zones()[0], libdnsapi.UpdatedARecord()),
+			)
+		}),
+	)
 
 	Context("should make no api calls and should fail", func() {
+		BeforeEach(func() {
+			server, token, username, password = libserver.New(api.URL(), libdnsapi.DefaultTTL)
+		})
+
 		AfterEach(func() {
 			Expect(api.ReceivedRequests()).To((BeEmpty()))
 		})
 
 		It("when hostname is missing", func(ctx context.Context) {
 			Expect(doPlainRequest(ctx, server.URL+"/plain/update", username, password, url.Values{
-				"ip": []string{libapi.AUpdated},
+				"ip": []string{libdnsapi.AUpdated},
 			})).To(Equal(http.StatusBadRequest))
 		})
 
 		It("when ip is missing", func(ctx context.Context) {
 			Expect(doPlainRequest(ctx, server.URL+"/plain/update", username, password, url.Values{
-				"hostname": []string{libapi.ARecordNameFull},
+				"hostname": []string{libdnsapi.ARecordNameFull},
 			})).To(Equal(http.StatusBadRequest))
 		})
 
 		It("when hostname is malformed", func(ctx context.Context) {
 			Expect(doPlainRequest(ctx, server.URL+"/plain/update", username, password, url.Values{
-				"hostname": []string{libapi.TLD},
-				"ip":       []string{libapi.AUpdated},
+				"hostname": []string{libdnsapi.TLD},
+				"ip":       []string{libdnsapi.AUpdated},
 			})).To(Equal(http.StatusBadRequest))
 		})
 
 		It("when access is denied", func(ctx context.Context) {
+			server.Close()
 			server = libserver.NewNoAllowedDomains(api.URL())
 			Expect(doPlainRequest(ctx, server.URL+"/plain/update", username, password, url.Values{
-				"hostname": []string{libapi.ARecordNameFull},
-				"ip":       []string{libapi.AUpdated},
+				"hostname": []string{libdnsapi.ARecordNameFull},
+				"ip":       []string{libdnsapi.AUpdated},
 			})).To(Equal(http.StatusUnauthorized))
 		})
 	})
@@ -111,4 +127,16 @@ func doPlainRequest(ctx context.Context, serverURL, username, password string, d
 	Expect(res.Body.Close()).To(Succeed())
 
 	return res.StatusCode
+}
+
+// Helper to update records with correct mock data for Cloud API tests
+// Note: libdnsapi.Records() has both A and TXT records.
+// libcloudapi.GetRRSet expects a single record.
+func recordByType(records []hetzner.Record, rType string) hetzner.Record {
+	for _, r := range records {
+		if r.Type == rType {
+			return r
+		}
+	}
+	return hetzner.Record{}
 }

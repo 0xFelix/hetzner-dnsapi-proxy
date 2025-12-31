@@ -68,7 +68,6 @@ type User struct {
 
 func NewConfig() *Config {
 	return &Config{
-		BaseURL: "https://dns.hetzner.com/api/v1",
 		Timeout: 15,
 		Auth: Auth{
 			Method: AuthMethodBoth,
@@ -84,8 +83,24 @@ func ParseEnv() (*Config, error) {
 	cfg := NewConfig()
 	cfg.Auth.Method = AuthMethodAllowedDomains
 
+	if cloudAPI, ok := os.LookupEnv("CLOUD_API"); ok {
+		cloudAPIBool, err := strconv.ParseBool(cloudAPI)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse CLOUD_API: %v", err)
+		}
+		cfg.CloudAPI = cloudAPIBool
+	}
+
 	if baseURL, ok := os.LookupEnv("API_BASE_URL"); ok {
 		cfg.BaseURL = baseURL
+	}
+
+	if cfg.BaseURL == "" {
+		if cfg.CloudAPI {
+			cfg.BaseURL = "https://api.hetzner.cloud/v1"
+		} else {
+			cfg.BaseURL = "https://dns.hetzner.com/api/v1"
+		}
 	}
 
 	if token, ok := os.LookupEnv("API_TOKEN"); ok {
@@ -140,14 +155,6 @@ func ParseEnv() (*Config, error) {
 		cfg.Debug = debugBool
 	}
 
-	if cloudAPI, ok := os.LookupEnv("CLOUD_API"); ok {
-		cloudAPIBool, err := strconv.ParseBool(cloudAPI)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse CLOUD_API: %v", err)
-		}
-		cfg.CloudAPI = cloudAPIBool
-	}
-
 	return cfg, nil
 }
 
@@ -160,6 +167,14 @@ func ReadFile(path string) (*Config, error) {
 	cfg := NewConfig()
 	if err := yaml.Unmarshal(data, cfg); err != nil {
 		return nil, err
+	}
+
+	if cfg.BaseURL == "" {
+		if cfg.CloudAPI {
+			cfg.BaseURL = "https://api.hetzner.cloud/v1"
+		} else {
+			cfg.BaseURL = "https://dns.hetzner.com/api/v1"
+		}
 	}
 
 	if cfg.Token == "" {

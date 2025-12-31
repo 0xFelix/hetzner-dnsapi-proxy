@@ -21,7 +21,7 @@ type updater struct {
 func New(cfg *config.Config, m *sync.Mutex) *updater {
 	return &updater{
 		cfg:    cfg,
-		client: hcloud.NewClient(hcloud.WithToken(cfg.Token)),
+		client: hetzner.NewHCloudClient(cfg),
 		m:      m,
 	}
 }
@@ -54,11 +54,21 @@ func (u *updater) Update(ctx context.Context, reqData *data.ReqData) error {
 }
 
 func (u *updater) updateRRSet(ctx context.Context, rrSet *hcloud.ZoneRRSet, val string) error {
-	rrSet.TTL = &u.cfg.RecordTTL
-	rrSet.Records = []hcloud.ZoneRRSetRecord{{
-		Value: strconv.Quote(val),
-	}}
-	_, _, err := u.client.Zone.UpdateRRSet(ctx, rrSet, hcloud.ZoneRRSetUpdateOpts{})
+	// Update TTL
+	if rrSet.TTL == nil || *rrSet.TTL != u.cfg.RecordTTL {
+		opts := hcloud.ZoneRRSetChangeTTLOpts{TTL: &u.cfg.RecordTTL}
+		if _, _, err := u.client.Zone.ChangeRRSetTTL(ctx, rrSet, opts); err != nil {
+			return err
+		}
+	}
+
+	// Update Records (Overwrite)
+	opts := hcloud.ZoneRRSetSetRecordsOpts{
+		Records: []hcloud.ZoneRRSetRecord{{
+			Value: strconv.Quote(val),
+		}},
+	}
+	_, _, err := u.client.Zone.SetRRSetRecords(ctx, rrSet, opts)
 	return err
 }
 

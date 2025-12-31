@@ -1,4 +1,4 @@
-package libapi
+package libdnsapi
 
 import (
 	"net/http"

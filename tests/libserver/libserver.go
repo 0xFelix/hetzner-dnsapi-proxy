@@ -12,44 +12,58 @@ import (
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/config"
 )
 
-func New(url string, ttl int) (server *httptest.Server, token, username, password string) {
+type Option func(*config.Config)
+
+func WithCloudAPI(enabled bool) Option {
+	return func(c *config.Config) {
+		c.CloudAPI = enabled
+	}
+}
+
+func New(url string, ttl int, opts ...Option) (server *httptest.Server, token, username, password string) {
 	const randLength = 10
 	token = randString(randLength)
 	username = randString(randLength)
 	password = randString(randLength)
 
-	return httptest.NewServer(app.New(
-		&config.Config{
-			BaseURL: url + "/v1",
-			Token:   token,
-			Auth: config.Auth{
-				Method: config.AuthMethodBoth,
-				AllowedDomains: config.AllowedDomains{
-					"*": []*net.IPNet{{
-						IP:   net.IPv4(127, 0, 0, 1),           //nolint:mnd
-						Mask: net.IPv4Mask(255, 255, 255, 255), //nolint:mnd
-					}},
-				},
-				Users: []config.User{{
-					Username: username,
-					Password: password,
-					Domains:  []string{"*"},
+	cfg := &config.Config{
+		BaseURL: url + "/v1",
+		Token:   token,
+		Auth: config.Auth{
+			Method: config.AuthMethodBoth,
+			AllowedDomains: config.AllowedDomains{
+				"*": []*net.IPNet{{
+					IP:   net.IPv4(127, 0, 0, 1),           //nolint:mnd
+					Mask: net.IPv4Mask(255, 255, 255, 255), //nolint:mnd
 				}},
 			},
-			RecordTTL: ttl,
+			Users: []config.User{{
+				Username: username,
+				Password: password,
+				Domains:  []string{"*"},
+			}},
 		},
-	)), token, username, password
+		RecordTTL: ttl,
+	}
+
+	for _, opt := range opts {
+		opt(cfg)
+	}
+
+	return httptest.NewServer(app.New(cfg)), token, username, password
 }
 
-func NewNoAllowedDomains(url string) *httptest.Server {
-	return httptest.NewServer(app.New(
-		&config.Config{
-			BaseURL: url + "/v1",
-			Auth: config.Auth{
-				Method: config.AuthMethodAllowedDomains,
-			},
+func NewNoAllowedDomains(url string, opts ...Option) *httptest.Server {
+	cfg := &config.Config{
+		BaseURL: url + "/v1",
+		Auth: config.Auth{
+			Method: config.AuthMethodAllowedDomains,
 		},
-	))
+	}
+	for _, opt := range opts {
+		opt(cfg)
+	}
+	return httptest.NewServer(app.New(cfg))
 }
 
 func randString(n int) string {
