@@ -13,7 +13,8 @@ import (
 	"github.com/onsi/gomega/ghttp"
 	"github.com/onsi/gomega/gstruct"
 
-	"github.com/0xfelix/hetzner-dnsapi-proxy/tests/libapi"
+	"github.com/0xfelix/hetzner-dnsapi-proxy/tests/libcloudapi"
+	"github.com/0xfelix/hetzner-dnsapi-proxy/tests/libdnsapi"
 	"github.com/0xfelix/hetzner-dnsapi-proxy/tests/libserver"
 )
 
@@ -28,7 +29,6 @@ var _ = Describe("AcmeDNS", func() {
 
 	BeforeEach(func() {
 		api = ghttp.NewServer()
-		server, token, username, password = libserver.New(api.URL(), libapi.DefaultTTL)
 	})
 
 	AfterEach(func() {
@@ -37,56 +37,83 @@ var _ = Describe("AcmeDNS", func() {
 	})
 
 	Context("should succeed", func() {
-		AfterEach(func() {
-			Expect(api.ReceivedRequests()).To(HaveLen(3))
-		})
+		DescribeTable("creating a new record", func(ctx context.Context, cloudAPI bool, subdomain string) {
+			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, cloudAPI)
 
-		DescribeTable("creating a new record", func(ctx context.Context, subdomain string) {
-			api.AppendHandlers(
-				libapi.GetZones(token, libapi.Zones()),
-				libapi.GetRecords(token, libapi.ZoneID, nil),
-				libapi.PostRecord(token, libapi.NewTXTRecord()),
-			)
+			if cloudAPI {
+				api.AppendHandlers(
+					libcloudapi.GetZone(token, libcloudapi.Zone()),
+					libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.NewRRSetTXT(), false),
+					libcloudapi.CreateRRSet(token, libcloudapi.Zone(), libcloudapi.NewRRSetTXT()),
+				)
+			} else {
+				api.AppendHandlers(
+					libdnsapi.GetZones(token, libdnsapi.Zones()),
+					libdnsapi.GetRecords(token, libserver.ZoneID, nil),
+					libdnsapi.PostRecord(token, libdnsapi.NewTXTRecord()),
+				)
+			}
 
 			statusCode, resBody := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", username, password,
 				map[string]string{
 					"subdomain": subdomain,
-					"txt":       libapi.TXTUpdated,
+					"txt":       libserver.TXTUpdated,
 				},
 			)
 			Expect(statusCode).To(Equal(http.StatusOK))
 			var resData map[string]string
 			Expect(json.Unmarshal(resBody, &resData)).To(Succeed())
 			Expect(resData).To(gstruct.MatchAllKeys(gstruct.Keys{
-				"txt": Equal(libapi.TXTUpdated),
+				"txt": Equal(libserver.TXTUpdated),
 			}))
+			Expect(api.ReceivedRequests()).To(HaveLen(3))
 		},
-			Entry("with prefix", libapi.TXTRecordNameFull),
-			Entry("without prefix", libapi.TXTRecordNameNoPrefix),
+			Entry("DNS API: with prefix", false, libserver.TXTRecordNameFull),
+			Entry("DNS API: without prefix", false, libserver.TXTRecordNameNoPrefix),
+			Entry("Cloud API: with prefix", true, libserver.TXTRecordNameFull),
+			Entry("Cloud API: without prefix", true, libserver.TXTRecordNameNoPrefix),
 		)
 
-		DescribeTable("updating an existing record", func(ctx context.Context, subdomain string) {
-			api.AppendHandlers(
-				libapi.GetZones(token, libapi.Zones()),
-				libapi.GetRecords(token, libapi.ZoneID, libapi.Records()),
-				libapi.PutRecord(token, libapi.UpdatedTXTRecord()),
-			)
+		DescribeTable("updating an existing record", func(ctx context.Context, cloudAPI bool, subdomain string) {
+			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, cloudAPI)
+
+			if cloudAPI {
+				api.AppendHandlers(
+					libcloudapi.GetZone(token, libcloudapi.Zone()),
+					libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.ExistingRRSetTXT(), true),
+					libcloudapi.ChangeRRSetTTL(token, libcloudapi.Zone(), libcloudapi.UpdatedRRSetTXT()),
+					libcloudapi.SetRRSetRecords(token, libcloudapi.Zone(), libcloudapi.UpdatedRRSetTXT()),
+				)
+			} else {
+				api.AppendHandlers(
+					libdnsapi.GetZones(token, libdnsapi.Zones()),
+					libdnsapi.GetRecords(token, libserver.ZoneID, libdnsapi.Records()),
+					libdnsapi.PutRecord(token, libdnsapi.UpdatedTXTRecord()),
+				)
+			}
 
 			statusCode, resBody := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", username, password,
 				map[string]string{
 					"subdomain": subdomain,
-					"txt":       libapi.TXTUpdated,
+					"txt":       libserver.TXTUpdated,
 				},
 			)
 			Expect(statusCode).To(Equal(http.StatusOK))
 			var resData map[string]string
 			Expect(json.Unmarshal(resBody, &resData)).To(Succeed())
 			Expect(resData).To(gstruct.MatchAllKeys(gstruct.Keys{
-				"txt": Equal(libapi.TXTUpdated),
+				"txt": Equal(libserver.TXTUpdated),
 			}))
+			if cloudAPI {
+				Expect(api.ReceivedRequests()).To(HaveLen(4))
+			} else {
+				Expect(api.ReceivedRequests()).To(HaveLen(3))
+			}
 		},
-			Entry("with prefix", libapi.TXTRecordNameFull),
-			Entry("without prefix", libapi.TXTRecordNameNoPrefix),
+			Entry("DNS API: with prefix", false, libserver.TXTRecordNameFull),
+			Entry("DNS API: without prefix", false, libserver.TXTRecordNameNoPrefix),
+			Entry("Cloud API: with prefix", true, libserver.TXTRecordNameFull),
+			Entry("Cloud API: without prefix", true, libserver.TXTRecordNameNoPrefix),
 		)
 	})
 
@@ -97,50 +124,64 @@ var _ = Describe("AcmeDNS", func() {
 			Expect(api.ReceivedRequests()).To(BeEmpty())
 		})
 
-		It("when subdomain is missing", func(ctx context.Context) {
+		DescribeTable("when subdomain is missing", func(ctx context.Context, cloudAPI bool) {
+			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, cloudAPI)
 			statusCode, resBody := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", username, password,
 				map[string]string{
-					"txt": libapi.TXTUpdated,
+					"txt": libserver.TXTUpdated,
 				},
 			)
 			Expect(statusCode).To(Equal(http.StatusBadRequest))
 			Expect(string(resBody)).To(Equal(subdomainTXTMissing))
-		})
+		},
+			Entry("DNS API", false),
+			Entry("Cloud API", true),
+		)
 
-		It("when txt is missing", func(ctx context.Context) {
+		DescribeTable("when txt is missing", func(ctx context.Context, cloudAPI bool) {
+			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, cloudAPI)
 			statusCode, resBody := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", username, password,
 				map[string]string{
-					"subdomain": libapi.TXTRecordNameFull,
+					"subdomain": libserver.TXTRecordNameFull,
 				},
 			)
 			Expect(statusCode).To(Equal(http.StatusBadRequest))
 			Expect(string(resBody)).To(Equal(subdomainTXTMissing))
-		})
+		},
+			Entry("DNS API", false),
+			Entry("Cloud API", true),
+		)
 
-		It("when subdomain is malformed", func(ctx context.Context) {
+		DescribeTable("when subdomain is malformed", func(ctx context.Context, cloudAPI bool) {
+			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, cloudAPI)
 			statusCode, resBody := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", username, password,
 				map[string]string{
-					"subdomain": libapi.TLD,
-					"txt":       libapi.TXTUpdated,
+					"subdomain": libserver.TLD,
+					"txt":       libserver.TXTUpdated,
 				},
 			)
 			Expect(statusCode).To(Equal(http.StatusBadRequest))
 			Expect(string(resBody)).To(Equal("invalid fqdn: tld\n"))
-		})
+		},
+			Entry("DNS API", false),
+			Entry("Cloud API", true),
+		)
 
-		DescribeTable("when access is denied", func(ctx context.Context, subdomain string) {
-			server = libserver.NewNoAllowedDomains(api.URL())
+		DescribeTable("when access is denied", func(ctx context.Context, subdomain string, cloudAPI bool) {
+			server = libserver.NewNoAllowedDomains(api.URL(), cloudAPI)
 			statusCode, resBody := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", username, password,
 				map[string]string{
 					"subdomain": subdomain,
-					"txt":       libapi.TXTUpdated,
+					"txt":       libserver.TXTUpdated,
 				},
 			)
 			Expect(statusCode).To(Equal(http.StatusUnauthorized))
 			Expect(resBody).To(BeEmpty())
 		},
-			Entry("with prefix", libapi.TXTRecordNameFull),
-			Entry("without prefix", libapi.TXTRecordNameNoPrefix),
+			Entry("DNS API: with prefix", libserver.TXTRecordNameFull, false),
+			Entry("DNS API: without prefix", libserver.TXTRecordNameNoPrefix, false),
+			Entry("Cloud API: with prefix", libserver.TXTRecordNameFull, true),
+			Entry("Cloud API: without prefix", libserver.TXTRecordNameNoPrefix, true),
 		)
 	})
 })

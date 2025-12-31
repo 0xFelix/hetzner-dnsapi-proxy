@@ -74,12 +74,12 @@ cloudAPI: false
 
 | Variable          | Type   | Description                                                                                                                                | Required | Default                          |
 |:------------------|--------|--------------------------------------------------------------------------------------------------------------------------------------------|----------|----------------------------------|
-| `API_BASE_URL`    | string | Base URL of the DNS API                                                                                                                    | n        | `https://dns.hetzner.com/api/v1` |
+| `API_BASE_URL`    | string | Base URL of the API. Defaults to `https://dns.hetzner.com/api/v1` for DNS API or `https://api.hetzner.cloud/v1` when `CLOUD_API` is `true`. | n        | (Depends on API selection)       |
 | `API_TOKEN`       | string | Auth token for the API                                                                                                                     | Y        |                                  |
 | `API_TIMEOUT`     | int    | Timeout for calls to the API in seconds                                                                                                    | N        | 15 seconds                       |
 | `RECORD_TTL`      | int    | TTL that is set when creating/updating records                                                                                             | N        | 60 seconds                       |
 | `ALLOWED_DOMAINS` | string | Combination of domains and CIDRs allowed to update them, example:<br>`example1.com,127.0.0.1/32;_acme-challenge.example2.com,127.0.0.1/32` | Y        |                                  |
 | `LISTEN_ADDR`     | string | Listen address of hetzner-dnsapi-proxy                                                                                                     | N        | `:8081`                          |
 | `TRUSTED_PROXIES` | string | List of trusted proxy host addresses separated by comma                                                                                    | N        | Trust all proxies                |
-| `CLOUD_API`       | bool   | Use the Hetzner Cloud API instead of the DNS API. When enabled, `API_BASE_URL` is ignored.                                                 | N        | `false`                          |
+| `CLOUD_API`       | bool   | Use the Hetzner Cloud API instead of the DNS API.                                                                                          | N        | `false`                          |
 | `DEBUG`           | bool   | Output debug logs of received requests                                                                                                     | N        | `false`                          |
