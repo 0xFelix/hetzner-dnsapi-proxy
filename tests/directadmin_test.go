@@ -95,33 +95,33 @@ var _ = Describe("DirectAdmin", func() {
 			Entry("Cloud API: A record with fqdn in domain", true,
 				libserver.ARecordNameFull, "", libserver.RecordTypeA, libserver.AUpdated, libdnsapi.NewARecord, func() {
 					api.AppendHandlers(
-						libcloudapi.GetZone(token, libcloudapi.Zones()[0]),
-						libcloudapi.GetRRSetNotFound(token, libcloudapi.Zones()[0], libserver.ARecordName, "A"),
-						libcloudapi.CreateRRSet(token, libcloudapi.Zones()[0], libcloudapi.NewARecord()),
+						libcloudapi.GetZone(token, libcloudapi.Zone()),
+						libcloudapi.GetRRSetNotFound(token, libcloudapi.Zone(), libserver.ARecordName, "A"),
+						libcloudapi.CreateRRSet(token, libcloudapi.Zone(), libcloudapi.NewARecord()),
 					)
 				}),
 			Entry("Cloud API: A record with fqdn from name and domain", true,
 				libserver.ZoneName, libserver.ARecordName, libserver.RecordTypeA, libserver.AUpdated, libdnsapi.NewARecord, func() {
 					api.AppendHandlers(
-						libcloudapi.GetZone(token, libcloudapi.Zones()[0]),
-						libcloudapi.GetRRSetNotFound(token, libcloudapi.Zones()[0], libserver.ARecordName, "A"),
-						libcloudapi.CreateRRSet(token, libcloudapi.Zones()[0], libcloudapi.NewARecord()),
+						libcloudapi.GetZone(token, libcloudapi.Zone()),
+						libcloudapi.GetRRSetNotFound(token, libcloudapi.Zone(), libserver.ARecordName, "A"),
+						libcloudapi.CreateRRSet(token, libcloudapi.Zone(), libcloudapi.NewARecord()),
 					)
 				}),
 			Entry("Cloud API: TXT record with fqdn in domain", true,
 				libserver.TXTRecordNameFull, "", libserver.RecordTypeTXT, libserver.TXTUpdated, libdnsapi.NewTXTRecord, func() {
 					api.AppendHandlers(
-						libcloudapi.GetZone(token, libcloudapi.Zones()[0]),
-						libcloudapi.GetRRSetNotFound(token, libcloudapi.Zones()[0], libserver.TXTRecordName, "TXT"),
-						libcloudapi.CreateRRSet(token, libcloudapi.Zones()[0], libcloudapi.NewTXTRecord()),
+						libcloudapi.GetZone(token, libcloudapi.Zone()),
+						libcloudapi.GetRRSetNotFound(token, libcloudapi.Zone(), libserver.TXTRecordName, "TXT"),
+						libcloudapi.CreateRRSet(token, libcloudapi.Zone(), libcloudapi.NewTXTRecord()),
 					)
 				}),
 			Entry("Cloud API: TXT record with fqdn from name and domain", true,
 				libserver.ZoneName, libserver.TXTRecordName, libserver.RecordTypeTXT, libserver.TXTUpdated, libdnsapi.NewTXTRecord, func() {
 					api.AppendHandlers(
-						libcloudapi.GetZone(token, libcloudapi.Zones()[0]),
-						libcloudapi.GetRRSetNotFound(token, libcloudapi.Zones()[0], libserver.TXTRecordName, "TXT"),
-						libcloudapi.CreateRRSet(token, libcloudapi.Zones()[0], libcloudapi.NewTXTRecord()),
+						libcloudapi.GetZone(token, libcloudapi.Zone()),
+						libcloudapi.GetRRSetNotFound(token, libcloudapi.Zone(), libserver.TXTRecordName, "TXT"),
+						libcloudapi.CreateRRSet(token, libcloudapi.Zone(), libcloudapi.NewTXTRecord()),
 					)
 				}),
 		)
@@ -184,37 +184,37 @@ var _ = Describe("DirectAdmin", func() {
 			Entry("Cloud API: A record with fqdn in domain", true,
 				libserver.ARecordNameFull, "", libserver.RecordTypeA, libserver.AUpdated, libdnsapi.UpdatedARecord, func() {
 					api.AppendHandlers(
-						libcloudapi.GetZone(token, libcloudapi.Zones()[0]),
-						libcloudapi.GetRRSet(token, libcloudapi.Zones()[0], libcloudapi.Records()[0]),
-						libcloudapi.ChangeRRSetTTL(token, libcloudapi.Zones()[0], libcloudapi.UpdatedARecord()),
-						libcloudapi.SetRRSetRecords(token, libcloudapi.Zones()[0], libcloudapi.UpdatedARecord()),
+						libcloudapi.GetZone(token, libcloudapi.Zone()),
+						libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.Records()[0]),
+						libcloudapi.ChangeRRSetTTL(token, libcloudapi.Zone(), libcloudapi.ExistingARecord()),
+						libcloudapi.SetRRSetRecords(token, libcloudapi.Zone(), libcloudapi.ExistingARecord()),
 					)
 				}),
 			Entry("Cloud API: A record with fqdn from name and domain", true,
 				libserver.ZoneName, libserver.ARecordName, libserver.RecordTypeA, libserver.AUpdated, libdnsapi.UpdatedARecord, func() {
 					api.AppendHandlers(
-						libcloudapi.GetZone(token, libcloudapi.Zones()[0]),
-						libcloudapi.GetRRSet(token, libcloudapi.Zones()[0], libcloudapi.Records()[0]),
-						libcloudapi.ChangeRRSetTTL(token, libcloudapi.Zones()[0], libcloudapi.UpdatedARecord()),
-						libcloudapi.SetRRSetRecords(token, libcloudapi.Zones()[0], libcloudapi.UpdatedARecord()),
+						libcloudapi.GetZone(token, libcloudapi.Zone()),
+						libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.Records()[0]),
+						libcloudapi.ChangeRRSetTTL(token, libcloudapi.Zone(), libcloudapi.ExistingARecord()),
+						libcloudapi.SetRRSetRecords(token, libcloudapi.Zone(), libcloudapi.ExistingARecord()),
 					)
 				}),
 			Entry("Cloud API: TXT record with fqdn in domain", true,
 				libserver.TXTRecordNameFull, "", libserver.RecordTypeTXT, libserver.TXTUpdated, libdnsapi.UpdatedTXTRecord, func() {
 					api.AppendHandlers(
-						libcloudapi.GetZone(token, libcloudapi.Zones()[0]),
-						libcloudapi.GetRRSet(token, libcloudapi.Zones()[0], libcloudapi.Records()[1]),
-						libcloudapi.ChangeRRSetTTL(token, libcloudapi.Zones()[0], libcloudapi.UpdatedTXTRecord()),
-						libcloudapi.SetRRSetRecords(token, libcloudapi.Zones()[0], libcloudapi.UpdatedTXTRecord()),
+						libcloudapi.GetZone(token, libcloudapi.Zone()),
+						libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.Records()[1]),
+						libcloudapi.ChangeRRSetTTL(token, libcloudapi.Zone(), libcloudapi.ExistingTXTRecord()),
+						libcloudapi.SetRRSetRecords(token, libcloudapi.Zone(), libcloudapi.ExistingTXTRecord()),
 					)
 				}),
 			Entry("Cloud API: TXT record with fqdn from name and domain", true,
 				libserver.ZoneName, libserver.TXTRecordName, libserver.RecordTypeTXT, libserver.TXTUpdated, libdnsapi.UpdatedTXTRecord, func() {
 					api.AppendHandlers(
-						libcloudapi.GetZone(token, libcloudapi.Zones()[0]),
-						libcloudapi.GetRRSet(token, libcloudapi.Zones()[0], libcloudapi.Records()[1]),
-						libcloudapi.ChangeRRSetTTL(token, libcloudapi.Zones()[0], libcloudapi.UpdatedTXTRecord()),
-						libcloudapi.SetRRSetRecords(token, libcloudapi.Zones()[0], libcloudapi.UpdatedTXTRecord()),
+						libcloudapi.GetZone(token, libcloudapi.Zone()),
+						libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.Records()[1]),
+						libcloudapi.ChangeRRSetTTL(token, libcloudapi.Zone(), libcloudapi.ExistingTXTRecord()),
+						libcloudapi.SetRRSetRecords(token, libcloudapi.Zone(), libcloudapi.ExistingTXTRecord()),
 					)
 				}),
 		)

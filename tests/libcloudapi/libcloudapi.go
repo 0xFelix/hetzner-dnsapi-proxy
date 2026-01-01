@@ -12,36 +12,39 @@ import (
 	"github.com/0xfelix/hetzner-dnsapi-proxy/tests/libserver"
 )
 
-func Zones() []schema.Zone {
-	return []schema.Zone{
-		{
-			ID:   MustParseInt(libserver.ZoneID),
-			Name: libserver.ZoneName,
-		},
+func Ptr[T any](v T) *T {
+	return &v
+}
+
+func Zone() schema.Zone {
+	return schema.Zone{
+		ID:   MustParseInt(libserver.ZoneID),
+		Name: libserver.ZoneName,
 	}
 }
 
 func Records() []schema.ZoneRRSet {
-	// Return records with TTL different from DefaultTTL (60) to trigger ChangeRRSetTTL in update tests
-	ttl := 300
+	const ttl = 300
 	return []schema.ZoneRRSet{
 		{
 			ID:   libserver.ARecordName + "/" + libserver.RecordTypeA,
 			Name: libserver.ARecordName,
 			Type: libserver.RecordTypeA,
-			TTL:  &ttl,
+			TTL:  Ptr(ttl),
 			Records: []schema.ZoneRRSetRecord{
 				{Value: strconv.Quote(libserver.AExisting)},
 			},
+			Zone: MustParseInt(libserver.ZoneID),
 		},
 		{
 			ID:   libserver.TXTRecordName + "/" + libserver.RecordTypeTXT,
 			Name: libserver.TXTRecordName,
 			Type: libserver.RecordTypeTXT,
-			TTL:  &ttl,
+			TTL:  Ptr(ttl),
 			Records: []schema.ZoneRRSetRecord{
 				{Value: strconv.Quote(libserver.TXTExisting)},
 			},
+			Zone: MustParseInt(libserver.ZoneID),
 		},
 	}
 }
@@ -50,46 +53,36 @@ func NewARecord() schema.ZoneRRSet {
 	return schema.ZoneRRSet{
 		Name: libserver.ARecordName,
 		Type: libserver.RecordTypeA,
-		TTL:  func() *int { t := libserver.DefaultTTL; return &t }(),
+		TTL:  Ptr(libserver.DefaultTTL),
 		Records: []schema.ZoneRRSetRecord{
 			{Value: strconv.Quote(libserver.AUpdated)},
 		},
+		Zone: MustParseInt(libserver.ZoneID),
 	}
 }
 
-func UpdatedARecord() schema.ZoneRRSet {
-	return schema.ZoneRRSet{
-		ID:   libserver.ARecordName + "/" + libserver.RecordTypeA,
-		Name: libserver.ARecordName,
-		Type: libserver.RecordTypeA,
-		TTL:  func() *int { t := libserver.DefaultTTL; return &t }(),
-		Records: []schema.ZoneRRSetRecord{
-			{Value: strconv.Quote(libserver.AUpdated)},
-		},
-	}
+func ExistingARecord() schema.ZoneRRSet {
+	r := NewARecord()
+	r.ID = libserver.ARecordName + "/" + libserver.RecordTypeA
+	return r
 }
 
 func NewTXTRecord() schema.ZoneRRSet {
 	return schema.ZoneRRSet{
 		Name: libserver.TXTRecordName,
 		Type: libserver.RecordTypeTXT,
-		TTL:  func() *int { t := libserver.DefaultTTL; return &t }(),
+		TTL:  Ptr(libserver.DefaultTTL),
 		Records: []schema.ZoneRRSetRecord{
 			{Value: strconv.Quote(libserver.TXTUpdated)},
 		},
+		Zone: MustParseInt(libserver.ZoneID),
 	}
 }
 
-func UpdatedTXTRecord() schema.ZoneRRSet {
-	return schema.ZoneRRSet{
-		ID:   libserver.TXTRecordName + "/" + libserver.RecordTypeTXT,
-		Name: libserver.TXTRecordName,
-		Type: libserver.RecordTypeTXT,
-		TTL:  func() *int { t := libserver.DefaultTTL; return &t }(),
-		Records: []schema.ZoneRRSetRecord{
-			{Value: strconv.Quote(libserver.TXTUpdated)},
-		},
-	}
+func ExistingTXTRecord() schema.ZoneRRSet {
+	r := NewTXTRecord()
+	r.ID = libserver.TXTRecordName + "/" + libserver.RecordTypeTXT
+	return r
 }
 
 func GetZone(token string, zone schema.Zone) http.HandlerFunc {
@@ -105,7 +98,6 @@ func GetZone(token string, zone schema.Zone) http.HandlerFunc {
 }
 
 func GetRRSet(token string, zone schema.Zone, rrSet schema.ZoneRRSet) http.HandlerFunc {
-	rrSet.Zone = zone.ID
 	return ghttp.CombineHandlers(
 		ghttp.VerifyRequest(http.MethodGet, fmt.Sprintf("/v1/zones/%d/rrsets/%s/%s", zone.ID, rrSet.Name, rrSet.Type)),
 		ghttp.VerifyHeader(http.Header{

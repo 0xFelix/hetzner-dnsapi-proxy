@@ -72,16 +72,16 @@ var _ = Describe("AcmeDNS", func() {
 			}),
 			Entry("Cloud API: with prefix", true, libserver.TXTRecordNameFull, func() {
 				api.AppendHandlers(
-					libcloudapi.GetZone(token, libcloudapi.Zones()[0]),
-					libcloudapi.GetRRSetNotFound(token, libcloudapi.Zones()[0], libserver.TXTRecordName, "TXT"),
-					libcloudapi.CreateRRSet(token, libcloudapi.Zones()[0], libcloudapi.NewTXTRecord()),
+					libcloudapi.GetZone(token, libcloudapi.Zone()),
+					libcloudapi.GetRRSetNotFound(token, libcloudapi.Zone(), libserver.TXTRecordName, "TXT"),
+					libcloudapi.CreateRRSet(token, libcloudapi.Zone(), libcloudapi.NewTXTRecord()),
 				)
 			}),
 			Entry("Cloud API: without prefix", true, libserver.TXTRecordNameNoPrefix, func() {
 				api.AppendHandlers(
-					libcloudapi.GetZone(token, libcloudapi.Zones()[0]),
-					libcloudapi.GetRRSetNotFound(token, libcloudapi.Zones()[0], libserver.TXTRecordName, "TXT"),
-					libcloudapi.CreateRRSet(token, libcloudapi.Zones()[0], libcloudapi.NewTXTRecord()),
+					libcloudapi.GetZone(token, libcloudapi.Zone()),
+					libcloudapi.GetRRSetNotFound(token, libcloudapi.Zone(), libserver.TXTRecordName, "TXT"),
+					libcloudapi.CreateRRSet(token, libcloudapi.Zone(), libcloudapi.NewTXTRecord()),
 				)
 			}),
 		)
@@ -124,18 +124,18 @@ var _ = Describe("AcmeDNS", func() {
 			}),
 			Entry("Cloud API: with prefix", true, libserver.TXTRecordNameFull, func() {
 				api.AppendHandlers(
-					libcloudapi.GetZone(token, libcloudapi.Zones()[0]),
-					libcloudapi.GetRRSet(token, libcloudapi.Zones()[0], libcloudapi.Records()[1]),
-					libcloudapi.ChangeRRSetTTL(token, libcloudapi.Zones()[0], libcloudapi.UpdatedTXTRecord()),
-					libcloudapi.SetRRSetRecords(token, libcloudapi.Zones()[0], libcloudapi.UpdatedTXTRecord()),
+					libcloudapi.GetZone(token, libcloudapi.Zone()),
+					libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.Records()[1]),
+					libcloudapi.ChangeRRSetTTL(token, libcloudapi.Zone(), libcloudapi.ExistingTXTRecord()),
+					libcloudapi.SetRRSetRecords(token, libcloudapi.Zone(), libcloudapi.ExistingTXTRecord()),
 				)
 			}),
 			Entry("Cloud API: without prefix", true, libserver.TXTRecordNameNoPrefix, func() {
 				api.AppendHandlers(
-					libcloudapi.GetZone(token, libcloudapi.Zones()[0]),
-					libcloudapi.GetRRSet(token, libcloudapi.Zones()[0], libcloudapi.Records()[1]),
-					libcloudapi.ChangeRRSetTTL(token, libcloudapi.Zones()[0], libcloudapi.UpdatedTXTRecord()),
-					libcloudapi.SetRRSetRecords(token, libcloudapi.Zones()[0], libcloudapi.UpdatedTXTRecord()),
+					libcloudapi.GetZone(token, libcloudapi.Zone()),
+					libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.Records()[1]),
+					libcloudapi.ChangeRRSetTTL(token, libcloudapi.Zone(), libcloudapi.ExistingTXTRecord()),
+					libcloudapi.SetRRSetRecords(token, libcloudapi.Zone(), libcloudapi.ExistingTXTRecord()),
 				)
 			}),
 		)

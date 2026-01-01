@@ -60,17 +60,17 @@ var _ = Describe("Plain", func() {
 		}),
 		Entry("Cloud API: creating a new record", true, 3, func() {
 			api.AppendHandlers(
-				libcloudapi.GetZone(token, libcloudapi.Zones()[0]),
-				libcloudapi.GetRRSetNotFound(token, libcloudapi.Zones()[0], libserver.ARecordName, "A"),
-				libcloudapi.CreateRRSet(token, libcloudapi.Zones()[0], libcloudapi.NewARecord()),
+				libcloudapi.GetZone(token, libcloudapi.Zone()),
+				libcloudapi.GetRRSetNotFound(token, libcloudapi.Zone(), libserver.ARecordName, "A"),
+				libcloudapi.CreateRRSet(token, libcloudapi.Zone(), libcloudapi.NewARecord()),
 			)
 		}),
 		Entry("Cloud API: updating an existing record", true, 4, func() {
 			api.AppendHandlers(
-				libcloudapi.GetZone(token, libcloudapi.Zones()[0]),
-				libcloudapi.GetRRSet(token, libcloudapi.Zones()[0], libcloudapi.Records()[0]),
-				libcloudapi.ChangeRRSetTTL(token, libcloudapi.Zones()[0], libcloudapi.UpdatedARecord()),
-				libcloudapi.SetRRSetRecords(token, libcloudapi.Zones()[0], libcloudapi.UpdatedARecord()),
+				libcloudapi.GetZone(token, libcloudapi.Zone()),
+				libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.Records()[0]),
+				libcloudapi.ChangeRRSetTTL(token, libcloudapi.Zone(), libcloudapi.ExistingARecord()),
+				libcloudapi.SetRRSetRecords(token, libcloudapi.Zone(), libcloudapi.ExistingARecord()),
 			)
 		}),
 	)
