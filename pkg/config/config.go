@@ -95,8 +95,6 @@ func ParseEnv() (*Config, error) {
 		cfg.BaseURL = baseURL
 	}
 
-	setDefaultBaseURL(cfg)
-
 	if token, ok := os.LookupEnv("API_TOKEN"); ok {
 		cfg.Token = token
 		if err := os.Unsetenv("API_TOKEN"); err != nil {
@@ -148,6 +146,8 @@ func ParseEnv() (*Config, error) {
 		}
 		cfg.Debug = debugBool
 	}
+
+	setDefaultBaseURL(cfg)
 
 	return cfg, nil
 }

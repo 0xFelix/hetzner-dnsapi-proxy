@@ -10,6 +10,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
 
+	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/hetzner"
 	"github.com/0xfelix/hetzner-dnsapi-proxy/tests/libcloudapi"
 	"github.com/0xfelix/hetzner-dnsapi-proxy/tests/libdnsapi"
 	"github.com/0xfelix/hetzner-dnsapi-proxy/tests/libserver"
@@ -34,7 +35,7 @@ var _ = Describe("Plain", func() {
 	})
 
 	DescribeTable("should succeed", func(ctx context.Context, cloudAPI bool, expectedRequests int, appendHandlers func()) {
-		server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, libserver.WithCloudAPI(cloudAPI))
+		server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, cloudAPI)
 		appendHandlers()
 
 		Expect(doPlainRequest(ctx, server.URL+"/plain/update", username, password, url.Values{
@@ -80,24 +81,39 @@ var _ = Describe("Plain", func() {
 			Expect(api.ReceivedRequests()).To((BeEmpty()))
 		})
 
-		DescribeTable("for both APIs", func(ctx context.Context, cloudAPI bool) {
-			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, libserver.WithCloudAPI(cloudAPI))
-
+		DescribeTable("when hostname is missing", func(ctx context.Context, cloudAPI bool) {
+			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, cloudAPI)
 			Expect(doPlainRequest(ctx, server.URL+"/plain/update", username, password, url.Values{
 				"ip": []string{libserver.AUpdated},
 			})).To(Equal(http.StatusBadRequest))
+		},
+			Entry("DNS API", false),
+			Entry("Cloud API", true),
+		)
 
+		DescribeTable("when ip is missing", func(ctx context.Context, cloudAPI bool) {
+			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, cloudAPI)
 			Expect(doPlainRequest(ctx, server.URL+"/plain/update", username, password, url.Values{
 				"hostname": []string{libserver.ARecordNameFull},
 			})).To(Equal(http.StatusBadRequest))
+		},
+			Entry("DNS API", false),
+			Entry("Cloud API", true),
+		)
 
+		DescribeTable("when hostname is malformed", func(ctx context.Context, cloudAPI bool) {
+			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, cloudAPI)
 			Expect(doPlainRequest(ctx, server.URL+"/plain/update", username, password, url.Values{
 				"hostname": []string{libserver.TLD},
 				"ip":       []string{libserver.AUpdated},
 			})).To(Equal(http.StatusBadRequest))
+		},
+			Entry("DNS API", false),
+			Entry("Cloud API", true),
+		)
 
-			server.Close()
-			server = libserver.NewNoAllowedDomains(api.URL(), libserver.WithCloudAPI(cloudAPI))
+		DescribeTable("when access is denied", func(ctx context.Context, cloudAPI bool) {
+			server = libserver.NewNoAllowedDomains(api.URL(), cloudAPI)
 			Expect(doPlainRequest(ctx, server.URL+"/plain/update", username, password, url.Values{
 				"hostname": []string{libserver.ARecordNameFull},
 				"ip":       []string{libserver.AUpdated},
@@ -121,4 +137,16 @@ func doPlainRequest(ctx context.Context, serverURL, username, password string, d
 	Expect(res.Body.Close()).To(Succeed())
 
 	return res.StatusCode
+}
+
+// Helper to update records with correct mock data for Cloud API tests
+// Note: libdnsapi.Records() has both A and TXT records.
+// libcloudapi.GetRRSet expects a single record.
+func recordByType(records []hetzner.Record, rType string) hetzner.Record {
+	for _, r := range records {
+		if r.Type == rType {
+			return r
+		}
+	}
+	return hetzner.Record{}
 }

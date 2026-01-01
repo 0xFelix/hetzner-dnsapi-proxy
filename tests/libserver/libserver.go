@@ -12,15 +12,7 @@ import (
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/config"
 )
 
-type Option func(*config.Config)
-
-func WithCloudAPI(enabled bool) Option {
-	return func(c *config.Config) {
-		c.CloudAPI = enabled
-	}
-}
-
-func New(url string, ttl int, opts ...Option) (server *httptest.Server, token, username, password string) {
+func New(url string, ttl int, cloudAPI bool) (server *httptest.Server, token, username, password string) {
 	const randLength = 10
 	token = randString(randLength)
 	username = randString(randLength)
@@ -44,24 +36,19 @@ func New(url string, ttl int, opts ...Option) (server *httptest.Server, token, u
 			}},
 		},
 		RecordTTL: ttl,
-	}
-
-	for _, opt := range opts {
-		opt(cfg)
+		CloudAPI:  cloudAPI,
 	}
 
 	return httptest.NewServer(app.New(cfg)), token, username, password
 }
 
-func NewNoAllowedDomains(url string, opts ...Option) *httptest.Server {
+func NewNoAllowedDomains(url string, cloudAPI bool) *httptest.Server {
 	cfg := &config.Config{
 		BaseURL: url + "/v1",
 		Auth: config.Auth{
 			Method: config.AuthMethodAllowedDomains,
 		},
-	}
-	for _, opt := range opts {
-		opt(cfg)
+		CloudAPI: cloudAPI,
 	}
 	return httptest.NewServer(app.New(cfg))
 }

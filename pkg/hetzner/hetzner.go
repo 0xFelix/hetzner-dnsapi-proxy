@@ -50,10 +50,7 @@ func NewHCloudClient(cfg *config.Config) *hcloud.Client {
 			Timeout: time.Duration(cfg.Timeout) * time.Second,
 		}),
 		hcloud.WithApplication("hetzner-dnsapi-proxy", version),
-	}
-
-	if cfg.BaseURL != "" {
-		opts = append(opts, hcloud.WithEndpoint(cfg.BaseURL))
+		hcloud.WithEndpoint(cfg.BaseURL),
 	}
 
 	return hcloud.NewClient(opts...)

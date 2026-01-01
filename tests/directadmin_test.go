@@ -42,7 +42,7 @@ var _ = Describe("DirectAdmin", func() {
 
 	Context("should succeed", func() {
 		DescribeTable("creating a new", func(ctx context.Context, cloudAPI bool, domain, name, recordType, value string, record func() hetzner.Record, appendHandlers func()) {
-			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, libserver.WithCloudAPI(cloudAPI))
+			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, cloudAPI)
 			appendHandlers()
 
 			statusCode, resData := doDirectAdminRequest(ctx, server.URL+"/directadmin/CMD_API_DNS_CONTROL", username, password,
@@ -127,7 +127,7 @@ var _ = Describe("DirectAdmin", func() {
 		)
 
 		DescribeTable("updating an existing", func(ctx context.Context, cloudAPI bool, domain, name, recordType, value string, record func() hetzner.Record, appendHandlers func()) {
-			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, libserver.WithCloudAPI(cloudAPI))
+			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, cloudAPI)
 			appendHandlers()
 
 			statusCode, resData := doDirectAdminRequest(ctx, server.URL+"/directadmin/CMD_API_DNS_CONTROL", username, password,
@@ -226,7 +226,7 @@ var _ = Describe("DirectAdmin", func() {
 		})
 
 		DescribeTable("should succeed on action action than add with", func(ctx context.Context, action string, cloudAPI bool) {
-			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, libserver.WithCloudAPI(cloudAPI))
+			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, cloudAPI)
 
 			statusCode, resData := doDirectAdminRequest(ctx, server.URL+"/directadmin/CMD_API_DNS_CONTROL", username, password,
 				url.Values{
@@ -239,16 +239,16 @@ var _ = Describe("DirectAdmin", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(values).To(Equal(statusOK))
 		},
-			Entry("delete (DNS)", "delete", false),
-			Entry("update (DNS)", "update", false),
-			Entry("something (DNS)", "something", false),
-			Entry("delete (Cloud)", "delete", true),
-			Entry("update (Cloud)", "update", true),
-			Entry("something (Cloud)", "something", true),
+			Entry("DNS API: delete", "delete", false),
+			Entry("DNS API: update", "update", false),
+			Entry("DNS API: something", "something", false),
+			Entry("Cloud API: delete", "delete", true),
+			Entry("Cloud API: update", "update", true),
+			Entry("Cloud API: something", "something", true),
 		)
 
 		DescribeTable("should return allowed domains", func(ctx context.Context, cloudAPI bool) {
-			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, libserver.WithCloudAPI(cloudAPI))
+			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, cloudAPI)
 
 			statusCode, resData := doDirectAdminRequest(ctx, server.URL+"/directadmin/CMD_API_SHOW_DOMAINS", username, password, nil)
 			Expect(statusCode).To(Equal(http.StatusOK))
@@ -263,7 +263,7 @@ var _ = Describe("DirectAdmin", func() {
 		)
 
 		DescribeTable("should succeed on calls to CMD_API_DOMAIN_POINTER", func(ctx context.Context, cloudAPI bool) {
-			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, libserver.WithCloudAPI(cloudAPI))
+			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, cloudAPI)
 
 			statusCode, resData := doDirectAdminRequest(ctx, server.URL+"/directadmin/CMD_API_DOMAIN_POINTER", username, password,
 				url.Values{
@@ -281,7 +281,7 @@ var _ = Describe("DirectAdmin", func() {
 			const domainActionMissing = "domain or action is missing\n"
 
 			DescribeTable("for both APIs", func(ctx context.Context, cloudAPI bool) {
-				server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, libserver.WithCloudAPI(cloudAPI))
+				server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, cloudAPI)
 
 				statusCode, resData := doDirectAdminRequest(ctx, server.URL+"/directadmin/CMD_API_DNS_CONTROL", username, password,
 					url.Values{
@@ -330,7 +330,7 @@ var _ = Describe("DirectAdmin", func() {
 				Expect(resData).To(Equal("invalid fqdn: tld\n"))
 
 				server.Close()
-				server = libserver.NewNoAllowedDomains(api.URL(), libserver.WithCloudAPI(cloudAPI))
+				server = libserver.NewNoAllowedDomains(api.URL(), cloudAPI)
 				statusCode, resData = doDirectAdminRequest(ctx, server.URL+"/directadmin/CMD_API_DNS_CONTROL", username, password,
 					url.Values{
 						"action": []string{"add"},

@@ -39,7 +39,7 @@ var _ = Describe("AcmeDNS", func() {
 	Context("should succeed", func() {
 
 		DescribeTable("creating a new record", func(ctx context.Context, cloudAPI bool, subdomain string, appendHandlers func()) {
-			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, libserver.WithCloudAPI(cloudAPI))
+			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, cloudAPI)
 			appendHandlers()
 
 			statusCode, resBody := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", username, password,
@@ -87,7 +87,7 @@ var _ = Describe("AcmeDNS", func() {
 		)
 
 		DescribeTable("updating an existing record", func(ctx context.Context, cloudAPI bool, subdomain string, appendHandlers func()) {
-			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, libserver.WithCloudAPI(cloudAPI))
+			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, cloudAPI)
 			appendHandlers()
 
 			statusCode, resBody := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", username, password,
@@ -148,9 +148,8 @@ var _ = Describe("AcmeDNS", func() {
 			Expect(api.ReceivedRequests()).To(BeEmpty())
 		})
 
-		DescribeTable("for both APIs", func(ctx context.Context, cloudAPI bool) {
-			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, libserver.WithCloudAPI(cloudAPI))
-
+		DescribeTable("when subdomain is missing", func(ctx context.Context, cloudAPI bool) {
+			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, cloudAPI)
 			statusCode, resBody := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", username, password,
 				map[string]string{
 					"txt": libserver.TXTUpdated,
@@ -158,16 +157,28 @@ var _ = Describe("AcmeDNS", func() {
 			)
 			Expect(statusCode).To(Equal(http.StatusBadRequest))
 			Expect(string(resBody)).To(Equal(subdomainTXTMissing))
+		},
+			Entry("DNS API", false),
+			Entry("Cloud API", true),
+		)
 
-			statusCode, resBody = doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", username, password,
+		DescribeTable("when txt is missing", func(ctx context.Context, cloudAPI bool) {
+			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, cloudAPI)
+			statusCode, resBody := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", username, password,
 				map[string]string{
 					"subdomain": libserver.TXTRecordNameFull,
 				},
 			)
 			Expect(statusCode).To(Equal(http.StatusBadRequest))
 			Expect(string(resBody)).To(Equal(subdomainTXTMissing))
+		},
+			Entry("DNS API", false),
+			Entry("Cloud API", true),
+		)
 
-			statusCode, resBody = doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", username, password,
+		DescribeTable("when subdomain is malformed", func(ctx context.Context, cloudAPI bool) {
+			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, cloudAPI)
+			statusCode, resBody := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", username, password,
 				map[string]string{
 					"subdomain": libserver.TLD,
 					"txt":       libserver.TXTUpdated,
@@ -175,20 +186,26 @@ var _ = Describe("AcmeDNS", func() {
 			)
 			Expect(statusCode).To(Equal(http.StatusBadRequest))
 			Expect(string(resBody)).To(Equal("invalid fqdn: tld\n"))
+		},
+			Entry("DNS API", false),
+			Entry("Cloud API", true),
+		)
 
-			server.Close()
-			server = libserver.NewNoAllowedDomains(api.URL(), libserver.WithCloudAPI(cloudAPI))
-			statusCode, resBody = doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", username, password,
+		DescribeTable("when access is denied", func(ctx context.Context, subdomain string, cloudAPI bool) {
+			server = libserver.NewNoAllowedDomains(api.URL(), cloudAPI)
+			statusCode, resBody := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", username, password,
 				map[string]string{
-					"subdomain": libserver.TXTRecordNameFull,
+					"subdomain": subdomain,
 					"txt":       libserver.TXTUpdated,
 				},
 			)
 			Expect(statusCode).To(Equal(http.StatusUnauthorized))
 			Expect(resBody).To(BeEmpty())
 		},
-			Entry("DNS API", false),
-			Entry("Cloud API", true),
+			Entry("DNS API: with prefix", libserver.TXTRecordNameFull, false),
+			Entry("DNS API: without prefix", libserver.TXTRecordNameNoPrefix, false),
+			Entry("Cloud API: with prefix", libserver.TXTRecordNameFull, true),
+			Entry("Cloud API: without prefix", libserver.TXTRecordNameNoPrefix, true),
 		)
 	})
 })
