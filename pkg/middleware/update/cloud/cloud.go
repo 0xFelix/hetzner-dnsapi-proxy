@@ -54,7 +54,6 @@ func (u *updater) Update(ctx context.Context, reqData *data.ReqData) error {
 }
 
 func (u *updater) updateRRSet(ctx context.Context, rrSet *hcloud.ZoneRRSet, val string) error {
-	// Update TTL
 	if rrSet.TTL == nil || *rrSet.TTL != u.cfg.RecordTTL {
 		opts := hcloud.ZoneRRSetChangeTTLOpts{TTL: &u.cfg.RecordTTL}
 		if _, _, err := u.client.Zone.ChangeRRSetTTL(ctx, rrSet, opts); err != nil {
@@ -62,7 +61,6 @@ func (u *updater) updateRRSet(ctx context.Context, rrSet *hcloud.ZoneRRSet, val 
 		}
 	}
 
-	// Update Records (Overwrite)
 	opts := hcloud.ZoneRRSetSetRecordsOpts{
 		Records: []hcloud.ZoneRRSetRecord{{
 			Value: strconv.Quote(val),

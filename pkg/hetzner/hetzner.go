@@ -34,7 +34,7 @@ type Records struct {
 }
 
 func NewHCloudClient(cfg *config.Config) *hcloud.Client {
-	version := "unknown"
+	version := "dev"
 	if info, ok := debug.ReadBuildInfo(); ok {
 		for _, setting := range info.Settings {
 			if setting.Key == "vcs.revision" {
@@ -44,13 +44,11 @@ func NewHCloudClient(cfg *config.Config) *hcloud.Client {
 		}
 	}
 
-	httpClient := &http.Client{
-		Timeout: time.Duration(cfg.Timeout) * time.Second,
-	}
-
 	opts := []hcloud.ClientOption{
 		hcloud.WithToken(cfg.Token),
-		hcloud.WithHTTPClient(httpClient),
+		hcloud.WithHTTPClient(&http.Client{
+			Timeout: time.Duration(cfg.Timeout) * time.Second,
+		}),
 		hcloud.WithApplication("hetzner-dnsapi-proxy", version),
 	}
 

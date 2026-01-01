@@ -78,6 +78,16 @@ func NewConfig() *Config {
 	}
 }
 
+func (c *Config) SetDefaultBaseURL() {
+	if c.BaseURL == "" {
+		if c.CloudAPI {
+			c.BaseURL = "https://api.hetzner.cloud/v1"
+		} else {
+			c.BaseURL = "https://dns.hetzner.com/api/v1"
+		}
+	}
+}
+
 //nolint:gocyclo
 func ParseEnv() (*Config, error) {
 	cfg := NewConfig()
@@ -95,13 +105,7 @@ func ParseEnv() (*Config, error) {
 		cfg.BaseURL = baseURL
 	}
 
-	if cfg.BaseURL == "" {
-		if cfg.CloudAPI {
-			cfg.BaseURL = "https://api.hetzner.cloud/v1"
-		} else {
-			cfg.BaseURL = "https://dns.hetzner.com/api/v1"
-		}
-	}
+	cfg.SetDefaultBaseURL()
 
 	if token, ok := os.LookupEnv("API_TOKEN"); ok {
 		cfg.Token = token
@@ -169,13 +173,7 @@ func ReadFile(path string) (*Config, error) {
 		return nil, err
 	}
 
-	if cfg.BaseURL == "" {
-		if cfg.CloudAPI {
-			cfg.BaseURL = "https://api.hetzner.cloud/v1"
-		} else {
-			cfg.BaseURL = "https://dns.hetzner.com/api/v1"
-		}
-	}
+	cfg.SetDefaultBaseURL()
 
 	if cfg.Token == "" {
 		return nil, errors.New("token is required")

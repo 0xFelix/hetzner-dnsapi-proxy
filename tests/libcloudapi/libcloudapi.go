@@ -10,7 +10,7 @@ import (
 	"github.com/onsi/gomega/ghttp"
 
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/hetzner"
-	"github.com/0xfelix/hetzner-dnsapi-proxy/tests/libdnsapi"
+	"github.com/0xfelix/hetzner-dnsapi-proxy/tests/libserver"
 )
 
 func GetZone(token string, zone hetzner.Zone) http.HandlerFunc {
@@ -136,7 +136,7 @@ func RemoveRRSetRecords(token string, zone hetzner.Zone, record hetzner.Record) 
 		}),
 		ghttp.VerifyJSONRepresenting(schema.ZoneRRSetRemoveRecordsRequest{
 			Records: []schema.ZoneRRSetRecord{
-				{Value: strconv.Quote(libdnsapi.TXTExisting)}, // Mock assumes we fetch existing and remove it
+				{Value: strconv.Quote(libserver.TXTExisting)}, // Mock assumes we fetch existing and remove it
 			},
 		}),
 		ghttp.RespondWithJSONEncoded(http.StatusOK, schema.ActionGetResponse{
