@@ -64,16 +64,16 @@ var _ = Describe("HTTPReq", func() {
 			}),
 			Entry("Cloud API: with dot suffix", true, libserver.TXTRecordNameFull+".", func() {
 				api.AppendHandlers(
-					libcloudapi.GetZone(token, libdnsapi.Zones()[0]),
-					libcloudapi.GetRRSetNotFound(token, libdnsapi.Zones()[0], libserver.TXTRecordName, "TXT"),
-					libcloudapi.CreateRRSet(token, libdnsapi.Zones()[0], libdnsapi.NewTXTRecord()),
+					libcloudapi.GetZone(token, libcloudapi.Zones()[0]),
+					libcloudapi.GetRRSetNotFound(token, libcloudapi.Zones()[0], libserver.TXTRecordName, "TXT"),
+					libcloudapi.CreateRRSet(token, libcloudapi.Zones()[0], libcloudapi.NewTXTRecord()),
 				)
 			}),
 			Entry("Cloud API: without dot suffix", true, libserver.TXTRecordNameFull, func() {
 				api.AppendHandlers(
-					libcloudapi.GetZone(token, libdnsapi.Zones()[0]),
-					libcloudapi.GetRRSetNotFound(token, libdnsapi.Zones()[0], libserver.TXTRecordName, "TXT"),
-					libcloudapi.CreateRRSet(token, libdnsapi.Zones()[0], libdnsapi.NewTXTRecord()),
+					libcloudapi.GetZone(token, libcloudapi.Zones()[0]),
+					libcloudapi.GetRRSetNotFound(token, libcloudapi.Zones()[0], libserver.TXTRecordName, "TXT"),
+					libcloudapi.CreateRRSet(token, libcloudapi.Zones()[0], libcloudapi.NewTXTRecord()),
 				)
 			}),
 		)
@@ -110,18 +110,18 @@ var _ = Describe("HTTPReq", func() {
 			}),
 			Entry("Cloud API: with dot suffix", true, libserver.TXTRecordNameFull+".", func() {
 				api.AppendHandlers(
-					libcloudapi.GetZone(token, libdnsapi.Zones()[0]),
-					libcloudapi.GetRRSet(token, libdnsapi.Zones()[0], libdnsapi.Records()[1]),
-					libcloudapi.ChangeRRSetTTL(token, libdnsapi.Zones()[0], libdnsapi.UpdatedTXTRecord()),
-					libcloudapi.SetRRSetRecords(token, libdnsapi.Zones()[0], libdnsapi.UpdatedTXTRecord()),
+					libcloudapi.GetZone(token, libcloudapi.Zones()[0]),
+					libcloudapi.GetRRSet(token, libcloudapi.Zones()[0], libcloudapi.Records()[1]),
+					libcloudapi.ChangeRRSetTTL(token, libcloudapi.Zones()[0], libcloudapi.UpdatedTXTRecord()),
+					libcloudapi.SetRRSetRecords(token, libcloudapi.Zones()[0], libcloudapi.UpdatedTXTRecord()),
 				)
 			}),
 			Entry("Cloud API: without dot suffix", true, libserver.TXTRecordNameFull, func() {
 				api.AppendHandlers(
-					libcloudapi.GetZone(token, libdnsapi.Zones()[0]),
-					libcloudapi.GetRRSet(token, libdnsapi.Zones()[0], libdnsapi.Records()[1]),
-					libcloudapi.ChangeRRSetTTL(token, libdnsapi.Zones()[0], libdnsapi.UpdatedTXTRecord()),
-					libcloudapi.SetRRSetRecords(token, libdnsapi.Zones()[0], libdnsapi.UpdatedTXTRecord()),
+					libcloudapi.GetZone(token, libcloudapi.Zones()[0]),
+					libcloudapi.GetRRSet(token, libcloudapi.Zones()[0], libcloudapi.Records()[1]),
+					libcloudapi.ChangeRRSetTTL(token, libcloudapi.Zones()[0], libcloudapi.UpdatedTXTRecord()),
+					libcloudapi.SetRRSetRecords(token, libcloudapi.Zones()[0], libcloudapi.UpdatedTXTRecord()),
 				)
 			}),
 		)
@@ -139,16 +139,16 @@ var _ = Describe("HTTPReq", func() {
 		},
 			Entry("with dot suffix", libserver.TXTRecordNameFull+".", func() {
 				api.AppendHandlers(
-					libcloudapi.GetZone(token, libdnsapi.Zones()[0]),
-					libcloudapi.GetRRSet(token, libdnsapi.Zones()[0], libdnsapi.Records()[1]),
-					libcloudapi.RemoveRRSetRecords(token, libdnsapi.Zones()[0], libdnsapi.Records()[1]),
+					libcloudapi.GetZone(token, libcloudapi.Zones()[0]),
+					libcloudapi.GetRRSet(token, libcloudapi.Zones()[0], libcloudapi.NewTXTRecord()),
+					libcloudapi.RemoveRRSetRecords(token, libcloudapi.Zones()[0], libcloudapi.NewTXTRecord()),
 				)
 			}),
 			Entry("without dot suffix", libserver.TXTRecordNameFull, func() {
 				api.AppendHandlers(
-					libcloudapi.GetZone(token, libdnsapi.Zones()[0]),
-					libcloudapi.GetRRSet(token, libdnsapi.Zones()[0], libdnsapi.Records()[1]),
-					libcloudapi.RemoveRRSetRecords(token, libdnsapi.Zones()[0], libdnsapi.Records()[1]),
+					libcloudapi.GetZone(token, libcloudapi.Zones()[0]),
+					libcloudapi.GetRRSet(token, libcloudapi.Zones()[0], libcloudapi.NewTXTRecord()),
+					libcloudapi.RemoveRRSetRecords(token, libcloudapi.Zones()[0], libcloudapi.NewTXTRecord()),
 				)
 			}),
 		)
@@ -173,39 +173,56 @@ var _ = Describe("HTTPReq", func() {
 		)
 
 		Context("should fail", func() {
-			DescribeTable("for both APIs", func(ctx context.Context, cloudAPI bool) {
+			DescribeTable("when fqdn is missing", func(ctx context.Context, cloudAPI bool) {
 				server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, cloudAPI)
-
 				Expect(doHTTPReqRequest(ctx, server.URL+"/httpreq/present", username, password,
 					map[string]string{
 						"value": libserver.TXTUpdated,
 					},
 				)).To(Equal(http.StatusBadRequest))
+			},
+				Entry("DNS API", false),
+				Entry("Cloud API", true),
+			)
 
+			DescribeTable("when value is missing", func(ctx context.Context, cloudAPI bool) {
+				server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, cloudAPI)
 				Expect(doHTTPReqRequest(ctx, server.URL+"/httpreq/present", username, password,
 					map[string]string{
 						"fqdn": libserver.TXTRecordNameFull,
 					},
 				)).To(Equal(http.StatusBadRequest))
+			},
+				Entry("DNS API", false),
+				Entry("Cloud API", true),
+			)
 
+			DescribeTable("when fqdn is malformed", func(ctx context.Context, cloudAPI bool) {
+				server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, cloudAPI)
 				Expect(doHTTPReqRequest(ctx, server.URL+"/httpreq/present", username, password,
 					map[string]string{
 						"fqdn":  libserver.TLD,
 						"value": libserver.TXTUpdated,
 					},
 				)).To(Equal(http.StatusBadRequest))
+			},
+				Entry("DNS API", false),
+				Entry("Cloud API", true),
+			)
 
-				server.Close()
+			DescribeTable("when access is denied", func(ctx context.Context, fqdn string, cloudAPI bool) {
 				server = libserver.NewNoAllowedDomains(api.URL(), cloudAPI)
 				Expect(doHTTPReqRequest(ctx, server.URL+"/httpreq/present", username, password,
 					map[string]string{
-						"fqdn":  libserver.TXTRecordNameFull,
+						"fqdn":  fqdn,
 						"value": libserver.TXTUpdated,
 					},
 				)).To(Equal(http.StatusUnauthorized))
 			},
-				Entry("DNS API", false),
-				Entry("Cloud API", true),
+				Entry("DNS API: with dot suffix", libserver.TXTRecordNameFull+".", false),
+				Entry("DNS API: without dot suffix", libserver.TXTRecordNameFull, false),
+				Entry("Cloud API: with dot suffix", libserver.TXTRecordNameFull+".", true),
+				Entry("Cloud API: without dot suffix", libserver.TXTRecordNameFull, true),
 			)
 		})
 	})

@@ -9,48 +9,117 @@ import (
 	"github.com/hetznercloud/hcloud-go/v2/hcloud/schema"
 	"github.com/onsi/gomega/ghttp"
 
-	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/hetzner"
 	"github.com/0xfelix/hetzner-dnsapi-proxy/tests/libserver"
 )
 
-func GetZone(token string, zone hetzner.Zone) http.HandlerFunc {
+func Zones() []schema.Zone {
+	return []schema.Zone{
+		{
+			ID:   MustParseInt(libserver.ZoneID),
+			Name: libserver.ZoneName,
+		},
+	}
+}
+
+func Records() []schema.ZoneRRSet {
+	// Return records with TTL different from DefaultTTL (60) to trigger ChangeRRSetTTL in update tests
+	ttl := 300
+	return []schema.ZoneRRSet{
+		{
+			ID:   libserver.ARecordName + "/" + libserver.RecordTypeA,
+			Name: libserver.ARecordName,
+			Type: libserver.RecordTypeA,
+			TTL:  &ttl,
+			Records: []schema.ZoneRRSetRecord{
+				{Value: strconv.Quote(libserver.AExisting)},
+			},
+		},
+		{
+			ID:   libserver.TXTRecordName + "/" + libserver.RecordTypeTXT,
+			Name: libserver.TXTRecordName,
+			Type: libserver.RecordTypeTXT,
+			TTL:  &ttl,
+			Records: []schema.ZoneRRSetRecord{
+				{Value: strconv.Quote(libserver.TXTExisting)},
+			},
+		},
+	}
+}
+
+func NewARecord() schema.ZoneRRSet {
+	return schema.ZoneRRSet{
+		Name: libserver.ARecordName,
+		Type: libserver.RecordTypeA,
+		TTL:  func() *int { t := libserver.DefaultTTL; return &t }(),
+		Records: []schema.ZoneRRSetRecord{
+			{Value: strconv.Quote(libserver.AUpdated)},
+		},
+	}
+}
+
+func UpdatedARecord() schema.ZoneRRSet {
+	return schema.ZoneRRSet{
+		ID:   libserver.ARecordName + "/" + libserver.RecordTypeA,
+		Name: libserver.ARecordName,
+		Type: libserver.RecordTypeA,
+		TTL:  func() *int { t := libserver.DefaultTTL; return &t }(),
+		Records: []schema.ZoneRRSetRecord{
+			{Value: strconv.Quote(libserver.AUpdated)},
+		},
+	}
+}
+
+func NewTXTRecord() schema.ZoneRRSet {
+	return schema.ZoneRRSet{
+		Name: libserver.TXTRecordName,
+		Type: libserver.RecordTypeTXT,
+		TTL:  func() *int { t := libserver.DefaultTTL; return &t }(),
+		Records: []schema.ZoneRRSetRecord{
+			{Value: strconv.Quote(libserver.TXTUpdated)},
+		},
+	}
+}
+
+func UpdatedTXTRecord() schema.ZoneRRSet {
+	return schema.ZoneRRSet{
+		ID:   libserver.TXTRecordName + "/" + libserver.RecordTypeTXT,
+		Name: libserver.TXTRecordName,
+		Type: libserver.RecordTypeTXT,
+		TTL:  func() *int { t := libserver.DefaultTTL; return &t }(),
+		Records: []schema.ZoneRRSetRecord{
+			{Value: strconv.Quote(libserver.TXTUpdated)},
+		},
+	}
+}
+
+func GetZone(token string, zone schema.Zone) http.HandlerFunc {
 	return ghttp.CombineHandlers(
 		ghttp.VerifyRequest(http.MethodGet, "/v1/zones/"+zone.Name),
 		ghttp.VerifyHeader(http.Header{
 			"Authorization": []string{"Bearer " + token},
 		}),
 		ghttp.RespondWithJSONEncoded(http.StatusOK, schema.ZoneGetResponse{
-			Zone: schema.Zone{
-				ID:   MustParseInt(zone.ID),
-				Name: zone.Name,
-			},
+			Zone: zone,
 		}),
 	)
 }
 
-func GetRRSet(token string, zone hetzner.Zone, record hetzner.Record) http.HandlerFunc {
+func GetRRSet(token string, zone schema.Zone, rrSet schema.ZoneRRSet) http.HandlerFunc {
+	rrSet.Zone = zone.ID
 	return ghttp.CombineHandlers(
-		ghttp.VerifyRequest(http.MethodGet, fmt.Sprintf("/v1/zones/%s/rrsets/%s/%s", zone.ID, record.Name, record.Type)),
+		ghttp.VerifyRequest(http.MethodGet, fmt.Sprintf("/v1/zones/%d/rrsets/%s/%s", zone.ID, rrSet.Name, rrSet.Type)),
 		ghttp.VerifyHeader(http.Header{
 			"Authorization": []string{"Bearer " + token},
 		}),
 		ghttp.RespondWithJSONEncoded(http.StatusOK, schema.ZoneRRSetGetResponse{
-			RRSet: schema.ZoneRRSet{
-				ID:   record.Name + "/" + record.Type,
-				Name: record.Name,
-				Type: record.Type,
-				Zone: MustParseInt(zone.ID),
-				Records: []schema.ZoneRRSetRecord{
-					{Value: strconv.Quote(record.Value)},
-				},
-			},
+			RRSet: rrSet,
 		}),
 	)
 }
 
-func GetRRSetNotFound(token string, zone hetzner.Zone, name, rType string) http.HandlerFunc {
+func GetRRSetNotFound(token string, zone schema.Zone, name, rType string) http.HandlerFunc {
 	return ghttp.CombineHandlers(
-		ghttp.VerifyRequest(http.MethodGet, fmt.Sprintf("/v1/zones/%s/rrsets/%s/%s", zone.ID, name, rType)),
+		ghttp.VerifyRequest(http.MethodGet, fmt.Sprintf("/v1/zones/%d/rrsets/%s/%s", zone.ID, name, rType)),
 		ghttp.VerifyHeader(http.Header{
 			"Authorization": []string{"Bearer " + token},
 		}),
@@ -63,41 +132,32 @@ func GetRRSetNotFound(token string, zone hetzner.Zone, name, rType string) http.
 	)
 }
 
-func CreateRRSet(token string, zone hetzner.Zone, record hetzner.Record) http.HandlerFunc {
+func CreateRRSet(token string, zone schema.Zone, rrSet schema.ZoneRRSet) http.HandlerFunc {
 	return ghttp.CombineHandlers(
-		ghttp.VerifyRequest(http.MethodPost, fmt.Sprintf("/v1/zones/%s/rrsets", zone.ID)),
+		ghttp.VerifyRequest(http.MethodPost, fmt.Sprintf("/v1/zones/%d/rrsets", zone.ID)),
 		ghttp.VerifyHeader(http.Header{
 			"Authorization": []string{"Bearer " + token},
 		}),
 		ghttp.VerifyJSONRepresenting(schema.ZoneRRSetCreateRequest{
-			Name: record.Name,
-			Type: string(hcloud.ZoneRRSetType(record.Type)),
-			TTL:  &record.TTL,
-			Records: []schema.ZoneRRSetRecord{
-				{Value: strconv.Quote(record.Value)},
-			},
+			Name:    rrSet.Name,
+			Type:    string(hcloud.ZoneRRSetType(rrSet.Type)),
+			TTL:     rrSet.TTL,
+			Records: rrSet.Records,
 		}),
 		ghttp.RespondWithJSONEncoded(http.StatusCreated, schema.ZoneRRSetCreateResponse{
-			RRSet: schema.ZoneRRSet{
-				ID:   record.Name + "/" + record.Type,
-				Name: record.Name,
-				Type: record.Type,
-				Records: []schema.ZoneRRSetRecord{
-					{Value: strconv.Quote(record.Value)},
-				},
-			},
+			RRSet: rrSet,
 		}),
 	)
 }
 
-func ChangeRRSetTTL(token string, zone hetzner.Zone, record hetzner.Record) http.HandlerFunc {
+func ChangeRRSetTTL(token string, zone schema.Zone, rrSet schema.ZoneRRSet) http.HandlerFunc {
 	return ghttp.CombineHandlers(
-		ghttp.VerifyRequest(http.MethodPost, fmt.Sprintf("/v1/zones/%s/rrsets/%s/%s/actions/change_ttl", zone.ID, record.Name, record.Type)),
+		ghttp.VerifyRequest(http.MethodPost, fmt.Sprintf("/v1/zones/%d/rrsets/%s/%s/actions/change_ttl", zone.ID, rrSet.Name, rrSet.Type)),
 		ghttp.VerifyHeader(http.Header{
 			"Authorization": []string{"Bearer " + token},
 		}),
 		ghttp.VerifyJSONRepresenting(schema.ZoneRRSetChangeTTLRequest{
-			TTL: &record.TTL,
+			TTL: rrSet.TTL,
 		}),
 		ghttp.RespondWithJSONEncoded(http.StatusOK, schema.ActionGetResponse{
 			Action: schema.Action{
@@ -108,16 +168,14 @@ func ChangeRRSetTTL(token string, zone hetzner.Zone, record hetzner.Record) http
 	)
 }
 
-func SetRRSetRecords(token string, zone hetzner.Zone, record hetzner.Record) http.HandlerFunc {
+func SetRRSetRecords(token string, zone schema.Zone, rrSet schema.ZoneRRSet) http.HandlerFunc {
 	return ghttp.CombineHandlers(
-		ghttp.VerifyRequest(http.MethodPost, fmt.Sprintf("/v1/zones/%s/rrsets/%s/%s/actions/set_records", zone.ID, record.Name, record.Type)),
+		ghttp.VerifyRequest(http.MethodPost, fmt.Sprintf("/v1/zones/%d/rrsets/%s/%s/actions/set_records", zone.ID, rrSet.Name, rrSet.Type)),
 		ghttp.VerifyHeader(http.Header{
 			"Authorization": []string{"Bearer " + token},
 		}),
 		ghttp.VerifyJSONRepresenting(schema.ZoneRRSetSetRecordsRequest{
-			Records: []schema.ZoneRRSetRecord{
-				{Value: strconv.Quote(record.Value)},
-			},
+			Records: rrSet.Records,
 		}),
 		ghttp.RespondWithJSONEncoded(http.StatusOK, schema.ActionGetResponse{
 			Action: schema.Action{
@@ -128,16 +186,14 @@ func SetRRSetRecords(token string, zone hetzner.Zone, record hetzner.Record) htt
 	)
 }
 
-func RemoveRRSetRecords(token string, zone hetzner.Zone, record hetzner.Record) http.HandlerFunc {
+func RemoveRRSetRecords(token string, zone schema.Zone, rrSet schema.ZoneRRSet) http.HandlerFunc {
 	return ghttp.CombineHandlers(
-		ghttp.VerifyRequest(http.MethodPost, fmt.Sprintf("/v1/zones/%s/rrsets/%s/%s/actions/remove_records", zone.ID, record.Name, record.Type)),
+		ghttp.VerifyRequest(http.MethodPost, fmt.Sprintf("/v1/zones/%d/rrsets/%s/%s/actions/remove_records", zone.ID, rrSet.Name, rrSet.Type)),
 		ghttp.VerifyHeader(http.Header{
 			"Authorization": []string{"Bearer " + token},
 		}),
 		ghttp.VerifyJSONRepresenting(schema.ZoneRRSetRemoveRecordsRequest{
-			Records: []schema.ZoneRRSetRecord{
-				{Value: strconv.Quote(libserver.TXTExisting)}, // Mock assumes we fetch existing and remove it
-			},
+			Records: rrSet.Records, // Simplified: assume we remove what we expect
 		}),
 		ghttp.RespondWithJSONEncoded(http.StatusOK, schema.ActionGetResponse{
 			Action: schema.Action{

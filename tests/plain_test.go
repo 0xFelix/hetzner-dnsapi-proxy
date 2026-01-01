@@ -10,7 +10,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
 
-	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/hetzner"
 	"github.com/0xfelix/hetzner-dnsapi-proxy/tests/libcloudapi"
 	"github.com/0xfelix/hetzner-dnsapi-proxy/tests/libdnsapi"
 	"github.com/0xfelix/hetzner-dnsapi-proxy/tests/libserver"
@@ -61,17 +60,17 @@ var _ = Describe("Plain", func() {
 		}),
 		Entry("Cloud API: creating a new record", true, 3, func() {
 			api.AppendHandlers(
-				libcloudapi.GetZone(token, libdnsapi.Zones()[0]),
-				libcloudapi.GetRRSetNotFound(token, libdnsapi.Zones()[0], libserver.ARecordName, "A"),
-				libcloudapi.CreateRRSet(token, libdnsapi.Zones()[0], libdnsapi.NewARecord()),
+				libcloudapi.GetZone(token, libcloudapi.Zones()[0]),
+				libcloudapi.GetRRSetNotFound(token, libcloudapi.Zones()[0], libserver.ARecordName, "A"),
+				libcloudapi.CreateRRSet(token, libcloudapi.Zones()[0], libcloudapi.NewARecord()),
 			)
 		}),
 		Entry("Cloud API: updating an existing record", true, 4, func() {
 			api.AppendHandlers(
-				libcloudapi.GetZone(token, libdnsapi.Zones()[0]),
-				libcloudapi.GetRRSet(token, libdnsapi.Zones()[0], libdnsapi.Records()[0]),
-				libcloudapi.ChangeRRSetTTL(token, libdnsapi.Zones()[0], libdnsapi.UpdatedARecord()),
-				libcloudapi.SetRRSetRecords(token, libdnsapi.Zones()[0], libdnsapi.UpdatedARecord()),
+				libcloudapi.GetZone(token, libcloudapi.Zones()[0]),
+				libcloudapi.GetRRSet(token, libcloudapi.Zones()[0], libcloudapi.Records()[0]),
+				libcloudapi.ChangeRRSetTTL(token, libcloudapi.Zones()[0], libcloudapi.UpdatedARecord()),
+				libcloudapi.SetRRSetRecords(token, libcloudapi.Zones()[0], libcloudapi.UpdatedARecord()),
 			)
 		}),
 	)
@@ -137,16 +136,4 @@ func doPlainRequest(ctx context.Context, serverURL, username, password string, d
 	Expect(res.Body.Close()).To(Succeed())
 
 	return res.StatusCode
-}
-
-// Helper to update records with correct mock data for Cloud API tests
-// Note: libdnsapi.Records() has both A and TXT records.
-// libcloudapi.GetRRSet expects a single record.
-func recordByType(records []hetzner.Record, rType string) hetzner.Record {
-	for _, r := range records {
-		if r.Type == rType {
-			return r
-		}
-	}
-	return hetzner.Record{}
 }
