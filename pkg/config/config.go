@@ -78,16 +78,6 @@ func NewConfig() *Config {
 	}
 }
 
-func (c *Config) SetDefaultBaseURL() {
-	if c.BaseURL == "" {
-		if c.CloudAPI {
-			c.BaseURL = "https://api.hetzner.cloud/v1"
-		} else {
-			c.BaseURL = "https://dns.hetzner.com/api/v1"
-		}
-	}
-}
-
 //nolint:gocyclo
 func ParseEnv() (*Config, error) {
 	cfg := NewConfig()
@@ -105,7 +95,7 @@ func ParseEnv() (*Config, error) {
 		cfg.BaseURL = baseURL
 	}
 
-	cfg.SetDefaultBaseURL()
+	setDefaultBaseURL(cfg)
 
 	if token, ok := os.LookupEnv("API_TOKEN"); ok {
 		cfg.Token = token
@@ -173,8 +163,6 @@ func ReadFile(path string) (*Config, error) {
 		return nil, err
 	}
 
-	cfg.SetDefaultBaseURL()
-
 	if cfg.Token == "" {
 		return nil, errors.New("token is required")
 	}
@@ -196,6 +184,7 @@ func ReadFile(path string) (*Config, error) {
 	}
 
 	setDefaultIPMask(cfg.Auth.AllowedDomains)
+	setDefaultBaseURL(cfg)
 
 	return cfg, nil
 }
@@ -205,6 +194,16 @@ func AuthMethodIsValid(authMethod string) bool {
 		authMethod == AuthMethodUsers ||
 		authMethod == AuthMethodBoth ||
 		authMethod == AuthMethodAny
+}
+
+func setDefaultBaseURL(c *Config) {
+	if c.BaseURL == "" {
+		if c.CloudAPI {
+			c.BaseURL = "https://api.hetzner.cloud/v1"
+		} else {
+			c.BaseURL = "https://dns.hetzner.com/api/v1"
+		}
+	}
 }
 
 func setDefaultIPMask(allowedDomains AllowedDomains) {
