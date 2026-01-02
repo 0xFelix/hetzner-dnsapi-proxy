@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io"
 	"net/http"
 	"net/http/httptest"
 
@@ -66,15 +65,15 @@ var _ = Describe("HTTPReq", func() {
 			Entry("Cloud API: with dot suffix", true, libserver.TXTRecordNameFull+".", func() {
 				api.AppendHandlers(
 					libcloudapi.GetZone(token, libcloudapi.Zone()),
-					libcloudapi.GetRRSetNotFound(token, libcloudapi.Zone(), libserver.TXTRecordName, "TXT"),
-					libcloudapi.CreateRRSet(token, libcloudapi.Zone(), libcloudapi.NewTXTRecord()),
+					libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.NewRRSetTXT(), false),
+					libcloudapi.CreateRRSet(token, libcloudapi.Zone(), libcloudapi.NewRRSetTXT()),
 				)
 			}),
 			Entry("Cloud API: without dot suffix", true, libserver.TXTRecordNameFull, func() {
 				api.AppendHandlers(
 					libcloudapi.GetZone(token, libcloudapi.Zone()),
-					libcloudapi.GetRRSetNotFound(token, libcloudapi.Zone(), libserver.TXTRecordName, "TXT"),
-					libcloudapi.CreateRRSet(token, libcloudapi.Zone(), libcloudapi.NewTXTRecord()),
+					libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.NewRRSetTXT(), false),
+					libcloudapi.CreateRRSet(token, libcloudapi.Zone(), libcloudapi.NewRRSetTXT()),
 				)
 			}),
 		)
@@ -112,17 +111,17 @@ var _ = Describe("HTTPReq", func() {
 			Entry("Cloud API: with dot suffix", true, libserver.TXTRecordNameFull+".", func() {
 				api.AppendHandlers(
 					libcloudapi.GetZone(token, libcloudapi.Zone()),
-					libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.Records()[1]),
-					libcloudapi.ChangeRRSetTTL(token, libcloudapi.Zone(), libcloudapi.ExistingTXTRecord()),
-					libcloudapi.SetRRSetRecords(token, libcloudapi.Zone(), libcloudapi.ExistingTXTRecord()),
+					libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.Records()[1], true),
+					libcloudapi.ChangeRRSetTTL(token, libcloudapi.Zone(), libcloudapi.ExistingRRSetTXT()),
+					libcloudapi.SetRRSetRecords(token, libcloudapi.Zone(), libcloudapi.ExistingRRSetTXT()),
 				)
 			}),
 			Entry("Cloud API: without dot suffix", true, libserver.TXTRecordNameFull, func() {
 				api.AppendHandlers(
 					libcloudapi.GetZone(token, libcloudapi.Zone()),
-					libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.Records()[1]),
-					libcloudapi.ChangeRRSetTTL(token, libcloudapi.Zone(), libcloudapi.ExistingTXTRecord()),
-					libcloudapi.SetRRSetRecords(token, libcloudapi.Zone(), libcloudapi.ExistingTXTRecord()),
+					libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.Records()[1], true),
+					libcloudapi.ChangeRRSetTTL(token, libcloudapi.Zone(), libcloudapi.ExistingRRSetTXT()),
+					libcloudapi.SetRRSetRecords(token, libcloudapi.Zone(), libcloudapi.ExistingRRSetTXT()),
 				)
 			}),
 		)
@@ -150,14 +149,14 @@ var _ = Describe("HTTPReq", func() {
 			Entry("Cloud API: with dot suffix", true, libserver.TXTRecordNameFull+".", func() {
 				api.AppendHandlers(
 					libcloudapi.GetZone(token, libcloudapi.Zone()),
-					libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.Records()[1]),
+					libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.Records()[1], true),
 					libcloudapi.RemoveRRSetRecords(token, libcloudapi.Zone(), libcloudapi.Records()[1]),
 				)
 			}),
 			Entry("Cloud API: without dot suffix", true, libserver.TXTRecordNameFull, func() {
 				api.AppendHandlers(
 					libcloudapi.GetZone(token, libcloudapi.Zone()),
-					libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.Records()[1]),
+					libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.Records()[1], true),
 					libcloudapi.RemoveRRSetRecords(token, libcloudapi.Zone(), libcloudapi.Records()[1]),
 				)
 			}),
@@ -236,9 +235,6 @@ func doHTTPReqRequest(ctx context.Context, serverURL, username, password string,
 
 	c := &http.Client{}
 	res, err := c.Do(req)
-	Expect(err).ToNot(HaveOccurred())
-
-	_, err = io.ReadAll(res.Body)
 	Expect(err).ToNot(HaveOccurred())
 	Expect(res.Body.Close()).To(Succeed())
 

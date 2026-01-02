@@ -96,32 +96,32 @@ var _ = Describe("DirectAdmin", func() {
 				libserver.ARecordNameFull, "", libserver.RecordTypeA, libserver.AUpdated, libdnsapi.NewARecord, func() {
 					api.AppendHandlers(
 						libcloudapi.GetZone(token, libcloudapi.Zone()),
-						libcloudapi.GetRRSetNotFound(token, libcloudapi.Zone(), libserver.ARecordName, "A"),
-						libcloudapi.CreateRRSet(token, libcloudapi.Zone(), libcloudapi.NewARecord()),
+						libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.NewRRSetA(), false),
+						libcloudapi.CreateRRSet(token, libcloudapi.Zone(), libcloudapi.NewRRSetA()),
 					)
 				}),
 			Entry("Cloud API: A record with fqdn from name and domain", true,
 				libserver.ZoneName, libserver.ARecordName, libserver.RecordTypeA, libserver.AUpdated, libdnsapi.NewARecord, func() {
 					api.AppendHandlers(
 						libcloudapi.GetZone(token, libcloudapi.Zone()),
-						libcloudapi.GetRRSetNotFound(token, libcloudapi.Zone(), libserver.ARecordName, "A"),
-						libcloudapi.CreateRRSet(token, libcloudapi.Zone(), libcloudapi.NewARecord()),
+						libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.NewRRSetA(), false),
+						libcloudapi.CreateRRSet(token, libcloudapi.Zone(), libcloudapi.NewRRSetA()),
 					)
 				}),
 			Entry("Cloud API: TXT record with fqdn in domain", true,
 				libserver.TXTRecordNameFull, "", libserver.RecordTypeTXT, libserver.TXTUpdated, libdnsapi.NewTXTRecord, func() {
 					api.AppendHandlers(
 						libcloudapi.GetZone(token, libcloudapi.Zone()),
-						libcloudapi.GetRRSetNotFound(token, libcloudapi.Zone(), libserver.TXTRecordName, "TXT"),
-						libcloudapi.CreateRRSet(token, libcloudapi.Zone(), libcloudapi.NewTXTRecord()),
+						libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.NewRRSetTXT(), false),
+						libcloudapi.CreateRRSet(token, libcloudapi.Zone(), libcloudapi.NewRRSetTXT()),
 					)
 				}),
 			Entry("Cloud API: TXT record with fqdn from name and domain", true,
 				libserver.ZoneName, libserver.TXTRecordName, libserver.RecordTypeTXT, libserver.TXTUpdated, libdnsapi.NewTXTRecord, func() {
 					api.AppendHandlers(
 						libcloudapi.GetZone(token, libcloudapi.Zone()),
-						libcloudapi.GetRRSetNotFound(token, libcloudapi.Zone(), libserver.TXTRecordName, "TXT"),
-						libcloudapi.CreateRRSet(token, libcloudapi.Zone(), libcloudapi.NewTXTRecord()),
+						libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.NewRRSetTXT(), false),
+						libcloudapi.CreateRRSet(token, libcloudapi.Zone(), libcloudapi.NewRRSetTXT()),
 					)
 				}),
 		)
@@ -185,36 +185,36 @@ var _ = Describe("DirectAdmin", func() {
 				libserver.ARecordNameFull, "", libserver.RecordTypeA, libserver.AUpdated, libdnsapi.UpdatedARecord, func() {
 					api.AppendHandlers(
 						libcloudapi.GetZone(token, libcloudapi.Zone()),
-						libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.Records()[0]),
-						libcloudapi.ChangeRRSetTTL(token, libcloudapi.Zone(), libcloudapi.ExistingARecord()),
-						libcloudapi.SetRRSetRecords(token, libcloudapi.Zone(), libcloudapi.ExistingARecord()),
+						libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.Records()[0], true),
+						libcloudapi.ChangeRRSetTTL(token, libcloudapi.Zone(), libcloudapi.ExistingRRSetA()),
+						libcloudapi.SetRRSetRecords(token, libcloudapi.Zone(), libcloudapi.ExistingRRSetA()),
 					)
 				}),
 			Entry("Cloud API: A record with fqdn from name and domain", true,
 				libserver.ZoneName, libserver.ARecordName, libserver.RecordTypeA, libserver.AUpdated, libdnsapi.UpdatedARecord, func() {
 					api.AppendHandlers(
 						libcloudapi.GetZone(token, libcloudapi.Zone()),
-						libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.Records()[0]),
-						libcloudapi.ChangeRRSetTTL(token, libcloudapi.Zone(), libcloudapi.ExistingARecord()),
-						libcloudapi.SetRRSetRecords(token, libcloudapi.Zone(), libcloudapi.ExistingARecord()),
+						libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.Records()[0], true),
+						libcloudapi.ChangeRRSetTTL(token, libcloudapi.Zone(), libcloudapi.ExistingRRSetA()),
+						libcloudapi.SetRRSetRecords(token, libcloudapi.Zone(), libcloudapi.ExistingRRSetA()),
 					)
 				}),
 			Entry("Cloud API: TXT record with fqdn in domain", true,
 				libserver.TXTRecordNameFull, "", libserver.RecordTypeTXT, libserver.TXTUpdated, libdnsapi.UpdatedTXTRecord, func() {
 					api.AppendHandlers(
 						libcloudapi.GetZone(token, libcloudapi.Zone()),
-						libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.Records()[1]),
-						libcloudapi.ChangeRRSetTTL(token, libcloudapi.Zone(), libcloudapi.ExistingTXTRecord()),
-						libcloudapi.SetRRSetRecords(token, libcloudapi.Zone(), libcloudapi.ExistingTXTRecord()),
+						libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.Records()[1], true),
+						libcloudapi.ChangeRRSetTTL(token, libcloudapi.Zone(), libcloudapi.ExistingRRSetTXT()),
+						libcloudapi.SetRRSetRecords(token, libcloudapi.Zone(), libcloudapi.ExistingRRSetTXT()),
 					)
 				}),
 			Entry("Cloud API: TXT record with fqdn from name and domain", true,
 				libserver.ZoneName, libserver.TXTRecordName, libserver.RecordTypeTXT, libserver.TXTUpdated, libdnsapi.UpdatedTXTRecord, func() {
 					api.AppendHandlers(
 						libcloudapi.GetZone(token, libcloudapi.Zone()),
-						libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.Records()[1]),
-						libcloudapi.ChangeRRSetTTL(token, libcloudapi.Zone(), libcloudapi.ExistingTXTRecord()),
-						libcloudapi.SetRRSetRecords(token, libcloudapi.Zone(), libcloudapi.ExistingTXTRecord()),
+						libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.Records()[1], true),
+						libcloudapi.ChangeRRSetTTL(token, libcloudapi.Zone(), libcloudapi.ExistingRRSetTXT()),
+						libcloudapi.SetRRSetRecords(token, libcloudapi.Zone(), libcloudapi.ExistingRRSetTXT()),
 					)
 				}),
 		)
@@ -239,12 +239,12 @@ var _ = Describe("DirectAdmin", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(values).To(Equal(statusOK))
 		},
-			Entry("delete (DNS)", "delete", false),
-			Entry("update (DNS)", "update", false),
-			Entry("something (DNS)", "something", false),
-			Entry("delete (Cloud)", "delete", true),
-			Entry("update (Cloud)", "update", true),
-			Entry("something (Cloud)", "something", true),
+			Entry("DNS API: delete", "delete", false),
+			Entry("DNS API: update", "update", false),
+			Entry("DNS API: something", "something", false),
+			Entry("Cloud API: delete", "delete", true),
+			Entry("Cloud API: update", "update", true),
+			Entry("Cloud API: something", "something", true),
 		)
 
 		DescribeTable("should return allowed domains", func(ctx context.Context, cloudAPI bool) {
