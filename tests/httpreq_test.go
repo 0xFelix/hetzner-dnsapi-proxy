@@ -163,13 +163,12 @@ var _ = Describe("HTTPReq", func() {
 		)
 	})
 
-	Context("should make no api calls and", func() {
+	Context("should make no api calls and should fail", func() {
 		AfterEach(func() {
 			Expect(api.ReceivedRequests()).To(BeEmpty())
 		})
 
-		Context("should fail", func() {
-			DescribeTable("when fqdn is missing", func(ctx context.Context, cloudAPI bool) {
+		DescribeTable("when fqdn is missing", func(ctx context.Context, cloudAPI bool) {
 				server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, cloudAPI)
 				Expect(doHTTPReqRequest(ctx, server.URL+"/httpreq/present", username, password,
 					map[string]string{
@@ -222,7 +221,6 @@ var _ = Describe("HTTPReq", func() {
 			)
 		})
 	})
-})
 
 func doHTTPReqRequest(ctx context.Context, serverURL, username, password string, data map[string]string) int {
 	body, err := json.Marshal(data)
