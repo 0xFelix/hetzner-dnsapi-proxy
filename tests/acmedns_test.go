@@ -125,17 +125,17 @@ var _ = Describe("AcmeDNS", func() {
 			Entry("Cloud API: with prefix", true, libserver.TXTRecordNameFull, func() {
 				api.AppendHandlers(
 					libcloudapi.GetZone(token, libcloudapi.Zone()),
-					libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.Records()[1], true),
-					libcloudapi.ChangeRRSetTTL(token, libcloudapi.Zone(), libcloudapi.ExistingRRSetTXT()),
-					libcloudapi.SetRRSetRecords(token, libcloudapi.Zone(), libcloudapi.ExistingRRSetTXT()),
+					libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.ExistingRRSetTXT(), true),
+					libcloudapi.ChangeRRSetTTL(token, libcloudapi.Zone(), libcloudapi.UpdatedRRSetTXT()),
+					libcloudapi.SetRRSetRecords(token, libcloudapi.Zone(), libcloudapi.UpdatedRRSetTXT()),
 				)
 			}),
 			Entry("Cloud API: without prefix", true, libserver.TXTRecordNameNoPrefix, func() {
 				api.AppendHandlers(
 					libcloudapi.GetZone(token, libcloudapi.Zone()),
-					libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.Records()[1], true),
-					libcloudapi.ChangeRRSetTTL(token, libcloudapi.Zone(), libcloudapi.ExistingRRSetTXT()),
-					libcloudapi.SetRRSetRecords(token, libcloudapi.Zone(), libcloudapi.ExistingRRSetTXT()),
+					libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.ExistingRRSetTXT(), true),
+					libcloudapi.ChangeRRSetTTL(token, libcloudapi.Zone(), libcloudapi.UpdatedRRSetTXT()),
+					libcloudapi.SetRRSetRecords(token, libcloudapi.Zone(), libcloudapi.UpdatedRRSetTXT()),
 				)
 			}),
 		)

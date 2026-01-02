@@ -17,40 +17,38 @@ const (
 	authBearerPrefix    = "Bearer "
 )
 
-func Ptr[T any](v T) *T {
-	return &v
-}
-
 func Zone() schema.Zone {
 	return schema.Zone{
-		ID:   MustParseInt(libserver.ZoneID),
+		ID:   mustParseInt(libserver.ZoneID),
 		Name: libserver.ZoneName,
 	}
 }
 
-func Records() []schema.ZoneRRSet {
+func ExistingRRSetA() schema.ZoneRRSet {
 	const ttl = 300
-	return []schema.ZoneRRSet{
-		{
-			ID:   libserver.ARecordName + "/" + libserver.RecordTypeA,
-			Name: libserver.ARecordName,
-			Type: libserver.RecordTypeA,
-			TTL:  Ptr(ttl),
-			Records: []schema.ZoneRRSetRecord{
-				{Value: strconv.Quote(libserver.AExisting)},
-			},
-			Zone: MustParseInt(libserver.ZoneID),
+	return schema.ZoneRRSet{
+		ID:   libserver.ARecordName + "/" + libserver.RecordTypeA,
+		Name: libserver.ARecordName,
+		Type: libserver.RecordTypeA,
+		TTL:  ptr(ttl),
+		Records: []schema.ZoneRRSetRecord{
+			{Value: strconv.Quote(libserver.AExisting)},
 		},
-		{
-			ID:   libserver.TXTRecordName + "/" + libserver.RecordTypeTXT,
-			Name: libserver.TXTRecordName,
-			Type: libserver.RecordTypeTXT,
-			TTL:  Ptr(ttl),
-			Records: []schema.ZoneRRSetRecord{
-				{Value: strconv.Quote(libserver.TXTExisting)},
-			},
-			Zone: MustParseInt(libserver.ZoneID),
+		Zone: mustParseInt(libserver.ZoneID),
+	}
+}
+
+func ExistingRRSetTXT() schema.ZoneRRSet {
+	const ttl = 300
+	return schema.ZoneRRSet{
+		ID:   libserver.TXTRecordName + "/" + libserver.RecordTypeTXT,
+		Name: libserver.TXTRecordName,
+		Type: libserver.RecordTypeTXT,
+		TTL:  ptr(ttl),
+		Records: []schema.ZoneRRSetRecord{
+			{Value: strconv.Quote(libserver.TXTExisting)},
 		},
+		Zone: mustParseInt(libserver.ZoneID),
 	}
 }
 
@@ -58,15 +56,15 @@ func NewRRSetA() schema.ZoneRRSet {
 	return schema.ZoneRRSet{
 		Name: libserver.ARecordName,
 		Type: libserver.RecordTypeA,
-		TTL:  Ptr(libserver.DefaultTTL),
+		TTL:  ptr(libserver.DefaultTTL),
 		Records: []schema.ZoneRRSetRecord{
 			{Value: strconv.Quote(libserver.AUpdated)},
 		},
-		Zone: MustParseInt(libserver.ZoneID),
+		Zone: mustParseInt(libserver.ZoneID),
 	}
 }
 
-func ExistingRRSetA() schema.ZoneRRSet {
+func UpdatedRRSetA() schema.ZoneRRSet {
 	r := NewRRSetA()
 	r.ID = libserver.ARecordName + "/" + libserver.RecordTypeA
 	return r
@@ -76,15 +74,15 @@ func NewRRSetTXT() schema.ZoneRRSet {
 	return schema.ZoneRRSet{
 		Name: libserver.TXTRecordName,
 		Type: libserver.RecordTypeTXT,
-		TTL:  Ptr(libserver.DefaultTTL),
+		TTL:  ptr(libserver.DefaultTTL),
 		Records: []schema.ZoneRRSetRecord{
 			{Value: strconv.Quote(libserver.TXTUpdated)},
 		},
-		Zone: MustParseInt(libserver.ZoneID),
+		Zone: mustParseInt(libserver.ZoneID),
 	}
 }
 
-func ExistingRRSetTXT() schema.ZoneRRSet {
+func UpdatedRRSetTXT() schema.ZoneRRSet {
 	r := NewRRSetTXT()
 	r.ID = libserver.TXTRecordName + "/" + libserver.RecordTypeTXT
 	return r
@@ -103,29 +101,27 @@ func GetZone(token string, zone schema.Zone) http.HandlerFunc {
 }
 
 func GetRRSet(token string, zone schema.Zone, rrSet schema.ZoneRRSet, found bool) http.HandlerFunc {
-	if found {
-		return ghttp.CombineHandlers(
-			ghttp.VerifyRequest(http.MethodGet, fmt.Sprintf("/v1/zones/%d/rrsets/%s/%s", zone.ID, rrSet.Name, rrSet.Type)),
-			ghttp.VerifyHeader(http.Header{
-				headerAuthorization: []string{authBearerPrefix + token},
-			}),
-			ghttp.RespondWithJSONEncoded(http.StatusOK, schema.ZoneRRSetGetResponse{
-				RRSet: rrSet,
-			}),
-		)
-	}
-	return ghttp.CombineHandlers(
+	handlers := []http.HandlerFunc{
 		ghttp.VerifyRequest(http.MethodGet, fmt.Sprintf("/v1/zones/%d/rrsets/%s/%s", zone.ID, rrSet.Name, rrSet.Type)),
 		ghttp.VerifyHeader(http.Header{
 			headerAuthorization: []string{authBearerPrefix + token},
 		}),
-		ghttp.RespondWithJSONEncoded(http.StatusNotFound, schema.ErrorResponse{
+	}
+
+	if found {
+		handlers = append(handlers, ghttp.RespondWithJSONEncoded(http.StatusOK, schema.ZoneRRSetGetResponse{
+			RRSet: rrSet,
+		}))
+	} else {
+		handlers = append(handlers, ghttp.RespondWithJSONEncoded(http.StatusNotFound, schema.ErrorResponse{
 			Error: schema.Error{
 				Code:    "not_found",
 				Message: "rrset not found",
 			},
-		}),
-	)
+		}))
+	}
+
+	return ghttp.CombineHandlers(handlers...)
 }
 
 func CreateRRSet(token string, zone schema.Zone, rrSet schema.ZoneRRSet) http.HandlerFunc {
@@ -155,7 +151,7 @@ func ChangeRRSetTTL(token string, zone schema.Zone, rrSet schema.ZoneRRSet) http
 		ghttp.VerifyJSONRepresenting(schema.ZoneRRSetChangeTTLRequest{
 			TTL: rrSet.TTL,
 		}),
-		respondSuccessAction(),
+		getResponseSuccess(),
 	)
 }
 
@@ -168,7 +164,7 @@ func SetRRSetRecords(token string, zone schema.Zone, rrSet schema.ZoneRRSet) htt
 		ghttp.VerifyJSONRepresenting(schema.ZoneRRSetSetRecordsRequest{
 			Records: rrSet.Records,
 		}),
-		respondSuccessAction(),
+		getResponseSuccess(),
 	)
 }
 
@@ -181,11 +177,11 @@ func RemoveRRSetRecords(token string, zone schema.Zone, rrSet schema.ZoneRRSet) 
 		ghttp.VerifyJSONRepresenting(schema.ZoneRRSetRemoveRecordsRequest{
 			Records: rrSet.Records, // Simplified: assume we remove what we expect
 		}),
-		respondSuccessAction(),
+		getResponseSuccess(),
 	)
 }
 
-func respondSuccessAction() http.HandlerFunc {
+func getResponseSuccess() http.HandlerFunc {
 	return ghttp.RespondWithJSONEncoded(http.StatusOK, schema.ActionGetResponse{
 		Action: schema.Action{
 			ID:     1,
@@ -194,8 +190,12 @@ func respondSuccessAction() http.HandlerFunc {
 	})
 }
 
-func MustParseInt(s string) int64 {
+func mustParseInt(s string) int64 {
 	i, err := strconv.ParseInt(s, 10, 64)
 	Expect(err).ToNot(HaveOccurred())
 	return i
+}
+
+func ptr[T any](v T) *T {
+	return &v
 }
