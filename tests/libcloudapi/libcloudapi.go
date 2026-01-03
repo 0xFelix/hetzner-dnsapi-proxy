@@ -5,9 +5,10 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/hetznercloud/hcloud-go/v2/hcloud/schema"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
+
+	"github.com/hetznercloud/hcloud-go/v2/hcloud/schema"
 
 	"github.com/0xfelix/hetzner-dnsapi-proxy/tests/libserver"
 )
@@ -15,6 +16,7 @@ import (
 const (
 	headerAuthorization = "Authorization"
 	authBearerPrefix    = "Bearer "
+	existingTTL         = 300
 )
 
 func Zone() schema.Zone {
@@ -25,12 +27,11 @@ func Zone() schema.Zone {
 }
 
 func ExistingRRSetA() schema.ZoneRRSet {
-	const ttl = 300
 	return schema.ZoneRRSet{
 		ID:   libserver.ARecordName + "/" + libserver.RecordTypeA,
 		Name: libserver.ARecordName,
 		Type: libserver.RecordTypeA,
-		TTL:  ptr(ttl),
+		TTL:  ptr(existingTTL),
 		Records: []schema.ZoneRRSetRecord{
 			{Value: strconv.Quote(libserver.AExisting)},
 		},
@@ -39,12 +40,11 @@ func ExistingRRSetA() schema.ZoneRRSet {
 }
 
 func ExistingRRSetTXT() schema.ZoneRRSet {
-	const ttl = 300
 	return schema.ZoneRRSet{
 		ID:   libserver.TXTRecordName + "/" + libserver.RecordTypeTXT,
 		Name: libserver.TXTRecordName,
 		Type: libserver.RecordTypeTXT,
-		TTL:  ptr(ttl),
+		TTL:  ptr(existingTTL),
 		Records: []schema.ZoneRRSetRecord{
 			{Value: strconv.Quote(libserver.TXTExisting)},
 		},

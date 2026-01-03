@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io"
 	"net/http"
 	"net/http/httptest"
 
@@ -36,7 +35,6 @@ var _ = Describe("HTTPReq", func() {
 	})
 
 	Context("should succeed", func() {
-
 		DescribeTable("creating a new record", func(ctx context.Context, cloudAPI bool, fqdn string, appendHandlers func()) {
 			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, cloudAPI)
 			appendHandlers()
@@ -233,9 +231,6 @@ func doHTTPReqRequest(ctx context.Context, serverURL, username, password string,
 
 	c := &http.Client{}
 	res, err := c.Do(req)
-	Expect(err).ToNot(HaveOccurred())
-
-	_, err = io.ReadAll(res.Body)
 	Expect(err).ToNot(HaveOccurred())
 	Expect(res.Body.Close()).To(Succeed())
 

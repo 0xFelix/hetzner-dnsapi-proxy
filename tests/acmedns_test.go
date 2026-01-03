@@ -37,7 +37,6 @@ var _ = Describe("AcmeDNS", func() {
 	})
 
 	Context("should succeed", func() {
-
 		DescribeTable("creating a new record", func(ctx context.Context, cloudAPI bool, subdomain string, appendHandlers func()) {
 			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, cloudAPI)
 			appendHandlers()
