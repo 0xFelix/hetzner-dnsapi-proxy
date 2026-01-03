@@ -68,7 +68,6 @@ type User struct {
 
 func NewConfig() *Config {
 	return &Config{
-		BaseURL: "https://dns.hetzner.com/api/v1",
 		Timeout: 15,
 		Auth: Auth{
 			Method: AuthMethodBoth,
@@ -83,6 +82,14 @@ func NewConfig() *Config {
 func ParseEnv() (*Config, error) {
 	cfg := NewConfig()
 	cfg.Auth.Method = AuthMethodAllowedDomains
+
+	if cloudAPI, ok := os.LookupEnv("CLOUD_API"); ok {
+		cloudAPIBool, err := strconv.ParseBool(cloudAPI)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse CLOUD_API: %v", err)
+		}
+		cfg.CloudAPI = cloudAPIBool
+	}
 
 	if baseURL, ok := os.LookupEnv("API_BASE_URL"); ok {
 		cfg.BaseURL = baseURL
@@ -140,13 +147,7 @@ func ParseEnv() (*Config, error) {
 		cfg.Debug = debugBool
 	}
 
-	if cloudAPI, ok := os.LookupEnv("CLOUD_API"); ok {
-		cloudAPIBool, err := strconv.ParseBool(cloudAPI)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse CLOUD_API: %v", err)
-		}
-		cfg.CloudAPI = cloudAPIBool
-	}
+	setDefaultBaseURL(cfg)
 
 	return cfg, nil
 }
@@ -183,6 +184,7 @@ func ReadFile(path string) (*Config, error) {
 	}
 
 	setDefaultIPMask(cfg.Auth.AllowedDomains)
+	setDefaultBaseURL(cfg)
 
 	return cfg, nil
 }
@@ -192,6 +194,16 @@ func AuthMethodIsValid(authMethod string) bool {
 		authMethod == AuthMethodUsers ||
 		authMethod == AuthMethodBoth ||
 		authMethod == AuthMethodAny
+}
+
+func setDefaultBaseURL(c *Config) {
+	if c.BaseURL == "" {
+		if c.CloudAPI {
+			c.BaseURL = "https://api.hetzner.cloud/v1"
+		} else {
+			c.BaseURL = "https://dns.hetzner.com/api/v1"
+		}
+	}
 }
 
 func setDefaultIPMask(allowedDomains AllowedDomains) {

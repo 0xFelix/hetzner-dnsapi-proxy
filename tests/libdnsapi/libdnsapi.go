@@ -1,4 +1,4 @@
-package libapi
+package libdnsapi
 
 import (
 	"net/http"
@@ -6,36 +6,18 @@ import (
 	"github.com/onsi/gomega/ghttp"
 
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/hetzner"
+	"github.com/0xfelix/hetzner-dnsapi-proxy/tests/libserver"
 )
 
 const (
-	TLD                   = "tld"
-	ZoneName              = "test.tld"
-	ARecordName           = "asub"
-	ARecordNameFull       = "asub.test.tld"
-	TXTRecordNameNoPrefix = "txtsub.test.tld"
-	TXTRecordName         = "_acme-challenge.txtsub"
-	TXTRecordNameFull     = "_acme-challenge.txtsub.test.tld"
-	DefaultTTL            = 60
-	AExisting             = "127.0.0.1"
-	AUpdated              = "1.2.3.4"
-	TXTExisting           = "randomvalue"
-	TXTUpdated            = "changedrandomvalue"
-	RecordTypeA           = "A"
-	RecordTypeTXT         = "TXT"
-
-	ZoneID      = "1"
-	aRecordID   = "1"
-	txtRecordID = "2"
-
 	headerAuthAPIToken = "Auth-API-Token" //#nosec G101
 )
 
 func Zones() []hetzner.Zone {
 	return []hetzner.Zone{
 		{
-			ID:   ZoneID,
-			Name: ZoneName,
+			ID:   libserver.ZoneID,
+			Name: libserver.ZoneName,
 		},
 	}
 }
@@ -43,63 +25,63 @@ func Zones() []hetzner.Zone {
 func Records() []hetzner.Record {
 	return []hetzner.Record{
 		{
-			ID:     aRecordID,
-			Name:   ARecordName,
-			TTL:    DefaultTTL,
-			Type:   RecordTypeA,
-			Value:  AExisting,
-			ZoneID: ZoneID,
+			ID:     libserver.ARecordID,
+			Name:   libserver.ARecordName,
+			TTL:    libserver.DefaultTTL,
+			Type:   libserver.RecordTypeA,
+			Value:  libserver.AExisting,
+			ZoneID: libserver.ZoneID,
 		},
 		{
-			ID:     txtRecordID,
-			Name:   TXTRecordName,
-			TTL:    DefaultTTL,
-			Type:   RecordTypeTXT,
-			Value:  TXTExisting,
-			ZoneID: ZoneID,
+			ID:     libserver.TXTRecordID,
+			Name:   libserver.TXTRecordName,
+			TTL:    libserver.DefaultTTL,
+			Type:   libserver.RecordTypeTXT,
+			Value:  libserver.TXTExisting,
+			ZoneID: libserver.ZoneID,
 		},
 	}
 }
 
 func NewARecord() hetzner.Record {
 	return hetzner.Record{
-		Name:   ARecordName,
-		TTL:    DefaultTTL,
-		Type:   RecordTypeA,
-		Value:  AUpdated,
-		ZoneID: ZoneID,
+		Name:   libserver.ARecordName,
+		TTL:    libserver.DefaultTTL,
+		Type:   libserver.RecordTypeA,
+		Value:  libserver.AUpdated,
+		ZoneID: libserver.ZoneID,
 	}
 }
 
 func UpdatedARecord() hetzner.Record {
 	return hetzner.Record{
-		ID:     aRecordID,
-		Name:   ARecordName,
-		TTL:    DefaultTTL,
-		Type:   RecordTypeA,
-		Value:  AUpdated,
-		ZoneID: ZoneID,
+		ID:     libserver.ARecordID,
+		Name:   libserver.ARecordName,
+		TTL:    libserver.DefaultTTL,
+		Type:   libserver.RecordTypeA,
+		Value:  libserver.AUpdated,
+		ZoneID: libserver.ZoneID,
 	}
 }
 
 func NewTXTRecord() hetzner.Record {
 	return hetzner.Record{
-		Name:   TXTRecordName,
-		TTL:    DefaultTTL,
-		Type:   RecordTypeTXT,
-		Value:  TXTUpdated,
-		ZoneID: ZoneID,
+		Name:   libserver.TXTRecordName,
+		TTL:    libserver.DefaultTTL,
+		Type:   libserver.RecordTypeTXT,
+		Value:  libserver.TXTUpdated,
+		ZoneID: libserver.ZoneID,
 	}
 }
 
 func UpdatedTXTRecord() hetzner.Record {
 	return hetzner.Record{
-		ID:     txtRecordID,
-		Name:   TXTRecordName,
-		TTL:    DefaultTTL,
-		Type:   RecordTypeTXT,
-		Value:  TXTUpdated,
-		ZoneID: ZoneID,
+		ID:     libserver.TXTRecordID,
+		Name:   libserver.TXTRecordName,
+		TTL:    libserver.DefaultTTL,
+		Type:   libserver.RecordTypeTXT,
+		Value:  libserver.TXTUpdated,
+		ZoneID: libserver.ZoneID,
 	}
 }
 

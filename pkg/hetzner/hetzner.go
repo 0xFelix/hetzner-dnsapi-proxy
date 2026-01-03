@@ -2,12 +2,14 @@ package hetzner
 
 import (
 	"fmt"
+	"net/http"
+	"runtime/debug"
 	"time"
 
 	"github.com/hetznercloud/hcloud-go/v2/hcloud"
-)
 
-const RequestTimeout = 60 * time.Second
+	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/config"
+)
 
 type Zone struct {
 	ID   string `json:"id"`
@@ -29,6 +31,29 @@ type Record struct {
 
 type Records struct {
 	Records []Record `json:"records"`
+}
+
+func NewHCloudClient(cfg *config.Config) *hcloud.Client {
+	version := "dev"
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, setting := range info.Settings {
+			if setting.Key == "vcs.revision" {
+				version = setting.Value
+				break
+			}
+		}
+	}
+
+	opts := []hcloud.ClientOption{
+		hcloud.WithToken(cfg.Token),
+		hcloud.WithHTTPClient(&http.Client{
+			Timeout: time.Duration(cfg.Timeout) * time.Second,
+		}),
+		hcloud.WithApplication("hetzner-dnsapi-proxy", version),
+		hcloud.WithEndpoint(cfg.BaseURL),
+	}
+
+	return hcloud.NewClient(opts...)
 }
 
 func RRSetTypeFromString(rType string) (hcloud.ZoneRRSetType, error) {

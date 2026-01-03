@@ -20,7 +20,7 @@ type cleaner struct {
 func New(cfg *config.Config, m *sync.Mutex) *cleaner {
 	return &cleaner{
 		cfg:    cfg,
-		client: hcloud.NewClient(hcloud.WithToken(cfg.Token)),
+		client: hetzner.NewHCloudClient(cfg),
 		m:      m,
 	}
 }
