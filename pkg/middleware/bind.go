@@ -2,8 +2,10 @@ package middleware
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"strings"
 
@@ -14,6 +16,7 @@ import (
 
 const (
 	recordTypeA           = "A"
+	recordTypeAAAA        = "AAAA"
 	recordTypeTXT         = "TXT"
 	failedParseRequestFmt = "failed to parse request: %v"
 )
@@ -33,6 +36,17 @@ func BindPlain(next http.Handler) http.Handler {
 			return
 		}
 
+		parsedIP := net.ParseIP(ip)
+		if parsedIP == nil {
+			http.Error(w, "invalid ip address", http.StatusBadRequest)
+			return
+		}
+
+		recordType := recordTypeA
+		if parsedIP.To4() == nil {
+			recordType = recordTypeAAAA
+		}
+
 		name, zone, err := SplitFQDN(hostname)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -47,7 +61,7 @@ func BindPlain(next http.Handler) http.Handler {
 					Name:      name,
 					Zone:      zone,
 					Value:     ip,
-					Type:      recordTypeA,
+					Type:      recordType,
 					Username:  username,
 					Password:  password,
 					BasicAuth: true,
@@ -171,8 +185,14 @@ func BindDirectAdmin(next http.Handler) http.Handler {
 		}
 
 		recordType := r.Form.Get("type")
-		if recordType != recordTypeA && recordType != recordTypeTXT {
-			http.Error(w, "type can only be A or TXT", http.StatusBadRequest)
+		if recordType != recordTypeA && recordType != recordTypeAAAA && recordType != recordTypeTXT {
+			http.Error(w, "type can only be A, AAAA or TXT", http.StatusBadRequest)
+			return
+		}
+
+		value := r.Form.Get("value")
+		if err := validateValue(value, recordType); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
@@ -194,7 +214,7 @@ func BindDirectAdmin(next http.Handler) http.Handler {
 					FullName:  fqdn,
 					Name:      name,
 					Zone:      zone,
-					Value:     r.Form.Get("value"),
+					Value:     value,
 					Type:      recordType,
 					Username:  username,
 					Password:  password,
@@ -203,6 +223,22 @@ func BindDirectAdmin(next http.Handler) http.Handler {
 			)),
 		)
 	})
+}
+
+func validateValue(value, recordType string) error {
+	if recordType == recordTypeA || recordType == recordTypeAAAA {
+		parsedIP := net.ParseIP(value)
+		if parsedIP == nil {
+			return errors.New("invalid ip address")
+		}
+		if recordType == recordTypeA && parsedIP.To4() == nil {
+			return errors.New("invalid ipv4 address")
+		}
+		if recordType == recordTypeAAAA && parsedIP.To4() != nil {
+			return errors.New("invalid ipv6 address")
+		}
+	}
+	return nil
 }
 
 func SplitFQDN(fqdn string) (name, zone string, err error) {
