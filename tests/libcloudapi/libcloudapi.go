@@ -33,7 +33,7 @@ func ExistingRRSetA() schema.ZoneRRSet {
 		Type: libserver.RecordTypeA,
 		TTL:  ptr(existingTTL),
 		Records: []schema.ZoneRRSetRecord{
-			{Value: strconv.Quote(libserver.AExisting)},
+			{Value: libserver.AExisting},
 		},
 		Zone: mustParseInt(libserver.ZoneID),
 	}
@@ -58,7 +58,7 @@ func NewRRSetA() schema.ZoneRRSet {
 		Type: libserver.RecordTypeA,
 		TTL:  ptr(libserver.DefaultTTL),
 		Records: []schema.ZoneRRSetRecord{
-			{Value: strconv.Quote(libserver.AUpdated)},
+			{Value: libserver.AUpdated},
 		},
 		Zone: mustParseInt(libserver.ZoneID),
 	}

@@ -63,7 +63,7 @@ func (u *updater) updateRRSet(ctx context.Context, rrSet *hcloud.ZoneRRSet, val 
 
 	opts := hcloud.ZoneRRSetSetRecordsOpts{
 		Records: []hcloud.ZoneRRSetRecord{{
-			Value: strconv.Quote(val),
+			Value: quoteIfRequired(val, rrSet.Type),
 		}},
 	}
 	_, _, err := u.client.Zone.SetRRSetRecords(ctx, rrSet, opts)
@@ -76,9 +76,16 @@ func (u *updater) createRRSet(ctx context.Context, zone *hcloud.Zone, rrSetType 
 		Type: rrSetType,
 		TTL:  &u.cfg.RecordTTL,
 		Records: []hcloud.ZoneRRSetRecord{{
-			Value: strconv.Quote(val),
+			Value: quoteIfRequired(val, rrSetType),
 		}},
 	}
 	_, _, err := u.client.Zone.CreateRRSet(ctx, zone, opts)
 	return err
+}
+
+func quoteIfRequired(val string, rrSetType hcloud.ZoneRRSetType) string {
+	if rrSetType == hcloud.ZoneRRSetTypeTXT {
+		return strconv.Quote(val)
+	}
+	return val
 }
