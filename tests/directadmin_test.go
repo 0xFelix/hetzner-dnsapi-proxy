@@ -48,9 +48,12 @@ var _ = Describe("DirectAdmin", func() {
 
 			if cloudAPI {
 				var newRRSet func() schema.ZoneRRSet
-				if recordType == libserver.RecordTypeA {
+				switch recordType {
+				case libserver.RecordTypeA:
 					newRRSet = libcloudapi.NewRRSetA
-				} else {
+				case libserver.RecordTypeAAAA:
+					newRRSet = libcloudapi.NewRRSetAAAA
+				case libserver.RecordTypeTXT:
 					newRRSet = libcloudapi.NewRRSetTXT
 				}
 				api.AppendHandlers(
@@ -60,9 +63,12 @@ var _ = Describe("DirectAdmin", func() {
 				)
 			} else {
 				var newRecord hetzner.Record
-				if recordType == libserver.RecordTypeA {
+				switch recordType {
+				case libserver.RecordTypeA:
 					newRecord = libdnsapi.NewARecord()
-				} else {
+				case libserver.RecordTypeAAAA:
+					newRecord = libdnsapi.NewAAAARecord()
+				case libserver.RecordTypeTXT:
 					newRecord = libdnsapi.NewTXTRecord()
 				}
 				api.AppendHandlers(
@@ -91,6 +97,10 @@ var _ = Describe("DirectAdmin", func() {
 				libserver.ARecordNameFull, "", libserver.RecordTypeA, libserver.AUpdated),
 			Entry("DNS API: A record with fqdn from name and domain", false,
 				libserver.ZoneName, libserver.ARecordName, libserver.RecordTypeA, libserver.AUpdated),
+			Entry("DNS API: AAAA record with fqdn in domain", false,
+				libserver.AAAARecordNameFull, "", libserver.RecordTypeAAAA, libserver.AAAAUpdated),
+			Entry("DNS API: AAAA record with fqdn from name and domain", false,
+				libserver.ZoneName, libserver.AAAARecordName, libserver.RecordTypeAAAA, libserver.AAAAUpdated),
 			Entry("DNS API: TXT record with fqdn in domain", false,
 				libserver.TXTRecordNameFull, "", libserver.RecordTypeTXT, libserver.TXTUpdated),
 			Entry("DNS API: TXT record with fqdn from name and domain", false,
@@ -99,6 +109,10 @@ var _ = Describe("DirectAdmin", func() {
 				libserver.ARecordNameFull, "", libserver.RecordTypeA, libserver.AUpdated),
 			Entry("Cloud API: A record with fqdn from name and domain", true,
 				libserver.ZoneName, libserver.ARecordName, libserver.RecordTypeA, libserver.AUpdated),
+			Entry("Cloud API: AAAA record with fqdn in domain", true,
+				libserver.AAAARecordNameFull, "", libserver.RecordTypeAAAA, libserver.AAAAUpdated),
+			Entry("Cloud API: AAAA record with fqdn from name and domain", true,
+				libserver.ZoneName, libserver.AAAARecordName, libserver.RecordTypeAAAA, libserver.AAAAUpdated),
 			Entry("Cloud API: TXT record with fqdn in domain", true,
 				libserver.TXTRecordNameFull, "", libserver.RecordTypeTXT, libserver.TXTUpdated),
 			Entry("Cloud API: TXT record with fqdn from name and domain", true,
@@ -113,10 +127,14 @@ var _ = Describe("DirectAdmin", func() {
 			if cloudAPI {
 				var existingRRSet func() schema.ZoneRRSet
 				var updatedRRSet func() schema.ZoneRRSet
-				if recordType == libserver.RecordTypeA {
+				switch recordType {
+				case libserver.RecordTypeA:
 					existingRRSet = libcloudapi.ExistingRRSetA
 					updatedRRSet = libcloudapi.UpdatedRRSetA
-				} else {
+				case libserver.RecordTypeAAAA:
+					existingRRSet = libcloudapi.ExistingRRSetAAAA
+					updatedRRSet = libcloudapi.UpdatedRRSetAAAA
+				case libserver.RecordTypeTXT:
 					existingRRSet = libcloudapi.ExistingRRSetTXT
 					updatedRRSet = libcloudapi.UpdatedRRSetTXT
 				}
@@ -128,9 +146,12 @@ var _ = Describe("DirectAdmin", func() {
 				)
 			} else {
 				var updatedRecord hetzner.Record
-				if recordType == libserver.RecordTypeA {
+				switch recordType {
+				case libserver.RecordTypeA:
 					updatedRecord = libdnsapi.UpdatedARecord()
-				} else {
+				case libserver.RecordTypeAAAA:
+					updatedRecord = libdnsapi.UpdatedAAAARecord()
+				case libserver.RecordTypeTXT:
 					updatedRecord = libdnsapi.UpdatedTXTRecord()
 				}
 				api.AppendHandlers(
@@ -163,6 +184,10 @@ var _ = Describe("DirectAdmin", func() {
 				libserver.ARecordNameFull, "", libserver.RecordTypeA, libserver.AUpdated),
 			Entry("DNS API: A record with fqdn from name and domain", false,
 				libserver.ZoneName, libserver.ARecordName, libserver.RecordTypeA, libserver.AUpdated),
+			Entry("DNS API: AAAA record with fqdn in domain", false,
+				libserver.AAAARecordNameFull, "", libserver.RecordTypeAAAA, libserver.AAAAUpdated),
+			Entry("DNS API: AAAA record with fqdn from name and domain", false,
+				libserver.ZoneName, libserver.AAAARecordName, libserver.RecordTypeAAAA, libserver.AAAAUpdated),
 			Entry("DNS API: TXT record with fqdn in domain", false,
 				libserver.TXTRecordNameFull, "", libserver.RecordTypeTXT, libserver.TXTUpdated),
 			Entry("DNS API: TXT record with fqdn from name and domain", false,
@@ -171,6 +196,10 @@ var _ = Describe("DirectAdmin", func() {
 				libserver.ARecordNameFull, "", libserver.RecordTypeA, libserver.AUpdated),
 			Entry("Cloud API: A record with fqdn from name and domain", true,
 				libserver.ZoneName, libserver.ARecordName, libserver.RecordTypeA, libserver.AUpdated),
+			Entry("Cloud API: AAAA record with fqdn in domain", true,
+				libserver.AAAARecordNameFull, "", libserver.RecordTypeAAAA, libserver.AAAAUpdated),
+			Entry("Cloud API: AAAA record with fqdn from name and domain", true,
+				libserver.ZoneName, libserver.AAAARecordName, libserver.RecordTypeAAAA, libserver.AAAAUpdated),
 			Entry("Cloud API: TXT record with fqdn in domain", true,
 				libserver.TXTRecordNameFull, "", libserver.RecordTypeTXT, libserver.TXTUpdated),
 			Entry("Cloud API: TXT record with fqdn from name and domain", true,
@@ -272,7 +301,7 @@ var _ = Describe("DirectAdmin", func() {
 				Entry("Cloud API", true),
 			)
 
-			DescribeTable("when type is not A or TXT", func(ctx context.Context, cloudAPI bool) {
+			DescribeTable("when type is not A, AAAA or TXT", func(ctx context.Context, cloudAPI bool) {
 				server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, cloudAPI)
 				statusCode, resData := doDirectAdminRequest(ctx, server.URL+"/directadmin/CMD_API_DNS_CONTROL", username, password,
 					url.Values{
@@ -284,10 +313,34 @@ var _ = Describe("DirectAdmin", func() {
 					},
 				)
 				Expect(statusCode).To(Equal(http.StatusBadRequest))
-				Expect(resData).To(Equal("type can only be A or TXT\n"))
+				Expect(resData).To(Equal("type can only be A, AAAA or TXT\n"))
 			},
 				Entry("DNS API", false),
 				Entry("Cloud API", true),
+			)
+
+			DescribeTable("when ip is invalid", func(ctx context.Context, recordType, value, expectedError string, cloudAPI bool) {
+				server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, cloudAPI)
+				statusCode, resData := doDirectAdminRequest(ctx, server.URL+"/directadmin/CMD_API_DNS_CONTROL", username, password,
+					url.Values{
+						"action": []string{"add"},
+						"domain": []string{libserver.ZoneName},
+						"type":   []string{recordType},
+						"name":   []string{libserver.ARecordName},
+						"value":  []string{value},
+					},
+				)
+				Expect(statusCode).To(Equal(http.StatusBadRequest))
+				Expect(resData).To(Equal(expectedError + "\n"))
+			},
+				Entry("DNS API: A with invalid IP", libserver.RecordTypeA, "invalid", "invalid ip address", false),
+				Entry("DNS API: A with IPv6", libserver.RecordTypeA, libserver.AAAAUpdated, "invalid ipv4 address", false),
+				Entry("DNS API: AAAA with invalid IP", libserver.RecordTypeAAAA, "invalid", "invalid ip address", false),
+				Entry("DNS API: AAAA with IPv4", libserver.RecordTypeAAAA, libserver.AUpdated, "invalid ipv6 address", false),
+				Entry("Cloud API: A with invalid IP", libserver.RecordTypeA, "invalid", "invalid ip address", true),
+				Entry("Cloud API: A with IPv6", libserver.RecordTypeA, libserver.AAAAUpdated, "invalid ipv4 address", true),
+				Entry("Cloud API: AAAA with invalid IP", libserver.RecordTypeAAAA, "invalid", "invalid ip address", true),
+				Entry("Cloud API: AAAA with IPv4", libserver.RecordTypeAAAA, libserver.AUpdated, "invalid ipv6 address", true),
 			)
 
 			DescribeTable("when domain is malformed and name is empty", func(ctx context.Context, cloudAPI bool) {
@@ -310,13 +363,20 @@ var _ = Describe("DirectAdmin", func() {
 
 			DescribeTable("when access is denied", func(ctx context.Context, domain, name, recordType string, cloudAPI bool) {
 				server = libserver.NewNoAllowedDomains(api.URL(), cloudAPI)
+				value := "something"
+				switch recordType {
+				case libserver.RecordTypeA:
+					value = libserver.AUpdated
+				case libserver.RecordTypeAAAA:
+					value = libserver.AAAAUpdated
+				}
 				statusCode, resData := doDirectAdminRequest(ctx, server.URL+"/directadmin/CMD_API_DNS_CONTROL", username, password,
 					url.Values{
 						"action": []string{"add"},
 						"domain": []string{domain},
 						"type":   []string{recordType},
 						"name":   []string{name},
-						"value":  []string{"something"},
+						"value":  []string{value},
 					},
 				)
 				Expect(statusCode).To(Equal(http.StatusUnauthorized))

@@ -34,6 +34,7 @@ var _ = Describe("Plain", func() {
 	})
 
 	Context("should succeed", func() {
+		//nolint:dupl
 		DescribeTable("creating a new record", func(ctx context.Context, cloudAPI bool) {
 			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, cloudAPI)
 
@@ -62,6 +63,36 @@ var _ = Describe("Plain", func() {
 			Entry("Cloud API", true),
 		)
 
+		//nolint:dupl
+		DescribeTable("creating a new AAAA record", func(ctx context.Context, cloudAPI bool) {
+			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, cloudAPI)
+
+			if cloudAPI {
+				api.AppendHandlers(
+					libcloudapi.GetZone(token, libcloudapi.Zone()),
+					libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.NewRRSetAAAA(), false),
+					libcloudapi.CreateRRSet(token, libcloudapi.Zone(), libcloudapi.NewRRSetAAAA()),
+				)
+			} else {
+				api.AppendHandlers(
+					libdnsapi.GetZones(token, libdnsapi.Zones()),
+					libdnsapi.GetRecords(token, libserver.ZoneID, nil),
+					libdnsapi.PostRecord(token, libdnsapi.NewAAAARecord()),
+				)
+			}
+
+			Expect(doPlainRequest(ctx, server.URL+"/plain/update", username, password, url.Values{
+				"hostname": []string{libserver.AAAARecordNameFull},
+				"ip":       []string{libserver.AAAAUpdated},
+			})).To(Equal(http.StatusOK))
+
+			Expect(api.ReceivedRequests()).To(HaveLen(3))
+		},
+			Entry("DNS API", false),
+			Entry("Cloud API", true),
+		)
+
+		//nolint:dupl
 		DescribeTable("updating an existing record", func(ctx context.Context, cloudAPI bool) {
 			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, cloudAPI)
 
@@ -94,6 +125,40 @@ var _ = Describe("Plain", func() {
 			Entry("DNS API", false),
 			Entry("Cloud API", true),
 		)
+
+		//nolint:dupl
+		DescribeTable("updating an existing AAAA record", func(ctx context.Context, cloudAPI bool) {
+			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, cloudAPI)
+
+			if cloudAPI {
+				api.AppendHandlers(
+					libcloudapi.GetZone(token, libcloudapi.Zone()),
+					libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.ExistingRRSetAAAA(), true),
+					libcloudapi.ChangeRRSetTTL(token, libcloudapi.Zone(), libcloudapi.UpdatedRRSetAAAA()),
+					libcloudapi.SetRRSetRecords(token, libcloudapi.Zone(), libcloudapi.UpdatedRRSetAAAA()),
+				)
+			} else {
+				api.AppendHandlers(
+					libdnsapi.GetZones(token, libdnsapi.Zones()),
+					libdnsapi.GetRecords(token, libserver.ZoneID, libdnsapi.Records()),
+					libdnsapi.PutRecord(token, libdnsapi.UpdatedAAAARecord()),
+				)
+			}
+
+			Expect(doPlainRequest(ctx, server.URL+"/plain/update", username, password, url.Values{
+				"hostname": []string{libserver.AAAARecordNameFull},
+				"ip":       []string{libserver.AAAAUpdated},
+			})).To(Equal(http.StatusOK))
+
+			if cloudAPI {
+				Expect(api.ReceivedRequests()).To(HaveLen(4))
+			} else {
+				Expect(api.ReceivedRequests()).To(HaveLen(3))
+			}
+		},
+			Entry("DNS API", false),
+			Entry("Cloud API", true),
+		)
 	})
 
 	Context("should make no api calls and should fail", func() {
@@ -115,6 +180,17 @@ var _ = Describe("Plain", func() {
 			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, cloudAPI)
 			Expect(doPlainRequest(ctx, server.URL+"/plain/update", username, password, url.Values{
 				"hostname": []string{libserver.ARecordNameFull},
+			})).To(Equal(http.StatusBadRequest))
+		},
+			Entry("DNS API", false),
+			Entry("Cloud API", true),
+		)
+
+		DescribeTable("when ip is invalid", func(ctx context.Context, cloudAPI bool) {
+			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL, cloudAPI)
+			Expect(doPlainRequest(ctx, server.URL+"/plain/update", username, password, url.Values{
+				"hostname": []string{libserver.ARecordNameFull},
+				"ip":       []string{"invalid"},
 			})).To(Equal(http.StatusBadRequest))
 		},
 			Entry("DNS API", false),

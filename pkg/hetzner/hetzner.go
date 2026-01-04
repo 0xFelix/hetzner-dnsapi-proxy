@@ -59,10 +59,10 @@ func NewHCloudClient(cfg *config.Config) *hcloud.Client {
 func RRSetTypeFromString(rType string) (hcloud.ZoneRRSetType, error) {
 	switch rrType := hcloud.ZoneRRSetType(rType); rrType {
 	case hcloud.ZoneRRSetTypeA,
+		hcloud.ZoneRRSetTypeAAAA,
 		hcloud.ZoneRRSetTypeTXT:
 		return rrType, nil
-	case hcloud.ZoneRRSetTypeAAAA,
-		hcloud.ZoneRRSetTypeCAA,
+	case hcloud.ZoneRRSetTypeCAA,
 		hcloud.ZoneRRSetTypeCNAME,
 		hcloud.ZoneRRSetTypeDS,
 		hcloud.ZoneRRSetTypeHINFO,

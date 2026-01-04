@@ -33,6 +33,14 @@ func Records() []hetzner.Record {
 			ZoneID: libserver.ZoneID,
 		},
 		{
+			ID:     libserver.AAAARecordID,
+			Name:   libserver.AAAARecordName,
+			TTL:    libserver.DefaultTTL,
+			Type:   libserver.RecordTypeAAAA,
+			Value:  libserver.AAAAExisting,
+			ZoneID: libserver.ZoneID,
+		},
+		{
 			ID:     libserver.TXTRecordID,
 			Name:   libserver.TXTRecordName,
 			TTL:    libserver.DefaultTTL,
@@ -60,6 +68,27 @@ func UpdatedARecord() hetzner.Record {
 		TTL:    libserver.DefaultTTL,
 		Type:   libserver.RecordTypeA,
 		Value:  libserver.AUpdated,
+		ZoneID: libserver.ZoneID,
+	}
+}
+
+func NewAAAARecord() hetzner.Record {
+	return hetzner.Record{
+		Name:   libserver.AAAARecordName,
+		TTL:    libserver.DefaultTTL,
+		Type:   libserver.RecordTypeAAAA,
+		Value:  libserver.AAAAUpdated,
+		ZoneID: libserver.ZoneID,
+	}
+}
+
+func UpdatedAAAARecord() hetzner.Record {
+	return hetzner.Record{
+		ID:     libserver.AAAARecordID,
+		Name:   libserver.AAAARecordName,
+		TTL:    libserver.DefaultTTL,
+		Type:   libserver.RecordTypeAAAA,
+		Value:  libserver.AAAAUpdated,
 		ZoneID: libserver.ZoneID,
 	}
 }

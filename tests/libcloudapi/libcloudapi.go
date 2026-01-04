@@ -39,6 +39,19 @@ func ExistingRRSetA() schema.ZoneRRSet {
 	}
 }
 
+func ExistingRRSetAAAA() schema.ZoneRRSet {
+	return schema.ZoneRRSet{
+		ID:   libserver.AAAARecordName + "/" + libserver.RecordTypeAAAA,
+		Name: libserver.AAAARecordName,
+		Type: libserver.RecordTypeAAAA,
+		TTL:  ptr(existingTTL),
+		Records: []schema.ZoneRRSetRecord{
+			{Value: libserver.AAAAExisting},
+		},
+		Zone: mustParseInt(libserver.ZoneID),
+	}
+}
+
 func ExistingRRSetTXT() schema.ZoneRRSet {
 	return schema.ZoneRRSet{
 		ID:   libserver.TXTRecordName + "/" + libserver.RecordTypeTXT,
@@ -67,6 +80,24 @@ func NewRRSetA() schema.ZoneRRSet {
 func UpdatedRRSetA() schema.ZoneRRSet {
 	r := NewRRSetA()
 	r.ID = libserver.ARecordName + "/" + libserver.RecordTypeA
+	return r
+}
+
+func NewRRSetAAAA() schema.ZoneRRSet {
+	return schema.ZoneRRSet{
+		Name: libserver.AAAARecordName,
+		Type: libserver.RecordTypeAAAA,
+		TTL:  ptr(libserver.DefaultTTL),
+		Records: []schema.ZoneRRSetRecord{
+			{Value: libserver.AAAAUpdated},
+		},
+		Zone: mustParseInt(libserver.ZoneID),
+	}
+}
+
+func UpdatedRRSetAAAA() schema.ZoneRRSet {
+	r := NewRRSetAAAA()
+	r.ID = libserver.AAAARecordName + "/" + libserver.RecordTypeAAAA
 	return r
 }
 
@@ -175,7 +206,7 @@ func RemoveRRSetRecords(token string, zone schema.Zone, rrSet schema.ZoneRRSet) 
 			headerAuthorization: []string{authBearerPrefix + token},
 		}),
 		ghttp.VerifyJSONRepresenting(schema.ZoneRRSetRemoveRecordsRequest{
-			Records: rrSet.Records, // Simplified: assume we remove what we expect
+			Records: rrSet.Records,
 		}),
 		getResponseSuccess(),
 	)
