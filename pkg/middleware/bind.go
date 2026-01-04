@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strings"
 
+	"golang.org/x/net/publicsuffix"
+
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/data"
 )
 
@@ -204,16 +206,15 @@ func BindDirectAdmin(next http.Handler) http.Handler {
 }
 
 func SplitFQDN(fqdn string) (name, zone string, err error) {
-	parts := strings.Split(fqdn, ".")
-	length := len(parts)
-
-	const zoneParts = 2
-	if length < zoneParts {
+	zone, err = publicsuffix.EffectiveTLDPlusOne(fqdn)
+	if err != nil {
 		return "", "", fmt.Errorf("invalid fqdn: %s", fqdn)
 	}
 
-	name = strings.Join(parts[:length-zoneParts], ".")
-	zone = strings.Join(parts[length-zoneParts:], ".")
+	if fqdn == zone {
+		return "", zone, nil
+	}
 
+	name = strings.TrimSuffix(fqdn, "."+zone)
 	return name, zone, nil
 }
