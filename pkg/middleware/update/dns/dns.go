@@ -75,7 +75,7 @@ func (u *updater) Update(ctx context.Context, reqData *data.ReqData) error {
 	return u.createRecord(ctx, &r)
 }
 
-func (u *updater) getRequest(ctx context.Context, url string) ([]byte, error) {
+func (u *updater) getRequest(ctx context.Context, url string) (body []byte, err error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return nil, err
@@ -94,7 +94,7 @@ func (u *updater) getRequest(ctx context.Context, url string) ([]byte, error) {
 		return nil, fmt.Errorf(requestFailedFmt, http.MethodGet, res.StatusCode)
 	}
 
-	body, err := io.ReadAll(res.Body)
+	body, err = io.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +102,7 @@ func (u *updater) getRequest(ctx context.Context, url string) ([]byte, error) {
 	return body, err
 }
 
-func (u *updater) jsonRequest(ctx context.Context, method, url string, body []byte) error {
+func (u *updater) jsonRequest(ctx context.Context, method, url string, body []byte) (err error) {
 	req, err := http.NewRequestWithContext(ctx, method, url, bytes.NewReader(body))
 	if err != nil {
 		return err
