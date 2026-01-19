@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/goccy/go-yaml v1.19.2
-	github.com/hetznercloud/hcloud-go/v2 v2.34.0
+	github.com/hetznercloud/hcloud-go/v2 v2.35.0
 	github.com/onsi/ginkgo/v2 v2.27.5
 	github.com/onsi/gomega v1.39.0
 	golang.org/x/net v0.49.0
