@@ -45,8 +45,15 @@ func (u *cleaner) Clean(ctx context.Context, reqData *data.ReqData) error {
 		return err
 	}
 
-	_, _, err = u.client.Zone.RemoveRRSetRecords(ctx, rrSet, hcloud.ZoneRRSetRemoveRecordsOpts{
+	action, _, err := u.client.Zone.RemoveRRSetRecords(ctx, rrSet, hcloud.ZoneRRSetRemoveRecordsOpts{
 		Records: rrSet.Records,
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	if action != nil {
+		return u.client.Action.WaitFor(ctx, action)
+	}
+
+	return nil
 }
