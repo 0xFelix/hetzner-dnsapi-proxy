@@ -46,7 +46,7 @@ The supported authorization methods are:
 
 ```yaml
 token: verysecrettoken
-timeout: 15
+timeout: 60
 auth:
   method: both
   allowedDomains:

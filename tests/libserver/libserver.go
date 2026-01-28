@@ -21,6 +21,7 @@ func New(url string, ttl int, cloudAPI bool) (server *httptest.Server, token, us
 	cfg := &config.Config{
 		BaseURL: url + "/v1",
 		Token:   token,
+		Timeout: 10,
 		Auth: config.Auth{
 			Method: config.AuthMethodBoth,
 			AllowedDomains: config.AllowedDomains{

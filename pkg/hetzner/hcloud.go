@@ -2,9 +2,7 @@ package hetzner
 
 import (
 	"fmt"
-	"net/http"
 	"runtime/debug"
-	"time"
 
 	"github.com/hetznercloud/hcloud-go/v2/hcloud"
 
@@ -24,9 +22,6 @@ func NewHCloudClient(cfg *config.Config) *hcloud.Client {
 
 	opts := []hcloud.ClientOption{
 		hcloud.WithToken(cfg.Token),
-		hcloud.WithHTTPClient(&http.Client{
-			Timeout: time.Duration(cfg.Timeout) * time.Second,
-		}),
 		hcloud.WithApplication("hetzner-dnsapi-proxy", version),
 		hcloud.WithEndpoint(cfg.BaseURL),
 	}

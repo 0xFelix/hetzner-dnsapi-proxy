@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/config"
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/data"
@@ -34,7 +35,9 @@ func New(cfg *config.Config, m *sync.Mutex) func(http.Handler) http.Handler {
 			}
 
 			log.Printf("received request to update '%s' data of '%s' to '%s'", reqData.Type, reqData.FullName, reqData.Value)
-			if err := u.Update(r.Context(), reqData); err != nil {
+			ctx, cancel := context.WithTimeout(r.Context(), time.Duration(cfg.Timeout)*time.Second)
+			defer cancel()
+			if err := u.Update(ctx, reqData); err != nil {
 				log.Printf("failed to update record: %v", err)
 				w.WriteHeader(http.StatusInternalServerError)
 				return
