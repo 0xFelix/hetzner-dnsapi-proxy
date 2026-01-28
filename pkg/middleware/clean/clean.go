@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/config"
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/data"
@@ -34,7 +35,9 @@ func New(cfg *config.Config, m *sync.Mutex) func(http.Handler) http.Handler {
 			}
 
 			log.Printf("received request to clean '%s' data of '%s'", reqData.Type, reqData.FullName)
-			if err := c.Clean(r.Context(), reqData); err != nil {
+			ctx, cancel := context.WithTimeout(r.Context(), time.Duration(cfg.Timeout)*time.Second)
+			defer cancel()
+			if err := c.Clean(ctx, reqData); err != nil {
 				log.Printf("failed to clean record: %v", err)
 				w.WriteHeader(http.StatusInternalServerError)
 				return

@@ -68,7 +68,7 @@ type User struct {
 
 func NewConfig() *Config {
 	return &Config{
-		Timeout: 15,
+		Timeout: 60,
 		Auth: Auth{
 			Method: AuthMethodBoth,
 		},
