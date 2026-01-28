@@ -56,8 +56,14 @@ func (u *updater) Update(ctx context.Context, reqData *data.ReqData) error {
 func (u *updater) updateRRSet(ctx context.Context, rrSet *hcloud.ZoneRRSet, val string) error {
 	if rrSet.TTL == nil || *rrSet.TTL != u.cfg.RecordTTL {
 		opts := hcloud.ZoneRRSetChangeTTLOpts{TTL: &u.cfg.RecordTTL}
-		if _, _, err := u.client.Zone.ChangeRRSetTTL(ctx, rrSet, opts); err != nil {
+		action, _, err := u.client.Zone.ChangeRRSetTTL(ctx, rrSet, opts)
+		if err != nil {
 			return err
+		}
+		if action != nil {
+			if err := u.client.Action.WaitFor(ctx, action); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -66,8 +72,15 @@ func (u *updater) updateRRSet(ctx context.Context, rrSet *hcloud.ZoneRRSet, val 
 			Value: quoteIfRequired(val, rrSet.Type),
 		}},
 	}
-	_, _, err := u.client.Zone.SetRRSetRecords(ctx, rrSet, opts)
-	return err
+	action, _, err := u.client.Zone.SetRRSetRecords(ctx, rrSet, opts)
+	if err != nil {
+		return err
+	}
+	if action != nil {
+		return u.client.Action.WaitFor(ctx, action)
+	}
+
+	return nil
 }
 
 func (u *updater) createRRSet(ctx context.Context, zone *hcloud.Zone, rrSetType hcloud.ZoneRRSetType, name, val string) error {
@@ -79,8 +92,15 @@ func (u *updater) createRRSet(ctx context.Context, zone *hcloud.Zone, rrSetType 
 			Value: quoteIfRequired(val, rrSetType),
 		}},
 	}
-	_, _, err := u.client.Zone.CreateRRSet(ctx, zone, opts)
-	return err
+	result, _, err := u.client.Zone.CreateRRSet(ctx, zone, opts)
+	if err != nil {
+		return err
+	}
+	if result.Action != nil {
+		return u.client.Action.WaitFor(ctx, result.Action)
+	}
+
+	return nil
 }
 
 func quoteIfRequired(val string, rrSetType hcloud.ZoneRRSetType) string {
