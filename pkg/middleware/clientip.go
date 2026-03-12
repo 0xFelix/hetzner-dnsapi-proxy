@@ -6,6 +6,8 @@ import (
 	"net/netip"
 	"slices"
 	"strings"
+
+	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/sanitize"
 )
 
 func NewSetClientIP(trustedProxies []string) func(http.Handler) http.Handler {
@@ -13,7 +15,9 @@ func NewSetClientIP(trustedProxies []string) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			addrPort, err := netip.ParseAddrPort(r.RemoteAddr)
 			if err != nil {
-				log.Printf("failed to parse remote address %s: %v", r.RemoteAddr, err)
+				addr := sanitize.LogValue(r.RemoteAddr)
+				//nolint:gosec // value is sanitized above
+				log.Printf("failed to parse remote address %s: %v", addr, err)
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}

@@ -12,6 +12,7 @@ import (
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/middleware"
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/middleware/clean"
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/middleware/update"
+	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/sanitize"
 )
 
 type loggingResponseWriter struct {
@@ -71,9 +72,10 @@ func chain(handlers []func(http.Handler) http.Handler) http.Handler {
 
 func logRequest(r *http.Request, start time.Time, statusCode int) {
 	const methodWidth = 8
-	methodPadding := strings.Repeat(" ", methodWidth-len(r.Method))
-	log.Printf(
-		"| %d | %13v | %15s | %s \"%s\"",
-		statusCode, time.Since(start), r.RemoteAddr, r.Method+methodPadding, r.URL,
-	)
+	addr := sanitize.LogValue(r.RemoteAddr)
+	method := sanitize.LogValue(r.Method)
+	methodPadding := strings.Repeat(" ", max(0, methodWidth-len(method)))
+	url := sanitize.LogValue(r.URL.String())
+	//nolint:gosec // values are sanitized above
+	log.Printf("| %d | %13v | %15s | %s \"%s\"", statusCode, time.Since(start), addr, method+methodPadding, url)
 }
