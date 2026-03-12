@@ -2,9 +2,12 @@ package middleware
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
+
+	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/sanitize"
 )
 
 func LogDebug(next http.Handler) http.Handler {
@@ -18,7 +21,9 @@ func LogDebug(next http.Handler) http.Handler {
 		}
 		r.Body = io.NopCloser(&buf)
 		log.Printf("BODY %s", string(body))
-		log.Printf("HEADER %+v", r.Header)
+		header := sanitize.LogValue(fmt.Sprintf("%+v", r.Header))
+		//nolint:gosec // value is sanitized above
+		log.Printf("HEADER %s", header)
 		next.ServeHTTP(w, r)
 	})
 }

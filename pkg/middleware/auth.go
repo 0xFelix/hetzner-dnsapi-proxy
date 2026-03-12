@@ -9,6 +9,7 @@ import (
 
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/config"
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/data"
+	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/sanitize"
 )
 
 func NewAuthorizer(cfg *config.Config) func(http.Handler) http.Handler {
@@ -22,8 +23,12 @@ func NewAuthorizer(cfg *config.Config) func(http.Handler) http.Handler {
 			}
 
 			if !CheckPermission(cfg, reqData, r.RemoteAddr) {
-				log.Printf("client '%s' is not allowed to update '%s' data of '%s' to '%s'",
-					r.RemoteAddr, reqData.Type, reqData.FullName, reqData.Value)
+				addr := sanitize.LogValue(r.RemoteAddr)
+				typ := sanitize.LogValue(reqData.Type)
+				name := sanitize.LogValue(reqData.FullName)
+				val := sanitize.LogValue(reqData.Value)
+				//nolint:gosec // values are sanitized above
+				log.Printf("client '%s' is not allowed to update '%s' data of '%s' to '%s'", addr, typ, name, val)
 				if cfg.Auth.Method != config.AuthMethodAllowedDomains && reqData.BasicAuth {
 					w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
 				}

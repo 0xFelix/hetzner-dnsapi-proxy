@@ -19,10 +19,12 @@ const (
 	recordTypeAAAA        = "AAAA"
 	recordTypeTXT         = "TXT"
 	failedParseRequestFmt = "failed to parse request: %v"
+	maxRequestBodySize    = 1 << 10 // 1 KB
 )
 
 func BindPlain(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 		if err := r.ParseForm(); err != nil {
 			log.Printf(failedParseRequestFmt, err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -73,6 +75,7 @@ func BindPlain(next http.Handler) http.Handler {
 
 func BindAcmeDNS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 		d := &struct {
 			Subdomain string `json:"subdomain"`
 			TXT       string `json:"txt"`
@@ -120,6 +123,7 @@ func BindAcmeDNS(next http.Handler) http.Handler {
 
 func BindHTTPReq(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 		d := &struct {
 			FQDN  string `json:"fqdn"`
 			Value string `json:"value"`
@@ -166,6 +170,7 @@ func BindHTTPReq(next http.Handler) http.Handler {
 
 func BindDirectAdmin(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 		if err := r.ParseForm(); err != nil {
 			log.Printf(failedParseRequestFmt, err)
 			w.WriteHeader(http.StatusInternalServerError)
