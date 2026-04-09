@@ -44,7 +44,6 @@ type Config struct {
 	ListenAddr     string   `yaml:"listenAddr"`
 	TrustedProxies []string `yaml:"trustedProxies"`
 	Debug          bool     `yaml:"debug"`
-	CloudAPI       bool     `yaml:"cloudAPI"`
 }
 
 type Auth struct {
@@ -78,18 +77,9 @@ func NewConfig() *Config {
 	}
 }
 
-//nolint:gocyclo
 func ParseEnv() (*Config, error) {
 	cfg := NewConfig()
 	cfg.Auth.Method = AuthMethodAllowedDomains
-
-	if cloudAPI, ok := os.LookupEnv("CLOUD_API"); ok {
-		cloudAPIBool, err := strconv.ParseBool(cloudAPI)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse CLOUD_API: %v", err)
-		}
-		cfg.CloudAPI = cloudAPIBool
-	}
 
 	if baseURL, ok := os.LookupEnv("API_BASE_URL"); ok {
 		cfg.BaseURL = baseURL
@@ -198,11 +188,7 @@ func AuthMethodIsValid(authMethod string) bool {
 
 func setDefaultBaseURL(c *Config) {
 	if c.BaseURL == "" {
-		if c.CloudAPI {
-			c.BaseURL = "https://api.hetzner.cloud/v1"
-		} else {
-			c.BaseURL = "https://dns.hetzner.com/api/v1"
-		}
+		c.BaseURL = "https://api.hetzner.cloud/v1"
 	}
 }
 
