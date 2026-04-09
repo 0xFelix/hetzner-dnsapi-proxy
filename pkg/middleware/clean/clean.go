@@ -10,20 +10,10 @@ import (
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/config"
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/data"
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/middleware/clean/cloud"
-	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/middleware/clean/dns"
 )
 
-type cleaner interface {
-	Clean(context.Context, *data.ReqData) error
-}
-
 func New(cfg *config.Config, m *sync.Mutex) func(http.Handler) http.Handler {
-	var c cleaner
-	if cfg.CloudAPI {
-		c = cloud.New(cfg, m)
-	} else {
-		c = dns.New()
-	}
+	c := cloud.New(cfg, m)
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

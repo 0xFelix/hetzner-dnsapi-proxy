@@ -34,13 +34,6 @@ func main() {
 		log.Fatal(err)
 	}
 	log.Printf("Authorization method set to: %s", cfg.Auth.Method)
-
-	if cfg.CloudAPI {
-		log.Println("Running in Cloud API mode")
-	} else {
-		log.Println("Running in DNS API mode")
-	}
-
 	log.Printf("Starting hetzner-dnsapi-proxy, listening on %s", cfg.ListenAddr)
 	if err := runServer(cfg.ListenAddr, app.New(cfg)); err != nil {
 		log.Fatal("Error running server:", err)

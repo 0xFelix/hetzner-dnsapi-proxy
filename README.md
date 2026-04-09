@@ -1,6 +1,13 @@
 # hetzner-dnsapi-proxy
 
-hetzner-dnsapi-proxy proxies DNS API update requests to the [Hetzner](https://dns.hetzner.com/api-docs) DNS API.
+hetzner-dnsapi-proxy proxies DNS API update requests to the [Hetzner Cloud API](https://docs.hetzner.cloud).
+
+> **Note:** Support for the old Hetzner DNS API has been removed since it has
+> been [shut down](https://docs.hetzner.com/networking/dns/faq/beta/#timeline).
+> If upgrading from a setup that used the old DNS API, update your `API_TOKEN`
+> (or `token` in the config file) to a Hetzner Cloud API token. The `cloudAPI`
+> config option and `CLOUD_API` environment variable are no longer recognized
+> and can be removed from existing configurations.
 
 ## Container image
 
@@ -10,16 +17,10 @@ Get the container image from [ghcr.io](https://github.com/0xFelix/hetzner-dnsapi
 
 | API                | Endpoint                                                                                                                                                                                                                                                                                                                                                           |
 |--------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| lego HTTP request  | POST `/httpreq/present`<br>POST `/httpreq/cleanup` (only deletes records when the Cloud API is enabled, otherwise returns `200 OK`)<br>(see https://go-acme.github.io/lego/dns/httpreq/)                                                                                                                                                                                                                                  |
-| ACMEDNS            | POST `/acmedns/update`<br>(see https://github.com/joohoi/acme-dns#update-endpoint)                                                                                                                                                                                                                                                                                 |
+| lego HTTP request  | POST `/httpreq/present`<br>POST `/httpreq/cleanup`<br>(see https://go-acme.github.io/lego/dns/httpreq/)                                                                                                                                  |
+| ACMEDNS            | POST `/acmedns/update`<br>(see https://github.com/joohoi/acme-dns#update-endpoint)                                                                                                                                                                                 |
 | DirectAdmin Legacy | GET `/directadmin/CMD_API_SHOW_DOMAINS`<br>GET `/directadmin/CMD_API_DNS_CONTROL` (only adding A/AAAA/TXT records, everything else always returns `200 OK`)<br>GET `/directadmin/CMD_API_DOMAIN_POINTER` (only a stub, always returns `200 OK`)<br>(see https://docs.directadmin.com/developer/api/legacy-api.html and https://www.directadmin.com/features.php?id=504) |
 | plain HTTP         | GET `/plain/update` (query params `hostname` and `ip` (can be ipv4 for A or ipv6 for AAAA records), if auth method is `users` then HTTP Basic auth is used) <br/>                                                                                                                                                                                                               |
-
-## Hetzner Cloud API Support
-
-This proxy can use the Hetzner DNS API (default) or the Hetzner Cloud API. The Cloud API is more modern and allows for deleting records, which is used by the `/httpreq/cleanup` endpoint. When using the DNS API, the cleanup endpoint will not delete any records.
-
-It is recommended to use the Cloud API for new setups. You can enable it by setting the `cloudAPI` option in the configuration file or the `CLOUD_API` environment variable.
 
 ## Configuration
 
@@ -67,19 +68,17 @@ listenAddr: :8081
 trustedProxies:
   - 127.0.0.1
 debug: false
-cloudAPI: false
 ```
 
 ### Environment variables
 
 | Variable          | Type   | Description                                                                                                                                | Required | Default                          |
 |:------------------|--------|--------------------------------------------------------------------------------------------------------------------------------------------|----------|----------------------------------|
-| `API_BASE_URL`    | string | Base URL of the API. Defaults to `https://dns.hetzner.com/api/v1` for DNS API or `https://api.hetzner.cloud/v1` when `CLOUD_API` is `true`. | n        | (Depends on API selection)       |
+| `API_BASE_URL`    | string | Base URL of the API                                                                                                                        | N        | `https://api.hetzner.cloud/v1`   |
 | `API_TOKEN`       | string | Auth token for the API                                                                                                                     | Y        |                                  |
 | `API_TIMEOUT`     | int    | Timeout for calls to the API in seconds                                                                                                    | N        | 15 seconds                       |
 | `RECORD_TTL`      | int    | TTL that is set when creating/updating records                                                                                             | N        | 60 seconds                       |
 | `ALLOWED_DOMAINS` | string | Combination of domains and CIDRs allowed to update them, example:<br>`example1.com,127.0.0.1/32;_acme-challenge.example2.com,127.0.0.1/32` | Y        |                                  |
 | `LISTEN_ADDR`     | string | Listen address of hetzner-dnsapi-proxy                                                                                                     | N        | `:8081`                          |
 | `TRUSTED_PROXIES` | string | List of trusted proxy host addresses separated by comma                                                                                    | N        | Trust all proxies                |
-| `CLOUD_API`       | bool   | Use the Hetzner Cloud API instead of the DNS API.                                                                                          | N        | `false`                          |
 | `DEBUG`           | bool   | Output debug logs of received requests                                                                                                     | N        | `false`                          |

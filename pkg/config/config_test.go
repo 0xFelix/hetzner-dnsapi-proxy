@@ -105,7 +105,6 @@ var _ = Describe("Config", func() {
 		listenAddr        = "127.0.0.1:8080"
 		trustedProxiesStr = "127.0.0.1,192.168.0.1,192.168.0.2"
 		debugStr          = "true"
-		cloudAPIStr       = "true"
 	)
 
 	var (
@@ -127,7 +126,6 @@ var _ = Describe("Config", func() {
 			envListenAddr     = "LISTEN_ADDR"
 			envTrustedProxies = "TRUSTED_PROXIES"
 			envDebug          = "DEBUG"
-			envCloudAPI       = "CLOUD_API"
 		)
 
 		BeforeEach(func() {
@@ -150,7 +148,6 @@ var _ = Describe("Config", func() {
 			Expect(os.Unsetenv(envListenAddr)).To(Succeed())
 			Expect(os.Unsetenv(envTrustedProxies)).To(Succeed())
 			Expect(os.Unsetenv(envDebug)).To(Succeed())
-			Expect(os.Unsetenv(envCloudAPI)).To(Succeed())
 		})
 
 		It("should parse environment successfully", func() {
@@ -162,7 +159,6 @@ var _ = Describe("Config", func() {
 			Expect(os.Setenv(envListenAddr, listenAddr)).To(Succeed())
 			Expect(os.Setenv(envTrustedProxies, trustedProxiesStr)).To(Succeed())
 			Expect(os.Setenv(envDebug, debugStr)).To(Succeed())
-			Expect(os.Setenv(envCloudAPI, cloudAPIStr)).To(Succeed())
 
 			cfg, err := config.ParseEnv()
 			Expect(err).ToNot(HaveOccurred())
@@ -177,7 +173,6 @@ var _ = Describe("Config", func() {
 			Expect(cfg.ListenAddr).To(Equal(listenAddr))
 			Expect(cfg.TrustedProxies).To(Equal(trustedProxies))
 			Expect(cfg.Debug).To(BeTrue())
-			Expect(cfg.CloudAPI).To(BeTrue())
 		})
 
 		DescribeTable("should fail on invalid environment variables", func(setEnv func(), errMsg string) {
@@ -204,11 +199,6 @@ var _ = Describe("Config", func() {
 				Expect(os.Setenv(envAllowedDomains, allowedDomainsStr)).To(Succeed())
 				Expect(os.Setenv(envDebug, "something")).To(Succeed())
 			}, "failed to parse DEBUG: strconv.ParseBool: parsing \"something\": invalid syntax"),
-			Entry("CLOUD_API not a bool", func() {
-				Expect(os.Setenv(envAPIToken, apiToken)).To(Succeed())
-				Expect(os.Setenv(envAllowedDomains, allowedDomainsStr)).To(Succeed())
-				Expect(os.Setenv(envCloudAPI, "something")).To(Succeed())
-			}, "failed to parse CLOUD_API: strconv.ParseBool: parsing \"something\": invalid syntax"),
 		)
 	})
 
@@ -253,7 +243,6 @@ var _ = Describe("Config", func() {
 				ListenAddr:     listenAddr,
 				TrustedProxies: trustedProxies,
 				Debug:          true,
-				CloudAPI:       true,
 			}
 
 			data, err := yaml.Marshal(cfg)
