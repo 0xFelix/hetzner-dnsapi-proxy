@@ -3,6 +3,7 @@ package hetzner
 import (
 	"fmt"
 	"runtime/debug"
+	"strconv"
 
 	"github.com/hetznercloud/hcloud-go/v2/hcloud"
 
@@ -52,4 +53,11 @@ func RRSetTypeFromString(rType string) (hcloud.ZoneRRSetType, error) {
 	default:
 		return "", fmt.Errorf("unrecognized resource record set type %s", rType)
 	}
+}
+
+func QuoteIfRequired(val string, rrSetType hcloud.ZoneRRSetType) string {
+	if rrSetType == hcloud.ZoneRRSetTypeTXT {
+		return strconv.Quote(val)
+	}
+	return val
 }

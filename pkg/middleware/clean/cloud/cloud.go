@@ -46,7 +46,7 @@ func (u *cleaner) Clean(ctx context.Context, reqData *data.ReqData) error {
 	}
 
 	action, _, err := u.client.Zone.RemoveRRSetRecords(ctx, rrSet, hcloud.ZoneRRSetRemoveRecordsOpts{
-		Records: rrSet.Records,
+		Records: []hcloud.ZoneRRSetRecord{{Value: hetzner.QuoteIfRequired(reqData.Value, rrSetType)}},
 	})
 	if err != nil {
 		return err

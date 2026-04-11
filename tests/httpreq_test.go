@@ -6,10 +6,13 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
+
+	"github.com/hetznercloud/hcloud-go/v2/hcloud/schema"
 
 	"github.com/0xfelix/hetzner-dnsapi-proxy/tests/libcloudapi"
 	"github.com/0xfelix/hetzner-dnsapi-proxy/tests/libserver"
@@ -80,15 +83,19 @@ var _ = Describe("HTTPReq", func() {
 		DescribeTable("cleaning up", func(ctx context.Context, fqdn string) {
 			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL)
 
+			rrSet := libcloudapi.ExistingRRSetTXT()
 			api.AppendHandlers(
 				libcloudapi.GetZone(token, libcloudapi.Zone()),
-				libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.ExistingRRSetTXT(), true),
-				libcloudapi.RemoveRRSetRecords(token, libcloudapi.Zone(), libcloudapi.ExistingRRSetTXT()),
+				libcloudapi.GetRRSet(token, libcloudapi.Zone(), rrSet, true),
+				libcloudapi.RemoveRRSetRecords(token, libcloudapi.Zone(), rrSet, []schema.ZoneRRSetRecord{
+					{Value: strconv.Quote(libserver.TXTExisting)},
+				}),
 			)
 
 			Expect(doHTTPReqRequest(ctx, server.URL+"/httpreq/cleanup", username, password,
 				map[string]string{
-					"fqdn": fqdn,
+					"fqdn":  fqdn,
+					"value": libserver.TXTExisting,
 				},
 			)).To(Equal(http.StatusOK))
 			Expect(api.ReceivedRequests()).To(HaveLen(3))
