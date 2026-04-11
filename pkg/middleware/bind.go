@@ -138,7 +138,7 @@ func BindHTTPReq(next http.Handler) http.Handler {
 			return
 		}
 
-		if r.URL.Path == "/httpreq/present" && d.Value == "" {
+		if d.Value == "" {
 			http.Error(w, "value is missing", http.StatusBadRequest)
 			return
 		}

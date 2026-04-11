@@ -65,6 +65,19 @@ func ExistingRRSetTXT() schema.ZoneRRSet {
 	}
 }
 
+func ClientIPRRSetA() schema.ZoneRRSet {
+	return schema.ZoneRRSet{
+		ID:   libserver.ARecordName + "/" + libserver.RecordTypeA,
+		Name: libserver.ARecordName,
+		Type: libserver.RecordTypeA,
+		TTL:  ptr(libserver.DefaultTTL),
+		Records: []schema.ZoneRRSetRecord{
+			{Value: libserver.AExisting},
+		},
+		Zone: mustParseInt(libserver.ZoneID),
+	}
+}
+
 func NewRRSetA() schema.ZoneRRSet {
 	return schema.ZoneRRSet{
 		Name: libserver.ARecordName,
@@ -199,14 +212,14 @@ func SetRRSetRecords(token string, zone schema.Zone, rrSet schema.ZoneRRSet) htt
 	)
 }
 
-func RemoveRRSetRecords(token string, zone schema.Zone, rrSet schema.ZoneRRSet) http.HandlerFunc {
+func RemoveRRSetRecords(token string, zone schema.Zone, rrSet schema.ZoneRRSet, records []schema.ZoneRRSetRecord) http.HandlerFunc {
 	return ghttp.CombineHandlers(
 		ghttp.VerifyRequest(http.MethodPost, fmt.Sprintf("/v1/zones/%d/rrsets/%s/%s/actions/remove_records", zone.ID, rrSet.Name, rrSet.Type)),
 		ghttp.VerifyHeader(http.Header{
 			headerAuthorization: []string{authBearerPrefix + token},
 		}),
 		ghttp.VerifyJSONRepresenting(schema.ZoneRRSetRemoveRecordsRequest{
-			Records: rrSet.Records,
+			Records: records,
 		}),
 		getResponseSuccess(),
 	)

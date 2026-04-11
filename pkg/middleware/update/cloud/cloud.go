@@ -2,7 +2,6 @@ package cloud
 
 import (
 	"context"
-	"strconv"
 	"sync"
 
 	"github.com/hetznercloud/hcloud-go/v2/hcloud"
@@ -69,7 +68,7 @@ func (u *updater) updateRRSet(ctx context.Context, rrSet *hcloud.ZoneRRSet, val 
 
 	opts := hcloud.ZoneRRSetSetRecordsOpts{
 		Records: []hcloud.ZoneRRSetRecord{{
-			Value: quoteIfRequired(val, rrSet.Type),
+			Value: hetzner.QuoteIfRequired(val, rrSet.Type),
 		}},
 	}
 	action, _, err := u.client.Zone.SetRRSetRecords(ctx, rrSet, opts)
@@ -89,7 +88,7 @@ func (u *updater) createRRSet(ctx context.Context, zone *hcloud.Zone, rrSetType 
 		Type: rrSetType,
 		TTL:  &u.cfg.RecordTTL,
 		Records: []hcloud.ZoneRRSetRecord{{
-			Value: quoteIfRequired(val, rrSetType),
+			Value: hetzner.QuoteIfRequired(val, rrSetType),
 		}},
 	}
 	result, _, err := u.client.Zone.CreateRRSet(ctx, zone, opts)
@@ -101,11 +100,4 @@ func (u *updater) createRRSet(ctx context.Context, zone *hcloud.Zone, rrSetType 
 	}
 
 	return nil
-}
-
-func quoteIfRequired(val string, rrSetType hcloud.ZoneRRSetType) string {
-	if rrSetType == hcloud.ZoneRRSetTypeTXT {
-		return strconv.Quote(val)
-	}
-	return val
 }
