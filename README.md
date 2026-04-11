@@ -21,6 +21,7 @@ Get the container image from [ghcr.io](https://github.com/0xFelix/hetzner-dnsapi
 | ACMEDNS            | POST `/acmedns/update`<br>(see https://github.com/joohoi/acme-dns#update-endpoint)                                                                                                                                                                                 |
 | DirectAdmin Legacy | GET `/directadmin/CMD_API_SHOW_DOMAINS`<br>GET `/directadmin/CMD_API_DNS_CONTROL` (only adding A/AAAA/TXT records, everything else always returns `200 OK`)<br>GET `/directadmin/CMD_API_DOMAIN_POINTER` (only a stub, always returns `200 OK`)<br>(see https://docs.directadmin.com/developer/api/legacy-api.html and https://www.directadmin.com/features.php?id=504) |
 | plain HTTP         | GET `/plain/update` (query params `hostname` and `ip` (can be ipv4 for A or ipv6 for AAAA records), if auth method is `users` then HTTP Basic auth is used) <br/>                                                                                                                                                                                                               |
+| DynDNS2            | GET `/nic/update` (query params `hostname` and optional `myip` (falls back to client IP, ipv4 or ipv6), HTTP Basic auth, responses follow the DynDNS2 token spec)                                                                                                                                                                                                             |
 
 ## Configuration
 

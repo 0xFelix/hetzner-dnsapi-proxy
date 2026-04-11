@@ -34,6 +34,8 @@ func New(cfg *config.Config) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("GET /plain/update",
 		handle(cfg, middleware.BindPlain, authorizer, updater, middleware.StatusOk))
+	mux.Handle("GET /nic/update",
+		handle(cfg, middleware.BindNicUpdate, middleware.NicAuth(cfg), middleware.NicUpdate(updater), middleware.StatusOkNicUpdate))
 	mux.Handle("POST /acmedns/update",
 		handle(cfg, middleware.BindAcmeDNS, authorizer, updater, middleware.StatusOkAcmeDNS))
 	mux.Handle("POST /httpreq/present",

@@ -23,12 +23,7 @@ func NewAuthorizer(cfg *config.Config) func(http.Handler) http.Handler {
 			}
 
 			if !CheckPermission(cfg, reqData, r.RemoteAddr) {
-				addr := sanitize.LogValue(r.RemoteAddr)
-				typ := sanitize.LogValue(reqData.Type)
-				name := sanitize.LogValue(reqData.FullName)
-				val := sanitize.LogValue(reqData.Value)
-				//nolint:gosec // values are sanitized above
-				log.Printf("client '%s' is not allowed to update '%s' data of '%s' to '%s'", addr, typ, name, val)
+				logPermissionDenied(r.RemoteAddr, reqData)
 				if cfg.Auth.Method != config.AuthMethodAllowedDomains && reqData.BasicAuth {
 					w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
 				}
@@ -39,6 +34,15 @@ func NewAuthorizer(cfg *config.Config) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func logPermissionDenied(remoteAddr string, reqData *data.ReqData) {
+	addr := sanitize.LogValue(remoteAddr)
+	typ := sanitize.LogValue(reqData.Type)
+	name := sanitize.LogValue(reqData.FullName)
+	val := sanitize.LogValue(reqData.Value)
+	//nolint:gosec // values are sanitized above
+	log.Printf("client '%s' is not allowed to update '%s' data of '%s' to '%s'", addr, typ, name, val)
 }
 
 func CheckPermission(cfg *config.Config, reqData *data.ReqData, remoteAddr string) bool {

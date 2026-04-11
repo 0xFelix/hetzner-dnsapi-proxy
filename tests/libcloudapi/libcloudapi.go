@@ -65,6 +65,19 @@ func ExistingRRSetTXT() schema.ZoneRRSet {
 	}
 }
 
+func ClientIPRRSetA() schema.ZoneRRSet {
+	return schema.ZoneRRSet{
+		ID:   libserver.ARecordName + "/" + libserver.RecordTypeA,
+		Name: libserver.ARecordName,
+		Type: libserver.RecordTypeA,
+		TTL:  ptr(libserver.DefaultTTL),
+		Records: []schema.ZoneRRSetRecord{
+			{Value: libserver.AExisting},
+		},
+		Zone: mustParseInt(libserver.ZoneID),
+	}
+}
+
 func NewRRSetA() schema.ZoneRRSet {
 	return schema.ZoneRRSet{
 		Name: libserver.ARecordName,
