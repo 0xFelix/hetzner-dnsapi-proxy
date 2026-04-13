@@ -113,12 +113,11 @@ func checkUserCredentials(username, password string, users []config.User) bool {
 	if username == "" || password == "" {
 		return false
 	}
+	matched := 0
 	for _, user := range users {
-		if user.Username == username && user.Password == password {
-			return true
-		}
+		matched |= constantTimeEqual(user.Username, username) & constantTimeEqual(user.Password, password)
 	}
-	return false
+	return matched == 1
 }
 
 func NicUpdate(updater func(http.Handler) http.Handler) func(http.Handler) http.Handler {
