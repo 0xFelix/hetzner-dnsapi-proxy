@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"crypto/subtle"
 	"log"
 	"net"
 	"net/http"
@@ -91,16 +92,22 @@ func CheckUsers(fqdn, username, password string, users []config.User) bool {
 	if fqdn == "" || username == "" || password == "" {
 		return false
 	}
+	allowed := 0
 	for _, user := range users {
-		if user.Username == username && user.Password == password {
-			for _, domain := range user.Domains {
-				if fqdn == domain || IsSubDomain(fqdn, domain) {
-					return true
-				}
+		credsMatch := constantTimeEqual(user.Username, username) & constantTimeEqual(user.Password, password)
+		domainMatch := 0
+		for _, domain := range user.Domains {
+			if fqdn == domain || IsSubDomain(fqdn, domain) {
+				domainMatch = 1
 			}
 		}
+		allowed |= credsMatch & domainMatch
 	}
-	return false
+	return allowed == 1
+}
+
+func constantTimeEqual(a, b string) int {
+	return subtle.ConstantTimeCompare([]byte(a), []byte(b))
 }
 
 func IsSubDomain(sub, parent string) bool {
