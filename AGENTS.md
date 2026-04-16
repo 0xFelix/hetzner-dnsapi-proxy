@@ -15,8 +15,8 @@ HTTP request, ACMEDNS, DirectAdmin Legacy, plain HTTP).
 - `make lint` - Lint with golangci-lint
 - `make vendor` - Tidy and vendor dependencies
 
-Always run `make lint` and `make test` before submitting changes.
-Run `make vendor` after modifying dependencies.
+Always run `make lint`, `make test`, and `make functest` before submitting
+changes. Run `make vendor` after modifying dependencies.
 
 ## Code Style
 
@@ -45,6 +45,7 @@ Run `make vendor` after modifying dependencies.
 - `pkg/middleware/clean/` - Record cleanup (cloud/ backend)
 - `pkg/hetzner/` - Hetzner Cloud API client helpers
 - `pkg/data/` - Shared data types
+- `pkg/ratelimit/` - Per-client-IP rate limiting (token bucket)
 - `pkg/sanitize/` - Input sanitization
 
 ## Git
