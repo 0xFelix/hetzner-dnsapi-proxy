@@ -37,6 +37,8 @@ func New(url string, ttl int) (server *httptest.Server, token, username, passwor
 			}},
 		},
 		RecordTTL: ttl,
+		RateLimit: config.RateLimit{RPS: 1000, Burst: 1000},
+		Lockout:   config.Lockout{MaxAttempts: 1000, DurationSeconds: 3600, WindowSeconds: 900},
 	}
 
 	return httptest.NewServer(app.New(cfg)), token, username, password
@@ -48,6 +50,8 @@ func NewNoAllowedDomains(url string) *httptest.Server {
 		Auth: config.Auth{
 			Method: config.AuthMethodAllowedDomains,
 		},
+		RateLimit: config.RateLimit{RPS: 1000, Burst: 1000},
+		Lockout:   config.Lockout{MaxAttempts: 1000, DurationSeconds: 3600, WindowSeconds: 900},
 	}
 	return httptest.NewServer(app.New(cfg))
 }
