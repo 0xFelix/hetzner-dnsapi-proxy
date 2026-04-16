@@ -10,10 +10,11 @@ import (
 
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/config"
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/data"
+	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/ratelimit"
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/sanitize"
 )
 
-func NewAuthorizer(cfg *config.Config) func(http.Handler) http.Handler {
+func NewAuthorizer(cfg *config.Config, lockout *ratelimit.Lockout) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			reqData, err := data.ReqDataFromContext(r.Context())
@@ -23,8 +24,15 @@ func NewAuthorizer(cfg *config.Config) func(http.Handler) http.Handler {
 				return
 			}
 
+			if lockout.IsBlocked(r.RemoteAddr) {
+				logLockedOut(r.RemoteAddr)
+				w.WriteHeader(http.StatusTooManyRequests)
+				return
+			}
+
 			if !CheckPermission(cfg, reqData, r.RemoteAddr) {
 				logPermissionDenied(r.RemoteAddr, reqData)
+				lockout.RecordFailure(r.RemoteAddr)
 				if cfg.Auth.Method != config.AuthMethodAllowedDomains && reqData.BasicAuth {
 					w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
 				}
@@ -32,9 +40,16 @@ func NewAuthorizer(cfg *config.Config) func(http.Handler) http.Handler {
 				return
 			}
 
+			lockout.Reset(r.RemoteAddr)
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func logLockedOut(remoteAddr string) {
+	addr := sanitize.LogValue(remoteAddr)
+	//nolint:gosec // value is sanitized above
+	log.Printf("client '%s' is locked out", addr)
 }
 
 func logPermissionDenied(remoteAddr string, reqData *data.ReqData) {
