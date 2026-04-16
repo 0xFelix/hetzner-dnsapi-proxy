@@ -209,7 +209,7 @@ var _ = Describe("Config", func() {
 		)
 
 		validRL := func() config.RateLimit {
-			return config.RateLimit{RPS: 5, Burst: 10}
+			return config.RateLimit{RPS: 5, Burst: 10, IdleSeconds: 600}
 		}
 
 		validLO := func() config.Lockout {
