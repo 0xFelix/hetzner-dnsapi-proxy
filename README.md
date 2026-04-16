@@ -44,6 +44,21 @@ The supported authorization methods are:
 - `any`: Combination of `allowedDomains` and `users`, **any** of the two must
   be satisfied
 
+### Rate limiting and auth-failure lockout
+
+Both features per-client-IP defenses:
+
+- `rateLimit` is a token-bucket throttle applied to every endpoint. Requests
+  above `burst` refill at `rps` tokens per second. Excess requests get
+  HTTP 429 (or the DynDNS2 `abuse` token on `/nic/update`).
+- `lockout` tracks consecutive auth failures. After `maxAttempts` failures
+  within `windowSeconds`, the client IP is locked out for `durationSeconds`.
+  A successful auth clears the counter. Partial failures outside the window
+  are forgotten.
+
+Client IPs are determined after `trustedProxies` resolution, so requests
+traversing a trusted reverse proxy are counted against the real client.
+
 ### Configuration file
 
 ```yaml
@@ -68,18 +83,32 @@ recordTTL: 60
 listenAddr: :8081
 trustedProxies:
   - 127.0.0.1
+rateLimit:
+  enabled: true
+  rps: 5
+  burst: 10
+lockout:
+  enabled: true
+  maxAttempts: 10
+  durationSeconds: 3600
+  windowSeconds: 900
 debug: false
 ```
 
 ### Environment variables
 
-| Variable          | Type   | Description                                                                                                                                | Required | Default                          |
-|:------------------|--------|--------------------------------------------------------------------------------------------------------------------------------------------|----------|----------------------------------|
-| `API_BASE_URL`    | string | Base URL of the API                                                                                                                        | N        | `https://api.hetzner.cloud/v1`   |
-| `API_TOKEN`       | string | Auth token for the API                                                                                                                     | Y        |                                  |
-| `API_TIMEOUT`     | int    | Timeout for calls to the API in seconds                                                                                                    | N        | 15 seconds                       |
-| `RECORD_TTL`      | int    | TTL that is set when creating/updating records                                                                                             | N        | 60 seconds                       |
-| `ALLOWED_DOMAINS` | string | Combination of domains and CIDRs allowed to update them, example:<br>`example1.com,127.0.0.1/32;_acme-challenge.example2.com,127.0.0.1/32` | Y        |                                  |
-| `LISTEN_ADDR`     | string | Listen address of hetzner-dnsapi-proxy                                                                                                     | N        | `:8081`                          |
-| `TRUSTED_PROXIES` | string | List of trusted proxy host addresses separated by comma                                                                                    | N        | Trust all proxies                |
-| `DEBUG`           | bool   | Output debug logs of received requests                                                                                                     | N        | `false`                          |
+| Variable                   | Type   | Description                                                                                                                                | Required | Default                        |
+|:---------------------------|--------|--------------------------------------------------------------------------------------------------------------------------------------------|----------|--------------------------------|
+| `API_BASE_URL`             | string | Base URL of the API                                                                                                                        | N        | `https://api.hetzner.cloud/v1` |
+| `API_TOKEN`                | string | Auth token for the API                                                                                                                     | Y        |                                |
+| `API_TIMEOUT`              | int    | Timeout for calls to the API in seconds                                                                                                    | N        | 15 seconds                     |
+| `RECORD_TTL`               | int    | TTL that is set when creating/updating records                                                                                             | N        | 60 seconds                     |
+| `ALLOWED_DOMAINS`          | string | Combination of domains and CIDRs allowed to update them, example:<br>`example1.com,127.0.0.1/32;_acme-challenge.example2.com,127.0.0.1/32` | Y        |                                |
+| `LISTEN_ADDR`              | string | Listen address of hetzner-dnsapi-proxy                                                                                                     | N        | `:8081`                        |
+| `TRUSTED_PROXIES`          | string | List of trusted proxy host addresses separated by comma                                                                                    | N        | Trust all proxies              |
+| `RATE_LIMIT_RPS`           | float  | Tokens per second refilled per client IP                                                                                                   | N        | `5`                            |
+| `RATE_LIMIT_BURST`         | int    | Maximum burst size per client IP                                                                                                           | N        | `10`                           |
+| `LOCKOUT_MAX_ATTEMPTS`     | int    | Failures before lockout                                                                                                                    | N        | `10`                           |
+| `LOCKOUT_DURATION_SECONDS` | int    | Lockout duration in seconds                                                                                                                | N        | `3600`                         |
+| `LOCKOUT_WINDOW_SECONDS`   | int    | Window in seconds during which consecutive failures accumulate                                                                             | N        | `900`                          |
+| `DEBUG`                    | bool   | Output debug logs of received requests                                                                                                     | N        | `false`                        |

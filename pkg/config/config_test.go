@@ -208,6 +208,14 @@ var _ = Describe("Config", func() {
 			filePath string
 		)
 
+		validRL := func() config.RateLimit {
+			return config.RateLimit{RPS: 5, Burst: 10}
+		}
+
+		validLO := func() config.Lockout {
+			return config.Lockout{MaxAttempts: 10, DurationSeconds: 3600, WindowSeconds: 900}
+		}
+
 		BeforeEach(func() {
 			allowedDomains = config.AllowedDomains{
 				"*": []*net.IPNet{
@@ -242,6 +250,8 @@ var _ = Describe("Config", func() {
 				RecordTTL:      recordTTL,
 				ListenAddr:     listenAddr,
 				TrustedProxies: trustedProxies,
+				RateLimit:      validRL(),
+				Lockout:        validLO(),
 				Debug:          true,
 			}
 
@@ -268,6 +278,8 @@ var _ = Describe("Config", func() {
 					},
 					Users: users,
 				},
+				RateLimit: validRL(),
+				Lockout:   validLO(),
 			}
 
 			data, err := yaml.Marshal(cfg)
@@ -295,7 +307,9 @@ var _ = Describe("Config", func() {
 			Entry("invalid auth method",
 				func() *config.Config {
 					return &config.Config{
-						Token: apiToken,
+						Token:     apiToken,
+						RateLimit: validRL(),
+						Lockout:   validLO(),
 						Auth: config.Auth{
 							Method:         "something",
 							AllowedDomains: allowedDomains,
@@ -308,7 +322,9 @@ var _ = Describe("Config", func() {
 			Entry("empty allowed domains with auth method allowedDomains",
 				func() *config.Config {
 					return &config.Config{
-						Token: apiToken,
+						Token:     apiToken,
+						RateLimit: validRL(),
+						Lockout:   validLO(),
 						Auth: config.Auth{
 							Method: config.AuthMethodAllowedDomains,
 							Users:  users,
@@ -320,7 +336,9 @@ var _ = Describe("Config", func() {
 			Entry("empty allowed domains with auth method both",
 				func() *config.Config {
 					return &config.Config{
-						Token: apiToken,
+						Token:     apiToken,
+						RateLimit: validRL(),
+						Lockout:   validLO(),
 						Auth: config.Auth{
 							Method: config.AuthMethodBoth,
 							Users:  users,
@@ -332,7 +350,9 @@ var _ = Describe("Config", func() {
 			Entry("empty users with auth method users",
 				func() *config.Config {
 					return &config.Config{
-						Token: apiToken,
+						Token:     apiToken,
+						RateLimit: validRL(),
+						Lockout:   validLO(),
 						Auth: config.Auth{
 							Method:         config.AuthMethodUsers,
 							AllowedDomains: allowedDomains,
@@ -344,7 +364,9 @@ var _ = Describe("Config", func() {
 			Entry("empty users with auth method both",
 				func() *config.Config {
 					return &config.Config{
-						Token: apiToken,
+						Token:     apiToken,
+						RateLimit: validRL(),
+						Lockout:   validLO(),
 						Auth: config.Auth{
 							Method:         config.AuthMethodBoth,
 							AllowedDomains: allowedDomains,
@@ -356,7 +378,9 @@ var _ = Describe("Config", func() {
 			Entry("empty allowed domains and users with auth method any",
 				func() *config.Config {
 					return &config.Config{
-						Token: apiToken,
+						Token:     apiToken,
+						RateLimit: validRL(),
+						Lockout:   validLO(),
 						Auth: config.Auth{
 							Method: config.AuthMethodAny,
 						},

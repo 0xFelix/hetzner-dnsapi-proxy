@@ -36,14 +36,16 @@ func (out *AllowedDomains) FromString(val string) error {
 }
 
 type Config struct {
-	BaseURL        string   `yaml:"baseURL"`
-	Token          string   `yaml:"token"`
-	Timeout        int      `yaml:"timeout"`
-	Auth           Auth     `yaml:"auth"`
-	RecordTTL      int      `yaml:"recordTTL"`
-	ListenAddr     string   `yaml:"listenAddr"`
-	TrustedProxies []string `yaml:"trustedProxies"`
-	Debug          bool     `yaml:"debug"`
+	BaseURL        string    `yaml:"baseURL"`
+	Token          string    `yaml:"token"`
+	Timeout        int       `yaml:"timeout"`
+	Auth           Auth      `yaml:"auth"`
+	RecordTTL      int       `yaml:"recordTTL"`
+	ListenAddr     string    `yaml:"listenAddr"`
+	TrustedProxies []string  `yaml:"trustedProxies"`
+	RateLimit      RateLimit `yaml:"rateLimit"`
+	Lockout        Lockout   `yaml:"lockout"`
+	Debug          bool      `yaml:"debug"`
 }
 
 type Auth struct {
@@ -65,6 +67,17 @@ type User struct {
 	Domains  []string `yaml:"domains"`
 }
 
+type RateLimit struct {
+	RPS   float64 `yaml:"rps"`
+	Burst int     `yaml:"burst"`
+}
+
+type Lockout struct {
+	MaxAttempts     int `yaml:"maxAttempts"`
+	DurationSeconds int `yaml:"durationSeconds"`
+	WindowSeconds   int `yaml:"windowSeconds"`
+}
+
 func NewConfig() *Config {
 	return &Config{
 		Timeout: 60,
@@ -73,7 +86,16 @@ func NewConfig() *Config {
 		},
 		RecordTTL:  60,
 		ListenAddr: ":8081",
-		Debug:      false,
+		RateLimit: RateLimit{
+			RPS:   5,
+			Burst: 10,
+		},
+		Lockout: Lockout{
+			MaxAttempts:     10,
+			DurationSeconds: 3600,
+			WindowSeconds:   900,
+		},
+		Debug: false,
 	}
 }
 
@@ -81,65 +103,114 @@ func ParseEnv() (*Config, error) {
 	cfg := NewConfig()
 	cfg.Auth.Method = AuthMethodAllowedDomains
 
-	if baseURL, ok := os.LookupEnv("API_BASE_URL"); ok {
-		cfg.BaseURL = baseURL
-	}
+	envString("API_BASE_URL", &cfg.BaseURL)
 
-	if token, ok := os.LookupEnv("API_TOKEN"); ok {
-		cfg.Token = token
-		if err := os.Unsetenv("API_TOKEN"); err != nil {
-			return nil, fmt.Errorf("failed to unset API_TOKEN: %v", err)
-		}
-	} else {
+	token, ok := os.LookupEnv("API_TOKEN")
+	if !ok {
 		return nil, errors.New("API_TOKEN environment variable not set")
 	}
-
-	if timeout, ok := os.LookupEnv("API_TIMEOUT"); ok {
-		timeoutInt, err := strconv.Atoi(timeout)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse API_TIMEOUT: %v", err)
-		}
-		cfg.Timeout = timeoutInt
+	cfg.Token = token
+	if err := os.Unsetenv("API_TOKEN"); err != nil {
+		return nil, fmt.Errorf("failed to unset API_TOKEN: %v", err)
 	}
 
-	if allowedDomains, ok := os.LookupEnv("ALLOWED_DOMAINS"); ok {
-		if err := cfg.Auth.AllowedDomains.FromString(allowedDomains); err != nil {
-			return nil, fmt.Errorf("failed to parse ALLOWED_DOMAINS: %v", err)
-		}
-	} else {
+	if err := envInt("API_TIMEOUT", &cfg.Timeout); err != nil {
+		return nil, err
+	}
+
+	allowedDomains, ok := os.LookupEnv("ALLOWED_DOMAINS")
+	if !ok {
 		return nil, errors.New("ALLOWED_DOMAINS environment variable not set")
 	}
-
-	if recordTTL, ok := os.LookupEnv("RECORD_TTL"); ok {
-		recordTTLInt, err := strconv.Atoi(recordTTL)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse RECORD_TTL: %v", err)
-		}
-		cfg.RecordTTL = recordTTLInt
+	if err := cfg.Auth.AllowedDomains.FromString(allowedDomains); err != nil {
+		return nil, fmt.Errorf("failed to parse ALLOWED_DOMAINS: %v", err)
 	}
 
-	if listAddr, ok := os.LookupEnv("LISTEN_ADDR"); ok {
-		cfg.ListenAddr = listAddr
+	if err := envInt("RECORD_TTL", &cfg.RecordTTL); err != nil {
+		return nil, err
 	}
 
-	if trustedProxies, ok := os.LookupEnv("TRUSTED_PROXIES"); ok {
-		cfg.TrustedProxies = strings.Split(trustedProxies, ",")
-		for i := range cfg.TrustedProxies {
-			cfg.TrustedProxies[i] = strings.TrimSpace(cfg.TrustedProxies[i])
-		}
-	}
+	envString("LISTEN_ADDR", &cfg.ListenAddr)
+	envTrustedProxies(cfg)
 
-	if debug, ok := os.LookupEnv("DEBUG"); ok {
-		debugBool, err := strconv.ParseBool(debug)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse DEBUG: %v", err)
-		}
-		cfg.Debug = debugBool
+	if err := envBool("DEBUG", &cfg.Debug); err != nil {
+		return nil, err
+	}
+	if err := envFloat("RATE_LIMIT_RPS", &cfg.RateLimit.RPS); err != nil {
+		return nil, err
+	}
+	if err := envInt("RATE_LIMIT_BURST", &cfg.RateLimit.Burst); err != nil {
+		return nil, err
+	}
+	if err := envInt("LOCKOUT_MAX_ATTEMPTS", &cfg.Lockout.MaxAttempts); err != nil {
+		return nil, err
+	}
+	if err := envInt("LOCKOUT_DURATION_SECONDS", &cfg.Lockout.DurationSeconds); err != nil {
+		return nil, err
+	}
+	if err := envInt("LOCKOUT_WINDOW_SECONDS", &cfg.Lockout.WindowSeconds); err != nil {
+		return nil, err
 	}
 
 	setDefaultBaseURL(cfg)
 
 	return cfg, nil
+}
+
+func envString(key string, dst *string) {
+	if v, ok := os.LookupEnv(key); ok {
+		*dst = v
+	}
+}
+
+func envInt(key string, dst *int) error {
+	v, ok := os.LookupEnv(key)
+	if !ok {
+		return nil
+	}
+	i, err := strconv.Atoi(v)
+	if err != nil {
+		return fmt.Errorf("failed to parse %s: %v", key, err)
+	}
+	*dst = i
+	return nil
+}
+
+func envFloat(key string, dst *float64) error {
+	v, ok := os.LookupEnv(key)
+	if !ok {
+		return nil
+	}
+	f, err := strconv.ParseFloat(v, 64)
+	if err != nil {
+		return fmt.Errorf("failed to parse %s: %v", key, err)
+	}
+	*dst = f
+	return nil
+}
+
+func envBool(key string, dst *bool) error {
+	v, ok := os.LookupEnv(key)
+	if !ok {
+		return nil
+	}
+	b, err := strconv.ParseBool(v)
+	if err != nil {
+		return fmt.Errorf("failed to parse %s: %v", key, err)
+	}
+	*dst = b
+	return nil
+}
+
+func envTrustedProxies(cfg *Config) {
+	v, ok := os.LookupEnv("TRUSTED_PROXIES")
+	if !ok {
+		return
+	}
+	cfg.TrustedProxies = strings.Split(v, ",")
+	for i := range cfg.TrustedProxies {
+		cfg.TrustedProxies[i] = strings.TrimSpace(cfg.TrustedProxies[i])
+	}
 }
 
 func ReadFile(path string) (*Config, error) {
@@ -157,26 +228,59 @@ func ReadFile(path string) (*Config, error) {
 		return nil, errors.New("token is required")
 	}
 
-	if !AuthMethodIsValid(cfg.Auth.Method) {
-		return nil, fmt.Errorf("invalid auth method: %s", cfg.Auth.Method)
+	if err := validateRateLimit(&cfg.RateLimit); err != nil {
+		return nil, err
 	}
-
-	if len(cfg.Auth.AllowedDomains) == 0 && (cfg.Auth.Method == AuthMethodAllowedDomains || cfg.Auth.Method == AuthMethodBoth) {
-		return nil, fmt.Errorf("auth.allowedDomains cannot be empty with auth method %s", cfg.Auth.Method)
+	if err := validateLockout(&cfg.Lockout); err != nil {
+		return nil, err
 	}
-
-	if len(cfg.Auth.Users) == 0 && (cfg.Auth.Method == AuthMethodUsers || cfg.Auth.Method == AuthMethodBoth) {
-		return nil, fmt.Errorf("auth.users cannot be empty with auth method %s", cfg.Auth.Method)
-	}
-
-	if len(cfg.Auth.AllowedDomains) == 0 && len(cfg.Auth.Users) == 0 && cfg.Auth.Method == AuthMethodAny {
-		return nil, errors.New("auth.allowedDomains or auth.users cannot both be empty with auth method any")
+	if err := validateAuth(&cfg.Auth); err != nil {
+		return nil, err
 	}
 
 	setDefaultIPMask(cfg.Auth.AllowedDomains)
 	setDefaultBaseURL(cfg)
 
 	return cfg, nil
+}
+
+func validateAuth(a *Auth) error {
+	if !AuthMethodIsValid(a.Method) {
+		return fmt.Errorf("invalid auth method: %s", a.Method)
+	}
+	if len(a.AllowedDomains) == 0 && (a.Method == AuthMethodAllowedDomains || a.Method == AuthMethodBoth) {
+		return fmt.Errorf("auth.allowedDomains cannot be empty with auth method %s", a.Method)
+	}
+	if len(a.Users) == 0 && (a.Method == AuthMethodUsers || a.Method == AuthMethodBoth) {
+		return fmt.Errorf("auth.users cannot be empty with auth method %s", a.Method)
+	}
+	if len(a.AllowedDomains) == 0 && len(a.Users) == 0 && a.Method == AuthMethodAny {
+		return errors.New("auth.allowedDomains or auth.users cannot both be empty with auth method any")
+	}
+	return nil
+}
+
+func validateRateLimit(rl *RateLimit) error {
+	if rl.RPS <= 0 {
+		return errors.New("rateLimit.rps must be > 0")
+	}
+	if rl.Burst <= 0 {
+		return errors.New("rateLimit.burst must be > 0")
+	}
+	return nil
+}
+
+func validateLockout(l *Lockout) error {
+	if l.MaxAttempts <= 0 {
+		return errors.New("lockout.maxAttempts must be > 0")
+	}
+	if l.DurationSeconds <= 0 {
+		return errors.New("lockout.durationSeconds must be > 0")
+	}
+	if l.WindowSeconds <= 0 {
+		return errors.New("lockout.windowSeconds must be > 0")
+	}
+	return nil
 }
 
 func AuthMethodIsValid(authMethod string) bool {

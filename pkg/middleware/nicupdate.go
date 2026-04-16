@@ -8,6 +8,7 @@ import (
 
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/config"
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/data"
+	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/ratelimit"
 )
 
 const (
@@ -16,6 +17,7 @@ const (
 	nicTokenBadAuth = "badauth"
 	nicTokenNoHost  = "nohost"
 	nicTokenDNSErr  = "dnserr"
+	nicTokenAbuse   = "abuse"
 	nicToken911     = "911"
 	textPlainUTF8   = "text/plain; charset=utf-8"
 )
@@ -75,7 +77,7 @@ func BindNicUpdate(next http.Handler) http.Handler {
 	})
 }
 
-func NicAuth(cfg *config.Config) func(http.Handler) http.Handler {
+func NicAuth(cfg *config.Config, lockout *ratelimit.Lockout) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			reqData, err := data.ReqDataFromContext(r.Context())
@@ -85,12 +87,20 @@ func NicAuth(cfg *config.Config) func(http.Handler) http.Handler {
 				return
 			}
 
+			if lockout.IsBlocked(r.RemoteAddr) {
+				logLockedOut(r.RemoteAddr)
+				writeNicToken(w, http.StatusOK, nicTokenAbuse)
+				return
+			}
+
 			if CheckPermission(cfg, reqData, r.RemoteAddr) {
+				lockout.Reset(r.RemoteAddr)
 				next.ServeHTTP(w, r)
 				return
 			}
 
 			logPermissionDenied(r.RemoteAddr, reqData)
+			lockout.RecordFailure(r.RemoteAddr)
 			if isBadAuth(cfg, reqData) {
 				w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
 				writeNicToken(w, http.StatusUnauthorized, nicTokenBadAuth)
