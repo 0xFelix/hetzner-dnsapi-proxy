@@ -16,8 +16,6 @@ import (
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/sanitize"
 )
 
-const limiterIdleTimeout = 10 * time.Minute
-
 type loggingResponseWriter struct {
 	http.ResponseWriter
 	statusCode int
@@ -40,7 +38,7 @@ func New(cfg *config.Config) http.Handler {
 	updater := update.New(cfg, m)
 	cleaner := clean.New(cfg, m)
 
-	limiter := ratelimit.NewLimiter(cfg.RateLimit.RPS, cfg.RateLimit.Burst, limiterIdleTimeout)
+	limiter := ratelimit.NewLimiter(cfg.RateLimit.RPS, cfg.RateLimit.Burst, time.Duration(cfg.RateLimit.IdleSeconds)*time.Second)
 	rl := middleware.NewRateLimit(limiter, middleware.RateLimitExceeded)
 
 	mux := http.NewServeMux()

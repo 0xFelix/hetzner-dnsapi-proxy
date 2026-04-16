@@ -68,8 +68,9 @@ type User struct {
 }
 
 type RateLimit struct {
-	RPS   float64 `yaml:"rps"`
-	Burst int     `yaml:"burst"`
+	RPS         float64 `yaml:"rps"`
+	Burst       int     `yaml:"burst"`
+	IdleSeconds int     `yaml:"idleSeconds"`
 }
 
 type Lockout struct {
@@ -87,8 +88,9 @@ func NewConfig() *Config {
 		RecordTTL:  60,
 		ListenAddr: ":8081",
 		RateLimit: RateLimit{
-			RPS:   5,
-			Burst: 10,
+			RPS:         5,
+			Burst:       10,
+			IdleSeconds: 600,
 		},
 		Lockout: Lockout{
 			MaxAttempts:     10,
@@ -140,6 +142,9 @@ func ParseEnv() (*Config, error) {
 		return nil, err
 	}
 	if err := envInt("RATE_LIMIT_BURST", &cfg.RateLimit.Burst); err != nil {
+		return nil, err
+	}
+	if err := envInt("RATE_LIMIT_IDLE_SECONDS", &cfg.RateLimit.IdleSeconds); err != nil {
 		return nil, err
 	}
 	if err := envInt("LOCKOUT_MAX_ATTEMPTS", &cfg.Lockout.MaxAttempts); err != nil {
@@ -266,6 +271,9 @@ func validateRateLimit(rl *RateLimit) error {
 	}
 	if rl.Burst <= 0 {
 		return errors.New("rateLimit.burst must be > 0")
+	}
+	if rl.IdleSeconds <= 0 {
+		return errors.New("rateLimit.idleSeconds must be > 0")
 	}
 	return nil
 }
