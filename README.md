@@ -84,11 +84,10 @@ listenAddr: :8081
 trustedProxies:
   - 127.0.0.1
 rateLimit:
-  enabled: true
   rps: 5
   burst: 10
+  idleSeconds: 600
 lockout:
-  enabled: true
   maxAttempts: 10
   durationSeconds: 3600
   windowSeconds: 900
