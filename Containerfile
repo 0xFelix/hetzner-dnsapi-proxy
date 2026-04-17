@@ -4,7 +4,7 @@ FROM golang:alpine as builder
 
 RUN apk add --update make
 
-RUN adduser --system --shell /bin/false hetzner-dnsapi-proxy
+RUN adduser --system --shell /bin/false --uid 65532 hetzner-dnsapi-proxy
 
 WORKDIR /workspace
 
@@ -25,6 +25,6 @@ COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /etc/passwd /etc/passwd
 COPY --from=builder /workspace/bin/hetzner-dnsapi-proxy /
 
-USER hetzner-dnsapi-proxy
+USER 65532:65532
 EXPOSE 8081
 ENTRYPOINT ["/hetzner-dnsapi-proxy"]
