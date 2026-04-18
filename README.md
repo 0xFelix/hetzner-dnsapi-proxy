@@ -28,6 +28,15 @@ Get the container image from [ghcr.io](https://github.com/0xFelix/hetzner-dnsapi
 Configuration can be passed by environment variables or from a file (with 
 the `-c` flag).
 
+> **Security notes:**
+> - The server speaks plaintext HTTP only. Terminate TLS in front of it
+>   (e.g. with a reverse proxy) whenever it is exposed beyond a trusted
+>   network - credentials and update values would otherwise travel in clear
+>   text.
+> - The config file holds the Hetzner API token and, optionally, user
+>   passwords. Restrict it to the service account (e.g. `chmod 600`) and
+>   keep it out of version control and container images.
+
 ### Authorization
 
 Authorization takes place via a list of domains and ip networks allowed
@@ -43,6 +52,23 @@ The supported authorization methods are:
   satisfied
 - `any`: Combination of `allowedDomains` and `users`, **any** of the two must
   be satisfied
+
+To authorize a domain and all of its subdomains, prefix the entry with `*.`
+(for example `*.example.com` matches `example.com`'s subdomains like
+`foo.example.com` and `bar.foo.example.com`). A bare `example.com` entry only
+authorizes that exact name - subdomains will be rejected.
+
+> **Note:** The `/nic/update` endpoint follows the DynDNS2 response spec and
+> returns `200 OK` with a `nohost` token on authorization failure in
+> `allowedDomains` mode (a `401 badauth` is only returned when HTTP Basic auth
+> is actively being used). The `lockout` feature still applies so repeated
+> `nohost` responses from the same client IP eventually trigger a lockout.
+
+> **Note:** Caller-supplied IPs (`myip` on `/nic/update`, `ip` on
+> `/plain/update`, JSON `value` on `/httpreq/*` and `/acmedns/update`) are
+> taken from the request at face value. They are only as trustworthy as the
+> authenticated client submitting them - there is no server-side verification
+> that the value actually belongs to the caller.
 
 ### Rate limiting and auth-failure lockout
 
@@ -104,7 +130,7 @@ debug: false
 | `RECORD_TTL`               | int    | TTL that is set when creating/updating records                                                                                             | N        | 60 seconds                     |
 | `ALLOWED_DOMAINS`          | string | Combination of domains and CIDRs allowed to update them, example:<br>`example1.com,127.0.0.1/32;_acme-challenge.example2.com,127.0.0.1/32` | Y        |                                |
 | `LISTEN_ADDR`              | string | Listen address of hetzner-dnsapi-proxy                                                                                                     | N        | `:8081`                        |
-| `TRUSTED_PROXIES`          | string | List of trusted proxy host addresses separated by comma                                                                                    | N        | Trust all proxies              |
+| `TRUSTED_PROXIES`          | string | Comma-separated list of trusted proxy IPs or CIDR ranges (e.g. `10.0.0.1,192.168.0.0/24`). When empty, `X-Real-Ip` / `X-Forwarded-For` are ignored. | N        | Trust no proxies               |
 | `RATE_LIMIT_RPS`           | float  | Tokens per second refilled per client IP                                                                                                   | N        | `5`                            |
 | `RATE_LIMIT_BURST`         | int    | Maximum burst size per client IP                                                                                                           | N        | `10`                           |
 | `RATE_LIMIT_IDLE_SECONDS`  | int    | Seconds of inactivity before a client's rate limit bucket is removed                                                                       | N        | `600`                          |
