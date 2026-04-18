@@ -36,6 +36,7 @@ func New(url string, ttl int) (server *httptest.Server, token, username, passwor
 				Domains:  []string{"*"},
 			}},
 		},
+		Endpoints: config.Endpoints{Plain: true, Nic: true, AcmeDNS: true, HTTPReq: true, DirectAdmin: true},
 		RecordTTL: ttl,
 		RateLimit: config.RateLimit{RPS: 1000, Burst: 1000, IdleSeconds: 600},
 		Lockout:   config.Lockout{MaxAttempts: 1000, DurationSeconds: 3600, WindowSeconds: 900},
@@ -50,6 +51,7 @@ func NewNoAllowedDomains(url string) *httptest.Server {
 		Auth: config.Auth{
 			Method: config.AuthMethodAllowedDomains,
 		},
+		Endpoints: config.Endpoints{Plain: true, Nic: true, AcmeDNS: true, HTTPReq: true, DirectAdmin: true},
 		RateLimit: config.RateLimit{RPS: 1000, Burst: 1000, IdleSeconds: 600},
 		Lockout:   config.Lockout{MaxAttempts: 1000, DurationSeconds: 3600, WindowSeconds: 900},
 	}
