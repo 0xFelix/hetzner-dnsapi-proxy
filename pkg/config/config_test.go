@@ -2,6 +2,7 @@ package config_test
 
 import (
 	"net"
+	"net/netip"
 	"os"
 	"path"
 
@@ -108,12 +109,18 @@ var _ = Describe("Config", func() {
 	)
 
 	var (
-		allowedDomains config.AllowedDomains
-		trustedProxies []string
+		allowedDomains       config.AllowedDomains
+		trustedProxies       []string
+		trustedProxyPrefixes []netip.Prefix
 	)
 
 	BeforeEach(func() {
 		trustedProxies = []string{"127.0.0.1", "192.168.0.1", "192.168.0.2"}
+		trustedProxyPrefixes = []netip.Prefix{
+			netip.MustParsePrefix("127.0.0.1/32"),
+			netip.MustParsePrefix("192.168.0.1/32"),
+			netip.MustParsePrefix("192.168.0.2/32"),
+		}
 	})
 
 	Context("ParseEnv", func() {
@@ -172,13 +179,27 @@ var _ = Describe("Config", func() {
 			Expect(cfg.RecordTTL).To(Equal(recordTTL))
 			Expect(cfg.ListenAddr).To(Equal(listenAddr))
 			Expect(cfg.TrustedProxies).To(Equal(trustedProxies))
+			Expect(cfg.TrustedProxyPrefixes).To(Equal(trustedProxyPrefixes))
 			Expect(cfg.Debug).To(BeTrue())
+		})
+
+		It("should parse CIDR ranges in TRUSTED_PROXIES", func() {
+			Expect(os.Setenv(envAPIToken, apiToken)).To(Succeed())
+			Expect(os.Setenv(envAllowedDomains, allowedDomainsStr)).To(Succeed())
+			Expect(os.Setenv(envTrustedProxies, "10.0.0.0/8,2001:db8::/32")).To(Succeed())
+
+			cfg, err := config.ParseEnv()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(cfg.TrustedProxyPrefixes).To(Equal([]netip.Prefix{
+				netip.MustParsePrefix("10.0.0.0/8"),
+				netip.MustParsePrefix("2001:db8::/32"),
+			}))
 		})
 
 		DescribeTable("should fail on invalid environment variables", func(setEnv func(), errMsg string) {
 			setEnv()
 			cfg, err := config.ParseEnv()
-			Expect(err).To(MatchError(errMsg))
+			Expect(err).To(MatchError(ContainSubstring(errMsg)))
 			Expect(cfg).To(BeNil())
 		},
 			Entry("API_TOKEN missing", func() {}, "API_TOKEN environment variable not set"),
@@ -199,6 +220,16 @@ var _ = Describe("Config", func() {
 				Expect(os.Setenv(envAllowedDomains, allowedDomainsStr)).To(Succeed())
 				Expect(os.Setenv(envDebug, "something")).To(Succeed())
 			}, "failed to parse DEBUG: strconv.ParseBool: parsing \"something\": invalid syntax"),
+			Entry("TRUSTED_PROXIES contains a hostname", func() {
+				Expect(os.Setenv(envAPIToken, apiToken)).To(Succeed())
+				Expect(os.Setenv(envAllowedDomains, allowedDomainsStr)).To(Succeed())
+				Expect(os.Setenv(envTrustedProxies, "proxy.example.com")).To(Succeed())
+			}, `invalid trustedProxies entry "proxy.example.com": must be an IP address or CIDR range`),
+			Entry("TRUSTED_PROXIES contains an invalid CIDR", func() {
+				Expect(os.Setenv(envAPIToken, apiToken)).To(Succeed())
+				Expect(os.Setenv(envAllowedDomains, allowedDomainsStr)).To(Succeed())
+				Expect(os.Setenv(envTrustedProxies, "10.0.0.0/99")).To(Succeed())
+			}, `invalid trustedProxies entry "10.0.0.0/99": must be an IP address or CIDR range`),
 		)
 	})
 
@@ -261,7 +292,32 @@ var _ = Describe("Config", func() {
 
 			cfgRead, err := config.ReadFile(filePath)
 			Expect(err).ToNot(HaveOccurred())
+			cfg.TrustedProxyPrefixes = trustedProxyPrefixes
 			Expect(cfgRead).To(Equal(cfg))
+		})
+
+		It("should parse CIDR ranges from trustedProxies", func() {
+			cfg := &config.Config{
+				Token: apiToken,
+				Auth: config.Auth{
+					Method:         config.AuthMethodAllowedDomains,
+					AllowedDomains: allowedDomains,
+				},
+				TrustedProxies: []string{"10.0.0.0/8", "2001:db8::/32"},
+				RateLimit:      validRL(),
+				Lockout:        validLO(),
+			}
+
+			data, err := yaml.Marshal(cfg)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(os.WriteFile(filePath, data, 0o600)).To(Succeed())
+
+			cfgRead, err := config.ReadFile(filePath)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(cfgRead.TrustedProxyPrefixes).To(Equal([]netip.Prefix{
+				netip.MustParsePrefix("10.0.0.0/8"),
+				netip.MustParsePrefix("2001:db8::/32"),
+			}))
 		})
 
 		It("should set default ip mask", func() {
@@ -290,7 +346,37 @@ var _ = Describe("Config", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(cfgRead.Auth.AllowedDomains).To(HaveKeyWithValue("*", []*net.IPNet{{
 				IP:   net.IPv4(127, 0, 0, 1),
-				Mask: net.IPv4Mask(255, 255, 255, 255),
+				Mask: net.CIDRMask(32, 32),
+			}}))
+		})
+
+		It("should set default ip mask for IPv6", func() {
+			cfg := &config.Config{
+				Token: apiToken,
+				Auth: config.Auth{
+					Method: config.AuthMethodAllowedDomains,
+					AllowedDomains: config.AllowedDomains{
+						"*": []*net.IPNet{
+							{
+								IP: net.ParseIP("::1"),
+							},
+						},
+					},
+					Users: users,
+				},
+				RateLimit: validRL(),
+				Lockout:   validLO(),
+			}
+
+			data, err := yaml.Marshal(cfg)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(os.WriteFile(filePath, data, 0o600)).To(Succeed())
+
+			cfgRead, err := config.ReadFile(filePath)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(cfgRead.Auth.AllowedDomains).To(HaveKeyWithValue("*", []*net.IPNet{{
+				IP:   net.ParseIP("::1"),
+				Mask: net.CIDRMask(128, 128),
 			}}))
 		})
 
@@ -300,7 +386,7 @@ var _ = Describe("Config", func() {
 			Expect(os.WriteFile(filePath, data, 0o600)).To(Succeed())
 
 			cfgRead, err := config.ReadFile(filePath)
-			Expect(err).To(MatchError(errMsg))
+			Expect(err).To(MatchError(ContainSubstring(errMsg)))
 			Expect(cfgRead).To(BeNil())
 		},
 			Entry("missing token", func() *config.Config { return &config.Config{} }, "token is required"),
@@ -387,6 +473,21 @@ var _ = Describe("Config", func() {
 					}
 				},
 				"auth.allowedDomains or auth.users cannot both be empty with auth method any",
+			),
+			Entry("trustedProxies entry is a hostname",
+				func() *config.Config {
+					return &config.Config{
+						Token:     apiToken,
+						RateLimit: validRL(),
+						Lockout:   validLO(),
+						Auth: config.Auth{
+							Method:         config.AuthMethodAllowedDomains,
+							AllowedDomains: allowedDomains,
+						},
+						TrustedProxies: []string{"proxy.example.com"},
+					}
+				},
+				`invalid trustedProxies entry "proxy.example.com": must be an IP address or CIDR range`,
 			),
 		)
 

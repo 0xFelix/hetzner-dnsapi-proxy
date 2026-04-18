@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/netip"
 	"os"
 	"strconv"
 	"strings"
@@ -36,16 +37,17 @@ func (out *AllowedDomains) FromString(val string) error {
 }
 
 type Config struct {
-	BaseURL        string    `yaml:"baseURL"`
-	Token          string    `yaml:"token"`
-	Timeout        int       `yaml:"timeout"`
-	Auth           Auth      `yaml:"auth"`
-	RecordTTL      int       `yaml:"recordTTL"`
-	ListenAddr     string    `yaml:"listenAddr"`
-	TrustedProxies []string  `yaml:"trustedProxies"`
-	RateLimit      RateLimit `yaml:"rateLimit"`
-	Lockout        Lockout   `yaml:"lockout"`
-	Debug          bool      `yaml:"debug"`
+	BaseURL              string         `yaml:"baseURL"`
+	Token                string         `yaml:"token"`
+	Timeout              int            `yaml:"timeout"`
+	Auth                 Auth           `yaml:"auth"`
+	RecordTTL            int            `yaml:"recordTTL"`
+	ListenAddr           string         `yaml:"listenAddr"`
+	TrustedProxies       []string       `yaml:"trustedProxies"`
+	TrustedProxyPrefixes []netip.Prefix `yaml:"-"`
+	RateLimit            RateLimit      `yaml:"rateLimit"`
+	Lockout              Lockout        `yaml:"lockout"`
+	Debug                bool           `yaml:"debug"`
 }
 
 type Auth struct {
@@ -157,6 +159,12 @@ func ParseEnv() (*Config, error) {
 		return nil, err
 	}
 
+	prefixes, parseErr := parseTrustedProxies(cfg.TrustedProxies)
+	if parseErr != nil {
+		return nil, parseErr
+	}
+	cfg.TrustedProxyPrefixes = prefixes
+
 	setDefaultBaseURL(cfg)
 
 	return cfg, nil
@@ -242,6 +250,11 @@ func ReadFile(path string) (*Config, error) {
 	if err := validateAuth(&cfg.Auth); err != nil {
 		return nil, err
 	}
+	prefixes, parseErr := parseTrustedProxies(cfg.TrustedProxies)
+	if parseErr != nil {
+		return nil, parseErr
+	}
+	cfg.TrustedProxyPrefixes = prefixes
 
 	setDefaultIPMask(cfg.Auth.AllowedDomains)
 	setDefaultBaseURL(cfg)
@@ -278,6 +291,29 @@ func validateRateLimit(rl *RateLimit) error {
 	return nil
 }
 
+func parseTrustedProxies(proxies []string) ([]netip.Prefix, error) {
+	prefixes := make([]netip.Prefix, 0, len(proxies))
+	for _, p := range proxies {
+		prefix, err := parseTrustedProxy(p)
+		if err != nil {
+			return nil, fmt.Errorf("invalid trustedProxies entry %q: %w", p, err)
+		}
+		prefixes = append(prefixes, prefix)
+	}
+	return prefixes, nil
+}
+
+func parseTrustedProxy(s string) (netip.Prefix, error) {
+	if prefix, err := netip.ParsePrefix(s); err == nil {
+		return prefix.Masked(), nil
+	}
+	addr, err := netip.ParseAddr(s)
+	if err != nil {
+		return netip.Prefix{}, fmt.Errorf("must be an IP address or CIDR range: %w", err)
+	}
+	return netip.PrefixFrom(addr, addr.BitLen()), nil
+}
+
 func validateLockout(l *Lockout) error {
 	if l.MaxAttempts <= 0 {
 		return errors.New("lockout.maxAttempts must be > 0")
@@ -305,11 +341,20 @@ func setDefaultBaseURL(c *Config) {
 }
 
 func setDefaultIPMask(allowedDomains AllowedDomains) {
-	const ff = 255
+	const (
+		bitsPerByte = 8
+		ipv4Bits    = net.IPv4len * bitsPerByte
+		ipv6Bits    = net.IPv6len * bitsPerByte
+	)
 	for _, allowedDomain := range allowedDomains {
 		for _, ipNet := range allowedDomain {
-			if len(ipNet.Mask) == 0 {
-				ipNet.Mask = net.IPv4Mask(ff, ff, ff, ff)
+			if len(ipNet.Mask) != 0 {
+				continue
+			}
+			if ipNet.IP.To4() != nil {
+				ipNet.Mask = net.CIDRMask(ipv4Bits, ipv4Bits)
+			} else {
+				ipNet.Mask = net.CIDRMask(ipv6Bits, ipv6Bits)
 			}
 		}
 	}
