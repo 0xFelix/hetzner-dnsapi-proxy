@@ -97,4 +97,37 @@ var _ = Describe("Lockout", func() {
 		Expect(l.IsBlocked(ip)).To(BeFalse())
 		Expect(l.entries).NotTo(HaveKey(ip))
 	})
+
+	Context("when the entry cap is reached", func() {
+		BeforeEach(func() {
+			l.maxEntries = 3
+		})
+
+		It("sweeps stale entries before admitting a new key", func() {
+			l.RecordFailure("a")
+			l.RecordFailure("b")
+			l.RecordFailure("c")
+			Expect(l.entries).To(HaveLen(3))
+
+			now = now.Add(16 * time.Minute)
+			// Bypass shouldSweep by forcing lastSweep recent so the cap
+			// logic has to run the eager sweep itself.
+			l.lastSweep = now
+			l.RecordFailure("d")
+			Expect(l.entries).To(HaveKey("d"))
+			Expect(len(l.entries)).To(BeNumerically("<=", 3))
+		})
+
+		It("evicts an existing entry when sweep cannot free space", func() {
+			l.RecordFailure("a")
+			l.RecordFailure("b")
+			l.RecordFailure("c")
+			Expect(l.entries).To(HaveLen(3))
+
+			l.lastSweep = now
+			l.RecordFailure("d")
+			Expect(l.entries).To(HaveKey("d"))
+			Expect(len(l.entries)).To(BeNumerically("<=", 3))
+		})
+	})
 })

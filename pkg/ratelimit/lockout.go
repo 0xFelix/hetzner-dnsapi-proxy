@@ -5,6 +5,14 @@ import (
 	"time"
 )
 
+const (
+	lockoutSweepInterval = time.Minute
+	// lockoutDefaultMaxEntries caps memory use when many unique keys are
+	// seen. When full, a new key triggers an eager sweep; if that fails
+	// to free space, an arbitrary entry is evicted.
+	lockoutDefaultMaxEntries = 1 << 16
+)
+
 type lockoutEntry struct {
 	count       int
 	lastAttempt time.Time
@@ -19,7 +27,9 @@ type Lockout struct {
 	maxAttempts int
 	duration    time.Duration
 	window      time.Duration
+	maxEntries  int
 	now         func() time.Time
+	lastSweep   time.Time
 }
 
 func NewLockout(maxAttempts int, duration, window time.Duration) *Lockout {
@@ -28,6 +38,7 @@ func NewLockout(maxAttempts int, duration, window time.Duration) *Lockout {
 		maxAttempts: maxAttempts,
 		duration:    duration,
 		window:      window,
+		maxEntries:  lockoutDefaultMaxEntries,
 		now:         time.Now,
 	}
 }
@@ -36,11 +47,15 @@ func (l *Lockout) IsBlocked(key string) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
+	now := l.now()
+	if l.shouldSweep(now) {
+		l.sweep(now)
+	}
+
 	e := l.entries[key]
 	if e == nil {
 		return false
 	}
-	now := l.now()
 	if now.Before(e.lockedUntil) {
 		return true
 	}
@@ -56,8 +71,18 @@ func (l *Lockout) RecordFailure(key string) bool {
 	defer l.mu.Unlock()
 
 	now := l.now()
+	if l.shouldSweep(now) {
+		l.sweep(now)
+	}
+
 	e := l.entries[key]
 	if e == nil || e.stale(now, l.window) {
+		if e == nil && len(l.entries) >= l.maxEntries {
+			l.sweep(now)
+			if len(l.entries) >= l.maxEntries {
+				l.evictOne()
+			}
+		}
 		e = &lockoutEntry{}
 		l.entries[key] = e
 	}
@@ -75,6 +100,26 @@ func (l *Lockout) Reset(key string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	delete(l.entries, key)
+}
+
+func (l *Lockout) shouldSweep(now time.Time) bool {
+	return now.Sub(l.lastSweep) >= lockoutSweepInterval
+}
+
+func (l *Lockout) sweep(now time.Time) {
+	l.lastSweep = now
+	for k, e := range l.entries {
+		if e.stale(now, l.window) {
+			delete(l.entries, k)
+		}
+	}
+}
+
+func (l *Lockout) evictOne() {
+	for k := range l.entries {
+		delete(l.entries, k)
+		return
+	}
 }
 
 func (e *lockoutEntry) stale(now time.Time, window time.Duration) bool {
