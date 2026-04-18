@@ -65,4 +65,33 @@ var _ = Describe("Limiter", func() {
 		Expect(l.Allow("other")).To(BeTrue())
 		Expect(l.buckets).NotTo(HaveKey(ip))
 	})
+
+	Context("when the bucket cap is reached", func() {
+		BeforeEach(func() {
+			l.maxBuckets = 3
+		})
+
+		It("evicts idle buckets before admitting a new key", func() {
+			Expect(l.Allow("a")).To(BeTrue())
+			Expect(l.Allow("b")).To(BeTrue())
+			Expect(l.Allow("c")).To(BeTrue())
+			Expect(l.buckets).To(HaveLen(3))
+
+			now = now.Add(11 * time.Minute)
+			Expect(l.Allow("d")).To(BeTrue())
+			Expect(len(l.buckets)).To(BeNumerically("<=", 3))
+			Expect(l.buckets).To(HaveKey("d"))
+		})
+
+		It("rejects new keys when the cap cannot be freed", func() {
+			Expect(l.Allow("a")).To(BeTrue())
+			Expect(l.Allow("b")).To(BeTrue())
+			Expect(l.Allow("c")).To(BeTrue())
+
+			// All active; sweep cannot free anything.
+			Expect(l.Allow("d")).To(BeFalse())
+			Expect(l.buckets).NotTo(HaveKey("d"))
+			Expect(l.buckets).To(HaveLen(3))
+		})
+	})
 })
