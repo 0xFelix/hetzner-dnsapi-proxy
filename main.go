@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -33,6 +34,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Printf("Enabled endpoints: %s", strings.Join(cfg.Endpoints.Enabled(), ", "))
 	log.Printf("Authorization method set to: %s", cfg.Auth.Method)
 	log.Printf("Starting hetzner-dnsapi-proxy, listening on %s", cfg.ListenAddr)
 	if err := runServer(cfg.ListenAddr, app.New(cfg)); err != nil {
