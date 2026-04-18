@@ -55,7 +55,7 @@ func New(cfg *config.Config) http.Handler {
 	mux.Handle("POST /httpreq/cleanup",
 		handle(cfg, rl, middleware.ContentTypeJSON, middleware.BindHTTPReq, authorizer, cleaner, middleware.StatusOk))
 	mux.Handle("GET /directadmin/CMD_API_SHOW_DOMAINS",
-		handle(cfg, rl, middleware.NewShowDomainsDirectAdmin(cfg)))
+		handle(cfg, rl, middleware.NewShowDomainsDirectAdmin(cfg, lockout)))
 	mux.Handle("GET /directadmin/CMD_API_DOMAIN_POINTER",
 		handle(cfg, rl, middleware.StatusOk))
 	mux.Handle("GET /directadmin/CMD_API_DNS_CONTROL",
@@ -65,7 +65,7 @@ func New(cfg *config.Config) http.Handler {
 }
 
 func handle(cfg *config.Config, handlers ...func(http.Handler) http.Handler) http.Handler {
-	handlers = slices.Insert(handlers, 0, middleware.NewSetClientIP(cfg.TrustedProxies))
+	handlers = slices.Insert(handlers, 0, middleware.NewSetClientIP(cfg.TrustedProxyPrefixes))
 	if cfg.Debug {
 		handlers = slices.Insert(handlers, 0, middleware.LogDebug)
 	}
