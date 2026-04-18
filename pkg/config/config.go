@@ -16,7 +16,7 @@ type AllowedDomains map[string][]*net.IPNet
 
 func (out *AllowedDomains) FromString(val string) error {
 	allowedDomains := AllowedDomains{}
-	for _, part := range strings.Split(val, ";") {
+	for part := range strings.SplitSeq(val, ";") {
 		parts := strings.Split(part, ",")
 
 		const expectedParts = 2
@@ -41,6 +41,7 @@ type Config struct {
 	Token                string         `yaml:"token"`
 	Timeout              int            `yaml:"timeout"`
 	Auth                 Auth           `yaml:"auth"`
+	Endpoints            Endpoints      `yaml:"endpoints"`
 	RecordTTL            int            `yaml:"recordTTL"`
 	ListenAddr           string         `yaml:"listenAddr"`
 	TrustedProxies       []string       `yaml:"trustedProxies"`
@@ -50,11 +51,37 @@ type Config struct {
 	Debug                bool           `yaml:"debug"`
 }
 
+type Endpoints struct {
+	Plain       bool `yaml:"plain"`
+	Nic         bool `yaml:"nic"`
+	AcmeDNS     bool `yaml:"acmedns"`
+	HTTPReq     bool `yaml:"httpreq"`
+	DirectAdmin bool `yaml:"directadmin"`
+}
+
+func (e *Endpoints) UnmarshalYAML(unmarshal func(any) error) error {
+	type raw Endpoints
+	var r raw
+	if err := unmarshal(&r); err != nil {
+		return err
+	}
+	*e = Endpoints(r)
+	return nil
+}
+
 type Auth struct {
 	Method         string         `yaml:"method"`
 	AllowedDomains AllowedDomains `yaml:"allowedDomains"`
 	Users          []User         `yaml:"users"`
 }
+
+const (
+	EndpointPlain       = "plain"
+	EndpointNic         = "nic"
+	EndpointAcmeDNS     = "acmedns"
+	EndpointHTTPReq     = "httpreq"
+	EndpointDirectAdmin = "directadmin"
+)
 
 const (
 	AuthMethodAllowedDomains = "allowedDomains"
@@ -86,6 +113,13 @@ func NewConfig() *Config {
 		Timeout: 60,
 		Auth: Auth{
 			Method: AuthMethodBoth,
+		},
+		Endpoints: Endpoints{
+			Plain:       true,
+			Nic:         true,
+			AcmeDNS:     true,
+			HTTPReq:     true,
+			DirectAdmin: true,
 		},
 		RecordTTL:  60,
 		ListenAddr: ":8081",
@@ -140,22 +174,13 @@ func ParseEnv() (*Config, error) {
 	if err := envBool("DEBUG", &cfg.Debug); err != nil {
 		return nil, err
 	}
-	if err := envFloat("RATE_LIMIT_RPS", &cfg.RateLimit.RPS); err != nil {
+	if err := envRateLimit(&cfg.RateLimit); err != nil {
 		return nil, err
 	}
-	if err := envInt("RATE_LIMIT_BURST", &cfg.RateLimit.Burst); err != nil {
+	if err := envLockout(&cfg.Lockout); err != nil {
 		return nil, err
 	}
-	if err := envInt("RATE_LIMIT_IDLE_SECONDS", &cfg.RateLimit.IdleSeconds); err != nil {
-		return nil, err
-	}
-	if err := envInt("LOCKOUT_MAX_ATTEMPTS", &cfg.Lockout.MaxAttempts); err != nil {
-		return nil, err
-	}
-	if err := envInt("LOCKOUT_DURATION_SECONDS", &cfg.Lockout.DurationSeconds); err != nil {
-		return nil, err
-	}
-	if err := envInt("LOCKOUT_WINDOW_SECONDS", &cfg.Lockout.WindowSeconds); err != nil {
+	if err := envEndpoints(&cfg.Endpoints); err != nil {
 		return nil, err
 	}
 
@@ -212,6 +237,52 @@ func envBool(key string, dst *bool) error {
 		return fmt.Errorf("failed to parse %s: %v", key, err)
 	}
 	*dst = b
+	return nil
+}
+
+func envRateLimit(rl *RateLimit) error {
+	if err := envFloat("RATE_LIMIT_RPS", &rl.RPS); err != nil {
+		return err
+	}
+	if err := envInt("RATE_LIMIT_BURST", &rl.Burst); err != nil {
+		return err
+	}
+	return envInt("RATE_LIMIT_IDLE_SECONDS", &rl.IdleSeconds)
+}
+
+func envLockout(l *Lockout) error {
+	if err := envInt("LOCKOUT_MAX_ATTEMPTS", &l.MaxAttempts); err != nil {
+		return err
+	}
+	if err := envInt("LOCKOUT_DURATION_SECONDS", &l.DurationSeconds); err != nil {
+		return err
+	}
+	return envInt("LOCKOUT_WINDOW_SECONDS", &l.WindowSeconds)
+}
+
+func envEndpoints(endpoints *Endpoints) error {
+	v, ok := os.LookupEnv("ENDPOINTS")
+	if !ok {
+		return nil
+	}
+	*endpoints = Endpoints{}
+	for name := range strings.SplitSeq(v, ",") {
+		name = strings.TrimSpace(name)
+		switch name {
+		case EndpointPlain:
+			endpoints.Plain = true
+		case EndpointNic:
+			endpoints.Nic = true
+		case EndpointAcmeDNS:
+			endpoints.AcmeDNS = true
+		case EndpointHTTPReq:
+			endpoints.HTTPReq = true
+		case EndpointDirectAdmin:
+			endpoints.DirectAdmin = true
+		default:
+			return fmt.Errorf("invalid endpoint %q in ENDPOINTS", name)
+		}
+	}
 	return nil
 }
 

@@ -278,6 +278,7 @@ var _ = Describe("Config", func() {
 					AllowedDomains: allowedDomains,
 					Users:          users,
 				},
+				Endpoints:      config.Endpoints{Plain: true, Nic: true, AcmeDNS: true, HTTPReq: true, DirectAdmin: true},
 				RecordTTL:      recordTTL,
 				ListenAddr:     listenAddr,
 				TrustedProxies: trustedProxies,

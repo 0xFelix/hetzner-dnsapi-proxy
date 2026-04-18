@@ -42,24 +42,34 @@ func New(cfg *config.Config) http.Handler {
 	rl := middleware.NewRateLimit(limiter, middleware.RateLimitExceeded)
 
 	mux := http.NewServeMux()
-	mux.Handle("GET /plain/update",
-		handle(cfg, rl, middleware.BindPlain, authorizer, updater, middleware.StatusOk))
-	mux.Handle("GET /nic/update", handle(
-		cfg, middleware.NewRateLimit(limiter, middleware.NicRateLimitExceeded), middleware.BindNicUpdate,
-		middleware.NicAuth(cfg, lockout), middleware.NicUpdate(updater), middleware.StatusOkNicUpdate,
-	))
-	mux.Handle("POST /acmedns/update",
-		handle(cfg, rl, middleware.BindAcmeDNS, authorizer, updater, middleware.StatusOkAcmeDNS))
-	mux.Handle("POST /httpreq/present",
-		handle(cfg, rl, middleware.ContentTypeJSON, middleware.BindHTTPReq, authorizer, updater, middleware.StatusOk))
-	mux.Handle("POST /httpreq/cleanup",
-		handle(cfg, rl, middleware.ContentTypeJSON, middleware.BindHTTPReq, authorizer, cleaner, middleware.StatusOk))
-	mux.Handle("GET /directadmin/CMD_API_SHOW_DOMAINS",
-		handle(cfg, rl, middleware.NewShowDomainsDirectAdmin(cfg, lockout)))
-	mux.Handle("GET /directadmin/CMD_API_DOMAIN_POINTER",
-		handle(cfg, rl, middleware.StatusOk))
-	mux.Handle("GET /directadmin/CMD_API_DNS_CONTROL",
-		handle(cfg, rl, middleware.BindDirectAdmin, authorizer, updater, middleware.StatusOkDirectAdmin))
+	if cfg.Endpoints.Plain {
+		mux.Handle("GET /plain/update",
+			handle(cfg, rl, middleware.BindPlain, authorizer, updater, middleware.StatusOk))
+	}
+	if cfg.Endpoints.Nic {
+		mux.Handle("GET /nic/update", handle(
+			cfg, middleware.NewRateLimit(limiter, middleware.NicRateLimitExceeded), middleware.BindNicUpdate,
+			middleware.NicAuth(cfg, lockout), middleware.NicUpdate(updater), middleware.StatusOkNicUpdate,
+		))
+	}
+	if cfg.Endpoints.AcmeDNS {
+		mux.Handle("POST /acmedns/update",
+			handle(cfg, rl, middleware.BindAcmeDNS, authorizer, updater, middleware.StatusOkAcmeDNS))
+	}
+	if cfg.Endpoints.HTTPReq {
+		mux.Handle("POST /httpreq/present",
+			handle(cfg, rl, middleware.ContentTypeJSON, middleware.BindHTTPReq, authorizer, updater, middleware.StatusOk))
+		mux.Handle("POST /httpreq/cleanup",
+			handle(cfg, rl, middleware.ContentTypeJSON, middleware.BindHTTPReq, authorizer, cleaner, middleware.StatusOk))
+	}
+	if cfg.Endpoints.DirectAdmin {
+		mux.Handle("GET /directadmin/CMD_API_SHOW_DOMAINS",
+			handle(cfg, rl, middleware.NewShowDomainsDirectAdmin(cfg, lockout)))
+		mux.Handle("GET /directadmin/CMD_API_DOMAIN_POINTER",
+			handle(cfg, rl, middleware.StatusOk))
+		mux.Handle("GET /directadmin/CMD_API_DNS_CONTROL",
+			handle(cfg, rl, middleware.BindDirectAdmin, authorizer, updater, middleware.StatusOkDirectAdmin))
+	}
 
 	return mux
 }
