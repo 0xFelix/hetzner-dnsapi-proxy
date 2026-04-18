@@ -43,6 +43,9 @@ func main() {
 func runServer(listenAddr string, handler http.Handler) error {
 	const (
 		readHeaderTimeout = 10
+		readTimeout       = 30
+		writeTimeout      = 30
+		idleTimeout       = 120
 		shutdownTimeout   = 5
 	)
 
@@ -50,6 +53,9 @@ func runServer(listenAddr string, handler http.Handler) error {
 		Addr:              listenAddr,
 		Handler:           handler,
 		ReadHeaderTimeout: readHeaderTimeout * time.Second,
+		ReadTimeout:       readTimeout * time.Second,
+		WriteTimeout:      writeTimeout * time.Second,
+		IdleTimeout:       idleTimeout * time.Second,
 	}
 
 	go func() {
