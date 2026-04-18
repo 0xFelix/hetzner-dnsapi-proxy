@@ -59,6 +59,26 @@ type Endpoints struct {
 	DirectAdmin bool `yaml:"directadmin"`
 }
 
+func (e *Endpoints) Enabled() []string {
+	var names []string
+	if e.Plain {
+		names = append(names, EndpointPlain)
+	}
+	if e.Nic {
+		names = append(names, EndpointNic)
+	}
+	if e.AcmeDNS {
+		names = append(names, EndpointAcmeDNS)
+	}
+	if e.HTTPReq {
+		names = append(names, EndpointHTTPReq)
+	}
+	if e.DirectAdmin {
+		names = append(names, EndpointDirectAdmin)
+	}
+	return names
+}
+
 func (e *Endpoints) UnmarshalYAML(unmarshal func(any) error) error {
 	type raw Endpoints
 	var r raw
