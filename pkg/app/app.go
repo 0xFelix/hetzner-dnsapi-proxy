@@ -76,6 +76,7 @@ func New(cfg *config.Config) http.Handler {
 
 func handle(cfg *config.Config, handlers ...func(http.Handler) http.Handler) http.Handler {
 	handlers = slices.Insert(handlers, 0, middleware.NewSetClientIP(cfg.TrustedProxyPrefixes))
+	handlers = slices.Insert(handlers, 0, middleware.SecurityHeaders)
 	if cfg.Debug {
 		handlers = slices.Insert(handlers, 0, middleware.LogDebug)
 	}
