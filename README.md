@@ -85,6 +85,27 @@ Both features per-client-IP defenses:
 Client IPs are determined after `trustedProxies` resolution, so requests
 traversing a trusted reverse proxy are counted against the real client.
 
+### Enabled endpoints
+
+By default all endpoint groups are enabled. You can restrict which groups are
+active by listing only the ones you want:
+
+- `plain` — `/plain/update`
+- `nic` — `/nic/update`
+- `acmedns` — `/acmedns/update`
+- `httpreq` — `/httpreq/present`, `/httpreq/cleanup`
+- `directadmin` — `/directadmin/CMD_API_*`
+
+Via config file set the `endpoints` key; via environment variable set
+`ENDPOINTS` to a comma-separated list (e.g. `ENDPOINTS=plain,nic`). Listing
+any endpoint disables all others not listed.
+
+### Security headers
+
+Every response includes `X-Content-Type-Options: nosniff`,
+`X-Frame-Options: DENY`, `Content-Security-Policy: default-src 'none'`, and
+`Cache-Control: no-store`.
+
 ### Configuration file
 
 ```yaml
@@ -105,6 +126,12 @@ auth:
       password: pass
       domains:
         - example.com
+endpoints:
+  plain: true
+  nic: true
+  acmedns: true
+  httpreq: true
+  directadmin: true
 recordTTL: 60
 listenAddr: :8081
 trustedProxies:
@@ -137,4 +164,5 @@ debug: false
 | `LOCKOUT_MAX_ATTEMPTS`     | int    | Failures before lockout                                                                                                                    | N        | `10`                           |
 | `LOCKOUT_DURATION_SECONDS` | int    | Lockout duration in seconds                                                                                                                | N        | `3600`                         |
 | `LOCKOUT_WINDOW_SECONDS`   | int    | Window in seconds during which consecutive failures accumulate                                                                             | N        | `900`                          |
+| `ENDPOINTS`                | string | Comma-separated list of endpoint groups to enable: `plain`, `nic`, `acmedns`, `httpreq`, `directadmin`. All enabled when unset.            | N        | All enabled                    |
 | `DEBUG`                    | bool   | Output debug logs of received requests                                                                                                     | N        | `false`                        |
