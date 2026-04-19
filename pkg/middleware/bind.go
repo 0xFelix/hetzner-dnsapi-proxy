@@ -131,6 +131,7 @@ func BindHTTPReq(next http.Handler) http.Handler {
 		if err := json.NewDecoder(r.Body).Decode(d); err != nil {
 			log.Printf(failedParseRequestFmt, err)
 			w.WriteHeader(http.StatusBadRequest)
+			return
 		}
 
 		if d.FQDN == "" {
