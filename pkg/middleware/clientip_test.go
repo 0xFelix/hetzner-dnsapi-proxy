@@ -12,6 +12,11 @@ import (
 )
 
 var _ = Describe("SetClientIP", func() {
+	const (
+		forwardedIP  = "192.0.2.7"
+		headerRealIP = "X-Real-Ip"
+	)
+
 	var (
 		captured string
 		inner    http.Handler
@@ -50,19 +55,19 @@ var _ = Describe("SetClientIP", func() {
 	It("honors X-Real-Ip from a trusted proxy matched by bare IP", func() {
 		rec := run(
 			[]netip.Prefix{netip.MustParsePrefix("10.0.0.1/32")},
-			"10.0.0.1:1234", map[string]string{"X-Real-Ip": "192.0.2.7"},
+			"10.0.0.1:1234", map[string]string{headerRealIP: forwardedIP},
 		)
 		Expect(rec.Code).To(Equal(http.StatusOK))
-		Expect(captured).To(Equal("192.0.2.7"))
+		Expect(captured).To(Equal(forwardedIP))
 	})
 
 	It("honors X-Real-Ip from a trusted proxy matched by CIDR", func() {
 		rec := run(
 			[]netip.Prefix{netip.MustParsePrefix("10.0.0.0/8")},
-			"10.1.2.3:1234", map[string]string{"X-Real-Ip": "192.0.2.7"},
+			"10.1.2.3:1234", map[string]string{headerRealIP: forwardedIP},
 		)
 		Expect(rec.Code).To(Equal(http.StatusOK))
-		Expect(captured).To(Equal("192.0.2.7"))
+		Expect(captured).To(Equal(forwardedIP))
 	})
 
 	It("honors the first X-Forwarded-For entry from a trusted proxy when X-Real-Ip is absent", func() {
@@ -71,11 +76,11 @@ var _ = Describe("SetClientIP", func() {
 			"10.0.0.1:1234", map[string]string{"X-Forwarded-For": "192.0.2.7, 10.0.0.1"},
 		)
 		Expect(rec.Code).To(Equal(http.StatusOK))
-		Expect(captured).To(Equal("192.0.2.7"))
+		Expect(captured).To(Equal(forwardedIP))
 	})
 
 	It("ignores forwarded headers from an untrusted proxy", func() {
-		rec := run(nil, "10.0.0.1:1234", map[string]string{"X-Real-Ip": "192.0.2.7"})
+		rec := run(nil, "10.0.0.1:1234", map[string]string{headerRealIP: forwardedIP})
 		Expect(rec.Code).To(Equal(http.StatusOK))
 		Expect(captured).To(Equal("10.0.0.1"))
 	})
@@ -83,7 +88,7 @@ var _ = Describe("SetClientIP", func() {
 	It("ignores forwarded headers from an IP outside the trusted CIDR", func() {
 		rec := run(
 			[]netip.Prefix{netip.MustParsePrefix("10.0.0.0/8")},
-			"11.0.0.1:1234", map[string]string{"X-Real-Ip": "192.0.2.7"},
+			"11.0.0.1:1234", map[string]string{headerRealIP: forwardedIP},
 		)
 		Expect(rec.Code).To(Equal(http.StatusOK))
 		Expect(captured).To(Equal("11.0.0.1"))
@@ -99,8 +104,8 @@ var _ = Describe("SetClientIP", func() {
 			Expect(rec.Code).To(Equal(http.StatusOK))
 			Expect(captured).To(Equal("10.0.0.1"))
 		},
-		Entry("invalid X-Real-Ip", "X-Real-Ip", "not-an-ip"),
-		Entry("X-Real-Ip with port", "X-Real-Ip", "192.0.2.7:80"),
+		Entry("invalid X-Real-Ip", headerRealIP, "not-an-ip"),
+		Entry("X-Real-Ip with port", headerRealIP, "192.0.2.7:80"),
 		Entry("invalid first X-Forwarded-For", "X-Forwarded-For", "bogus, 192.0.2.7"),
 		Entry("empty first X-Forwarded-For", "X-Forwarded-For", ", 192.0.2.7"),
 	)

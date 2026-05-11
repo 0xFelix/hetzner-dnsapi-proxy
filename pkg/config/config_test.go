@@ -15,7 +15,10 @@ import (
 )
 
 var _ = Describe("AllowedDomains", func() {
-	const unexpectedPartsCountErr = "failed to parse allowed domain, length of parts != 2"
+	const (
+		exampleDomain           = "example.com"
+		unexpectedPartsCountErr = "failed to parse allowed domain, length of parts != 2"
+	)
 
 	DescribeTable(
 		"should read from string successfully", func(text string, expected func() config.AllowedDomains) {
@@ -44,7 +47,7 @@ var _ = Describe("AllowedDomains", func() {
 			func() config.AllowedDomains {
 				_, ipNet, err := net.ParseCIDR("192.168.0.1/32")
 				Expect(err).NotTo(HaveOccurred())
-				return config.AllowedDomains{"example.com": []*net.IPNet{ipNet}}
+				return config.AllowedDomains{exampleDomain: []*net.IPNet{ipNet}}
 			},
 		),
 		Entry(
@@ -56,7 +59,7 @@ var _ = Describe("AllowedDomains", func() {
 				Expect(err).NotTo(HaveOccurred())
 				return config.AllowedDomains{
 					"*":           []*net.IPNet{ipNetLocalhost},
-					"example.com": []*net.IPNet{ipNetRemote},
+					exampleDomain: []*net.IPNet{ipNetRemote},
 				}
 			},
 		),
@@ -69,7 +72,7 @@ var _ = Describe("AllowedDomains", func() {
 				Expect(err).NotTo(HaveOccurred())
 				return config.AllowedDomains{
 					"*":           []*net.IPNet{ipNetLocalhost},
-					"example.com": []*net.IPNet{ipNetRemote},
+					exampleDomain: []*net.IPNet{ipNetRemote},
 					"test.com":    []*net.IPNet{ipNetLocalhost},
 				}
 			},
@@ -82,7 +85,7 @@ var _ = Describe("AllowedDomains", func() {
 				_, ipNetRemote, err := net.ParseCIDR("192.168.0.1/32")
 				Expect(err).NotTo(HaveOccurred())
 				return config.AllowedDomains{
-					"example.com": []*net.IPNet{ipNetLocalhost, ipNetRemote},
+					exampleDomain: []*net.IPNet{ipNetLocalhost, ipNetRemote},
 				}
 			},
 		),

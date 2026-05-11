@@ -16,9 +16,11 @@ import (
 
 var _ = Describe("GetDomains", func() {
 	const (
-		remoteAddr = "127.0.0.1"
-		username   = "username"
-		password   = "password"
+		remoteAddr      = "127.0.0.1"
+		niceDomain      = "nice.com"
+		parentDomain    = "parent.com"
+		somethingDomain = "something.com"
+		subParentDomain = "sub.parent.com"
 	)
 
 	DescribeTable(
@@ -27,15 +29,15 @@ var _ = Describe("GetDomains", func() {
 				Auth: config.Auth{
 					Method: authMethod,
 					AllowedDomains: config.AllowedDomains{
-						"example.com": []*net.IPNet{{
+						exampleDomain: []*net.IPNet{{
 							IP:   net.IPv4(127, 0, 0, 1),
 							Mask: net.IPv4Mask(255, 255, 255, 255),
 						}},
-						"test.com": []*net.IPNet{{
+						testDomain: []*net.IPNet{{
 							IP:   net.IPv4(192, 168, 0, 1),
 							Mask: net.IPv4Mask(255, 255, 0, 0),
 						}},
-						"nice.com": []*net.IPNet{{
+						niceDomain: []*net.IPNet{{
 							IP:   net.IPv4(127, 0, 0, 1),
 							Mask: net.IPv4Mask(255, 255, 255, 255),
 						}},
@@ -48,7 +50,7 @@ var _ = Describe("GetDomains", func() {
 						{
 							Username: username,
 							Password: password,
-							Domains:  []string{"something.com", "nice.com", "sub.parent.com"},
+							Domains:  []string{somethingDomain, niceDomain, subParentDomain},
 						},
 						{
 							Username: "someone",
@@ -64,37 +66,37 @@ var _ = Describe("GetDomains", func() {
 			"with auth method allowed domains",
 			config.AuthMethodAllowedDomains,
 			map[string]struct{}{
-				"example.com": {},
-				"nice.com":    {},
-				"parent.com":  {},
+				exampleDomain: {},
+				niceDomain:    {},
+				parentDomain:  {},
 			},
 		),
 		Entry(
 			"with auth method users",
 			config.AuthMethodUsers,
 			map[string]struct{}{
-				"something.com":  {},
-				"nice.com":       {},
-				"sub.parent.com": {},
+				somethingDomain: {},
+				niceDomain:      {},
+				subParentDomain: {},
 			},
 		),
 		Entry(
 			"with auth method both",
 			config.AuthMethodBoth,
 			map[string]struct{}{
-				"nice.com":       {},
-				"sub.parent.com": {},
+				niceDomain:      {},
+				subParentDomain: {},
 			},
 		),
 		Entry(
 			"with auth method any",
 			config.AuthMethodAny,
 			map[string]struct{}{
-				"example.com":    {},
-				"nice.com":       {},
-				"something.com":  {},
-				"parent.com":     {},
-				"sub.parent.com": {},
+				exampleDomain:   {},
+				niceDomain:      {},
+				somethingDomain: {},
+				parentDomain:    {},
+				subParentDomain: {},
 			},
 		),
 	)
@@ -102,7 +104,7 @@ var _ = Describe("GetDomains", func() {
 	It("should return nothing if auth method is invalid", func() {
 		cfg := &config.Config{
 			Auth: config.Auth{
-				Method: "invalid",
+				Method: invalidAuthMethod,
 			},
 		}
 		Expect(middleware.GetDomains(cfg, remoteAddr, username, password)).To(BeEmpty())
@@ -136,11 +138,7 @@ var _ = Describe("GetDomains", func() {
 })
 
 var _ = Describe("NewShowDomainsDirectAdmin", func() {
-	const (
-		ip       = "127.0.0.1"
-		username = "username"
-		password = "password"
-	)
+	const ip = "127.0.0.1"
 
 	var (
 		lockout *ratelimit.Lockout
@@ -155,7 +153,7 @@ var _ = Describe("NewShowDomainsDirectAdmin", func() {
 				Users: []config.User{{
 					Username: username,
 					Password: password,
-					Domains:  []string{"example.com"},
+					Domains:  []string{exampleDomain},
 				}},
 			},
 		}
@@ -186,7 +184,7 @@ var _ = Describe("NewShowDomainsDirectAdmin", func() {
 	It("returns 200 with the domain list when authenticated", func() {
 		rec := run(username, password)
 		Expect(rec.Code).To(Equal(http.StatusOK))
-		Expect(rec.Body.String()).To(Equal("list=example.com"))
+		Expect(rec.Body.String()).To(Equal("list=" + exampleDomain))
 	})
 
 	It("returns 401 with WWW-Authenticate on bad credentials in users mode", func() {
@@ -199,7 +197,7 @@ var _ = Describe("NewShowDomainsDirectAdmin", func() {
 	It("returns 401 without WWW-Authenticate in allowedDomains mode on IP mismatch", func() {
 		cfg.Auth.Method = config.AuthMethodAllowedDomains
 		cfg.Auth.AllowedDomains = config.AllowedDomains{
-			"example.com": []*net.IPNet{{
+			exampleDomain: []*net.IPNet{{
 				IP:   net.IPv4(10, 0, 0, 1),
 				Mask: net.IPv4Mask(255, 255, 255, 255),
 			}},

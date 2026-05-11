@@ -21,7 +21,7 @@ var _ = Describe("CheckPermission", func() {
 			&config.Config{
 				Auth: config.Auth{
 					Method: config.AuthMethodAllowedDomains,
-					AllowedDomains: config.AllowedDomains{"example.com": []*net.IPNet{
+					AllowedDomains: config.AllowedDomains{exampleDomain: []*net.IPNet{
 						{
 							IP:   net.IPv4(127, 0, 0, 1),
 							Mask: net.IPv4Mask(255, 255, 255, 255),
@@ -30,7 +30,7 @@ var _ = Describe("CheckPermission", func() {
 				},
 			},
 			&data.ReqData{
-				FullName: "example.com",
+				FullName: exampleDomain,
 			},
 			"127.0.0.1",
 		),
@@ -40,16 +40,16 @@ var _ = Describe("CheckPermission", func() {
 				Auth: config.Auth{
 					Method: config.AuthMethodUsers,
 					Users: []config.User{{
-						Username: "username",
-						Password: "password",
-						Domains:  []string{"example.com"},
+						Username: username,
+						Password: password,
+						Domains:  []string{exampleDomain},
 					}},
 				},
 			},
 			&data.ReqData{
-				FullName: "example.com",
-				Username: "username",
-				Password: "password",
+				FullName: exampleDomain,
+				Username: username,
+				Password: password,
 			},
 			"",
 		),
@@ -58,23 +58,23 @@ var _ = Describe("CheckPermission", func() {
 			&config.Config{
 				Auth: config.Auth{
 					Method: config.AuthMethodBoth,
-					AllowedDomains: config.AllowedDomains{"example.com": []*net.IPNet{
+					AllowedDomains: config.AllowedDomains{exampleDomain: []*net.IPNet{
 						{
 							IP:   net.IPv4(127, 0, 0, 1),
 							Mask: net.IPv4Mask(255, 255, 255, 255),
 						},
 					}},
 					Users: []config.User{{
-						Username: "username",
-						Password: "password",
-						Domains:  []string{"example.com"},
+						Username: username,
+						Password: password,
+						Domains:  []string{exampleDomain},
 					}},
 				},
 			},
 			&data.ReqData{
-				FullName: "example.com",
-				Username: "username",
-				Password: "password",
+				FullName: exampleDomain,
+				Username: username,
+				Password: password,
 			},
 			"127.0.0.1",
 		),
@@ -83,7 +83,7 @@ var _ = Describe("CheckPermission", func() {
 			&config.Config{
 				Auth: config.Auth{
 					Method: config.AuthMethodAny,
-					AllowedDomains: config.AllowedDomains{"example.com": []*net.IPNet{
+					AllowedDomains: config.AllowedDomains{exampleDomain: []*net.IPNet{
 						{
 							IP:   net.IPv4(127, 0, 0, 1),
 							Mask: net.IPv4Mask(255, 255, 255, 255),
@@ -92,7 +92,7 @@ var _ = Describe("CheckPermission", func() {
 				},
 			},
 			&data.ReqData{
-				FullName: "example.com",
+				FullName: exampleDomain,
 			},
 			"127.0.0.1",
 		),
@@ -102,16 +102,16 @@ var _ = Describe("CheckPermission", func() {
 				Auth: config.Auth{
 					Method: config.AuthMethodAny,
 					Users: []config.User{{
-						Username: "username",
-						Password: "password",
-						Domains:  []string{"example.com"},
+						Username: username,
+						Password: password,
+						Domains:  []string{exampleDomain},
 					}},
 				},
 			},
 			&data.ReqData{
-				FullName: "example.com",
-				Username: "username",
-				Password: "password",
+				FullName: exampleDomain,
+				Username: username,
+				Password: password,
 			},
 			"",
 		),
@@ -127,16 +127,16 @@ var _ = Describe("CheckPermission", func() {
 				Auth: config.Auth{
 					Method: config.AuthMethodAllowedDomains,
 					Users: []config.User{{
-						Username: "username",
-						Password: "password",
-						Domains:  []string{"example.com"},
+						Username: username,
+						Password: password,
+						Domains:  []string{exampleDomain},
 					}},
 				},
 			},
 			&data.ReqData{
-				FullName: "example.com",
-				Username: "username",
-				Password: "password",
+				FullName: exampleDomain,
+				Username: username,
+				Password: password,
 			},
 			"127.0.0.1",
 		),
@@ -145,7 +145,7 @@ var _ = Describe("CheckPermission", func() {
 			&config.Config{
 				Auth: config.Auth{
 					Method: config.AuthMethodUsers,
-					AllowedDomains: config.AllowedDomains{"example.com": []*net.IPNet{
+					AllowedDomains: config.AllowedDomains{exampleDomain: []*net.IPNet{
 						{
 							IP:   net.IPv4(127, 0, 0, 1),
 							Mask: net.IPv4Mask(255, 255, 255, 255),
@@ -154,9 +154,9 @@ var _ = Describe("CheckPermission", func() {
 				},
 			},
 			&data.ReqData{
-				FullName: "example.com",
-				Username: "username",
-				Password: "password",
+				FullName: exampleDomain,
+				Username: username,
+				Password: password,
 			},
 			"",
 		),
@@ -166,16 +166,16 @@ var _ = Describe("CheckPermission", func() {
 				Auth: config.Auth{
 					Method: config.AuthMethodBoth,
 					Users: []config.User{{
-						Username: "username",
-						Password: "password",
-						Domains:  []string{"example.com"},
+						Username: username,
+						Password: password,
+						Domains:  []string{exampleDomain},
 					}},
 				},
 			},
 			&data.ReqData{
-				FullName: "example.com",
-				Username: "username",
-				Password: "password",
+				FullName: exampleDomain,
+				Username: username,
+				Password: password,
 			},
 			"127.0.0.1",
 		),
@@ -184,7 +184,7 @@ var _ = Describe("CheckPermission", func() {
 			&config.Config{
 				Auth: config.Auth{
 					Method: config.AuthMethodBoth,
-					AllowedDomains: config.AllowedDomains{"example.com": []*net.IPNet{
+					AllowedDomains: config.AllowedDomains{exampleDomain: []*net.IPNet{
 						{
 							IP:   net.IPv4(127, 0, 0, 1),
 							Mask: net.IPv4Mask(255, 255, 255, 255),
@@ -193,9 +193,9 @@ var _ = Describe("CheckPermission", func() {
 				},
 			},
 			&data.ReqData{
-				FullName: "example.com",
-				Username: "username",
-				Password: "password",
+				FullName: exampleDomain,
+				Username: username,
+				Password: password,
 			},
 			"127.0.0.1",
 		),
@@ -207,9 +207,9 @@ var _ = Describe("CheckPermission", func() {
 				},
 			},
 			&data.ReqData{
-				FullName: "example.com",
-				Username: "username",
-				Password: "password",
+				FullName: exampleDomain,
+				Username: username,
+				Password: password,
 			},
 			"127.0.0.1",
 		),
@@ -218,23 +218,23 @@ var _ = Describe("CheckPermission", func() {
 			&config.Config{
 				Auth: config.Auth{
 					Method: "",
-					AllowedDomains: config.AllowedDomains{"example.com": []*net.IPNet{
+					AllowedDomains: config.AllowedDomains{exampleDomain: []*net.IPNet{
 						{
 							IP:   net.IPv4(127, 0, 0, 1),
 							Mask: net.IPv4Mask(255, 255, 255, 255),
 						},
 					}},
 					Users: []config.User{{
-						Username: "username",
-						Password: "password",
-						Domains:  []string{"example.com"},
+						Username: username,
+						Password: password,
+						Domains:  []string{exampleDomain},
 					}},
 				},
 			},
 			&data.ReqData{
-				FullName: "example.com",
-				Username: "username",
-				Password: "password",
+				FullName: exampleDomain,
+				Username: username,
+				Password: password,
 			},
 			"127.0.0.1",
 		),
@@ -242,24 +242,24 @@ var _ = Describe("CheckPermission", func() {
 			"with invalid auth method",
 			&config.Config{
 				Auth: config.Auth{
-					Method: "invalid",
-					AllowedDomains: config.AllowedDomains{"example.com": []*net.IPNet{
+					Method: invalidAuthMethod,
+					AllowedDomains: config.AllowedDomains{exampleDomain: []*net.IPNet{
 						{
 							IP:   net.IPv4(127, 0, 0, 1),
 							Mask: net.IPv4Mask(255, 255, 255, 255),
 						},
 					}},
 					Users: []config.User{{
-						Username: "username",
-						Password: "password",
-						Domains:  []string{"example.com"},
+						Username: username,
+						Password: password,
+						Domains:  []string{exampleDomain},
 					}},
 				},
 			},
 			&data.ReqData{
-				FullName: "example.com",
-				Username: "username",
-				Password: "password",
+				FullName: exampleDomain,
+				Username: username,
+				Password: password,
 			},
 			"127.0.0.1",
 		),
@@ -272,7 +272,7 @@ var _ = Describe("CheckAllowedDomains", func() {
 			Expect(middleware.CheckAllowedDomains(fqdn, clientIP, allowedDomains)).To(BeTrue())
 		},
 		Entry(
-			"with wildcard and matching host", "example.com", "127.0.0.1",
+			"with wildcard and matching host", exampleDomain, "127.0.0.1",
 			config.AllowedDomains{"*": []*net.IPNet{
 				{
 					IP:   net.IPv4(127, 0, 0, 1),
@@ -281,7 +281,7 @@ var _ = Describe("CheckAllowedDomains", func() {
 			}},
 		),
 		Entry(
-			"with wildcard and matching ipnet", "example.com", "192.168.0.1",
+			"with wildcard and matching ipnet", exampleDomain, "192.168.0.1",
 			config.AllowedDomains{"*": []*net.IPNet{
 				{
 					IP:   net.IPv4(192, 168, 0, 0),
@@ -290,8 +290,8 @@ var _ = Describe("CheckAllowedDomains", func() {
 			}},
 		),
 		Entry(
-			"when domain equals fqdn and matching host", "example.com", "127.0.0.1",
-			config.AllowedDomains{"example.com": []*net.IPNet{
+			"when domain equals fqdn and matching host", exampleDomain, "127.0.0.1",
+			config.AllowedDomains{exampleDomain: []*net.IPNet{
 				{
 					IP:   net.IPv4(127, 0, 0, 1),
 					Mask: net.IPv4Mask(255, 255, 255, 255),
@@ -299,8 +299,8 @@ var _ = Describe("CheckAllowedDomains", func() {
 			}},
 		),
 		Entry(
-			"when domain equals fqdn and matching ipnet", "example.com", "192.168.0.1",
-			config.AllowedDomains{"example.com": []*net.IPNet{
+			"when domain equals fqdn and matching ipnet", exampleDomain, "192.168.0.1",
+			config.AllowedDomains{exampleDomain: []*net.IPNet{
 				{
 					IP:   net.IPv4(192, 168, 0, 0),
 					Mask: net.IPv4Mask(255, 255, 0, 0),
@@ -308,8 +308,8 @@ var _ = Describe("CheckAllowedDomains", func() {
 			}},
 		),
 		Entry(
-			"when domain is a subdomain and matching host", "sub.example.com", "127.0.0.1",
-			config.AllowedDomains{"*.example.com": []*net.IPNet{
+			"when domain is a subdomain and matching host", subExampleDomain, "127.0.0.1",
+			config.AllowedDomains{wildcardExample: []*net.IPNet{
 				{
 					IP:   net.IPv4(127, 0, 0, 1),
 					Mask: net.IPv4Mask(255, 255, 255, 255),
@@ -317,8 +317,8 @@ var _ = Describe("CheckAllowedDomains", func() {
 			}},
 		),
 		Entry(
-			"when domain is a subdomain and matching ipnet", "sub.example.com", "192.168.0.1",
-			config.AllowedDomains{"*.example.com": []*net.IPNet{
+			"when domain is a subdomain and matching ipnet", subExampleDomain, "192.168.0.1",
+			config.AllowedDomains{wildcardExample: []*net.IPNet{
 				{
 					IP:   net.IPv4(192, 168, 0, 0),
 					Mask: net.IPv4Mask(255, 255, 0, 0),
@@ -332,7 +332,7 @@ var _ = Describe("CheckAllowedDomains", func() {
 			Expect(middleware.CheckAllowedDomains(fqdn, clientIP, allowedDomains)).To(BeFalse())
 		},
 		Entry(
-			"with wildcard and non matching host", "example.com", "127.0.0.2",
+			"with wildcard and non matching host", exampleDomain, "127.0.0.2",
 			config.AllowedDomains{"*": []*net.IPNet{
 				{
 					IP:   net.IPv4(127, 0, 0, 1),
@@ -341,7 +341,7 @@ var _ = Describe("CheckAllowedDomains", func() {
 			}},
 		),
 		Entry(
-			"with wildcard and non matching ipnet", "example.com", "127.0.0.1",
+			"with wildcard and non matching ipnet", exampleDomain, "127.0.0.1",
 			config.AllowedDomains{"*": []*net.IPNet{
 				{
 					IP:   net.IPv4(192, 168, 0, 0),
@@ -350,7 +350,7 @@ var _ = Describe("CheckAllowedDomains", func() {
 			}},
 		),
 		Entry(
-			"with wildcard and invalid client ip", "example.com", "127.0.0.x",
+			"with wildcard and invalid client ip", exampleDomain, "127.0.0.x",
 			config.AllowedDomains{"*": []*net.IPNet{
 				{
 					IP:   net.IPv4(127, 0, 0, 1),
@@ -359,8 +359,8 @@ var _ = Describe("CheckAllowedDomains", func() {
 			}},
 		),
 		Entry(
-			"when domain does not match and matching host", "test.com", "127.0.0.1",
-			config.AllowedDomains{"example.com": []*net.IPNet{
+			"when domain does not match and matching host", testDomain, "127.0.0.1",
+			config.AllowedDomains{exampleDomain: []*net.IPNet{
 				{
 					IP:   net.IPv4(127, 0, 0, 1),
 					Mask: net.IPv4Mask(255, 255, 255, 255),
@@ -368,8 +368,8 @@ var _ = Describe("CheckAllowedDomains", func() {
 			}},
 		),
 		Entry(
-			"when domain does not match and matching ipnet", "test.com", "192.168.0.1",
-			config.AllowedDomains{"example.com": []*net.IPNet{
+			"when domain does not match and matching ipnet", testDomain, "192.168.0.1",
+			config.AllowedDomains{exampleDomain: []*net.IPNet{
 				{
 					IP:   net.IPv4(192, 168, 0, 0),
 					Mask: net.IPv4Mask(255, 255, 0, 0),
@@ -377,8 +377,8 @@ var _ = Describe("CheckAllowedDomains", func() {
 			}},
 		),
 		Entry(
-			"with matching domain and invalid client ip", "example.com", "127.0.0.x",
-			config.AllowedDomains{"example.com": []*net.IPNet{
+			"with matching domain and invalid client ip", exampleDomain, "127.0.0.x",
+			config.AllowedDomains{exampleDomain: []*net.IPNet{
 				{
 					IP:   net.IPv4(127, 0, 0, 1),
 					Mask: net.IPv4Mask(255, 255, 255, 255),
@@ -387,7 +387,7 @@ var _ = Describe("CheckAllowedDomains", func() {
 		),
 		Entry(
 			"when subdomain does not match and matching host", "sub.test.com", "127.0.0.1",
-			config.AllowedDomains{"*.example.com": []*net.IPNet{
+			config.AllowedDomains{wildcardExample: []*net.IPNet{
 				{
 					IP:   net.IPv4(127, 0, 0, 1),
 					Mask: net.IPv4Mask(255, 255, 255, 255),
@@ -396,7 +396,7 @@ var _ = Describe("CheckAllowedDomains", func() {
 		),
 		Entry(
 			"when subdomain does not match and matching ipnet", "sub.test.com", "192.168.0.1",
-			config.AllowedDomains{"*.example.com": []*net.IPNet{
+			config.AllowedDomains{wildcardExample: []*net.IPNet{
 				{
 					IP:   net.IPv4(192, 168, 0, 0),
 					Mask: net.IPv4Mask(255, 255, 0, 0),
@@ -404,8 +404,8 @@ var _ = Describe("CheckAllowedDomains", func() {
 			}},
 		),
 		Entry(
-			"with matching subdomain and invalid client ip", "sub.example.com", "127.0.0.x",
-			config.AllowedDomains{"sub.example.com": []*net.IPNet{
+			"with matching subdomain and invalid client ip", subExampleDomain, "127.0.0.x",
+			config.AllowedDomains{subExampleDomain: []*net.IPNet{
 				{
 					IP:   net.IPv4(127, 0, 0, 1),
 					Mask: net.IPv4Mask(255, 255, 255, 255),
@@ -414,7 +414,7 @@ var _ = Describe("CheckAllowedDomains", func() {
 		),
 		Entry(
 			"when subdomains do not match", "test.example.com", "127.0.0.1",
-			config.AllowedDomains{"sub.example.com": []*net.IPNet{
+			config.AllowedDomains{subExampleDomain: []*net.IPNet{
 				{
 					IP:   net.IPv4(127, 0, 0, 1),
 					Mask: net.IPv4Mask(255, 255, 255, 255),
@@ -430,43 +430,43 @@ var _ = Describe("CheckUsers", func() {
 			Expect(middleware.CheckUsers(fqdn, username, password, users)).To(BeTrue())
 		},
 		Entry(
-			"with matching credentials and wildcard", "example.com", "username", "password",
+			"with matching credentials and wildcard", exampleDomain, username, password,
 			[]config.User{{
-				Username: "username",
-				Password: "password",
+				Username: username,
+				Password: password,
 				Domains:  []string{"*"},
 			}},
 		),
 		Entry(
-			"with matching credentials and fqdn equals domain", "example.com", "username", "password",
+			"with matching credentials and fqdn equals domain", exampleDomain, username, password,
 			[]config.User{{
-				Username: "username",
-				Password: "password",
-				Domains:  []string{"example.com"},
+				Username: username,
+				Password: password,
+				Domains:  []string{exampleDomain},
 			}},
 		),
 		Entry(
-			"with matching credentials and fqdn equals one of the domains", "example.com", "username", "password",
+			"with matching credentials and fqdn equals one of the domains", exampleDomain, username, password,
 			[]config.User{{
-				Username: "username",
-				Password: "password",
-				Domains:  []string{"test.com", "example.com"},
+				Username: username,
+				Password: password,
+				Domains:  []string{testDomain, exampleDomain},
 			}},
 		),
 		Entry(
-			"with matching credentials and fqdn is a subdomain", "sub.example.com", "username", "password",
+			"with matching credentials and fqdn is a subdomain", subExampleDomain, username, password,
 			[]config.User{{
-				Username: "username",
-				Password: "password",
-				Domains:  []string{"*.example.com"},
+				Username: username,
+				Password: password,
+				Domains:  []string{wildcardExample},
 			}},
 		),
 		Entry(
-			"with matching credentials and fqdn is a subdomain of one of the domains", "sub.example.com", "username", "password",
+			"with matching credentials and fqdn is a subdomain of one of the domains", subExampleDomain, username, password,
 			[]config.User{{
-				Username: "username",
-				Password: "password",
-				Domains:  []string{"test.com", "*.example.com"},
+				Username: username,
+				Password: password,
+				Domains:  []string{testDomain, wildcardExample},
 			}},
 		),
 	)
@@ -476,74 +476,74 @@ var _ = Describe("CheckUsers", func() {
 			Expect(middleware.CheckUsers(fqdn, username, password, users)).To(BeFalse())
 		},
 		Entry(
-			"when username does not match", "example.com", "something", "password",
+			"when username does not match", exampleDomain, "something", password,
 			[]config.User{{
-				Username: "username",
-				Password: "password",
+				Username: username,
+				Password: password,
 				Domains:  []string{"*"},
 			}},
 		),
 		Entry(
-			"when password does not match", "example.com", "username", "something",
+			"when password does not match", exampleDomain, username, "something",
 			[]config.User{{
-				Username: "username",
-				Password: "password",
+				Username: username,
+				Password: password,
 				Domains:  []string{"*"},
 			}},
 		),
 		Entry(
-			"when domain does not match", "test.com", "username", "password",
+			"when domain does not match", testDomain, username, password,
 			[]config.User{{
-				Username: "username",
-				Password: "password",
-				Domains:  []string{"example.com"},
+				Username: username,
+				Password: password,
+				Domains:  []string{exampleDomain},
 			}},
 		),
 		Entry(
-			"when subdomain does not match", "sub.test.com", "username", "password",
+			"when subdomain does not match", "sub.test.com", username, password,
 			[]config.User{{
-				Username: "username",
-				Password: "password",
-				Domains:  []string{"*.example.com"},
+				Username: username,
+				Password: password,
+				Domains:  []string{wildcardExample},
 			}},
 		),
 		Entry(
-			"when subdomains do not match", "test.example.com", "username", "password",
+			"when subdomains do not match", "test.example.com", username, password,
 			[]config.User{{
-				Username: "username",
-				Password: "password",
-				Domains:  []string{"sub.example.com"},
+				Username: username,
+				Password: password,
+				Domains:  []string{subExampleDomain},
 			}},
 		),
 		Entry(
-			"when fqdn is empty", "", "username", "password",
+			"when fqdn is empty", "", username, password,
 			[]config.User{{
-				Username: "username",
-				Password: "password",
+				Username: username,
+				Password: password,
 				Domains:  []string{"*"},
 			}},
 		),
 		Entry(
-			"when username is empty", "example.com", "", "password",
+			"when username is empty", exampleDomain, "", password,
 			[]config.User{{
-				Username: "username",
-				Password: "password",
+				Username: username,
+				Password: password,
 				Domains:  []string{"*"},
 			}},
 		),
 		Entry(
-			"when password is empty", "example.com", "username", "",
+			"when password is empty", exampleDomain, username, "",
 			[]config.User{{
-				Username: "username",
-				Password: "password",
+				Username: username,
+				Password: password,
 				Domains:  []string{"*"},
 			}},
 		),
 		Entry(
-			"when domains are empty", "example.com", "username", "password",
+			"when domains are empty", exampleDomain, username, password,
 			[]config.User{{
-				Username: "username",
-				Password: "password",
+				Username: username,
+				Password: password,
 				Domains:  nil,
 			}},
 		),
@@ -555,16 +555,16 @@ var _ = Describe("IsSubDomain", func() {
 		"should return true", func(sub, parent string) {
 			Expect(middleware.IsSubDomain(sub, parent)).To(BeTrue())
 		},
-		Entry("when sub is a subdomain", "sub.example.com", "*.example.com"),
-		Entry("when sub is a double subdomain", "subsub.sub.example.com", "*.example.com"),
+		Entry("when sub is a subdomain", subExampleDomain, wildcardExample),
+		Entry("when sub is a double subdomain", "subsub.sub.example.com", wildcardExample),
 	)
 
 	DescribeTable(
 		"should return false", func(sub, parent string) {
 			Expect(middleware.IsSubDomain(sub, parent)).To(BeFalse())
 		},
-		Entry("when parent does not begin with wildcard", "sub.example.com", "example.com"),
-		Entry("when sub has fewer parts than parent", "sub.example.com", "*.sub.example.com"),
-		Entry("when sub does not match parent", "sub.test.com", "*.example.com"),
+		Entry("when parent does not begin with wildcard", subExampleDomain, exampleDomain),
+		Entry("when sub has fewer parts than parent", subExampleDomain, "*.sub.example.com"),
+		Entry("when sub does not match parent", "sub.test.com", wildcardExample),
 	)
 })

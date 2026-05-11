@@ -18,6 +18,8 @@ import (
 )
 
 var _ = Describe("DirectAdmin", func() {
+	const actionAdd = "add"
+
 	var (
 		api      *ghttp.Server
 		server   *httptest.Server
@@ -63,11 +65,11 @@ var _ = Describe("DirectAdmin", func() {
 				statusCode, resData := doDirectAdminRequest(
 					ctx, server.URL+"/directadmin/CMD_API_DNS_CONTROL", username, password,
 					url.Values{
-						"domain": []string{domain},
-						"action": []string{"add"},
-						"type":   []string{recordType},
-						"name":   []string{name},
-						"value":  []string{value},
+						keyDomain: []string{domain},
+						keyAction: []string{actionAdd},
+						keyType:   []string{recordType},
+						keyName:   []string{name},
+						keyValue:  []string{value},
 					},
 				)
 				Expect(statusCode).To(Equal(http.StatusOK))
@@ -119,11 +121,11 @@ var _ = Describe("DirectAdmin", func() {
 				statusCode, resData := doDirectAdminRequest(
 					ctx, server.URL+"/directadmin/CMD_API_DNS_CONTROL", username, password,
 					url.Values{
-						"domain": []string{domain},
-						"action": []string{"add"},
-						"type":   []string{recordType},
-						"name":   []string{name},
-						"value":  []string{value},
+						keyDomain: []string{domain},
+						keyAction: []string{actionAdd},
+						keyType:   []string{recordType},
+						keyName:   []string{name},
+						keyValue:  []string{value},
 					},
 				)
 				Expect(statusCode).To(Equal(http.StatusOK))
@@ -159,8 +161,8 @@ var _ = Describe("DirectAdmin", func() {
 				statusCode, resData := doDirectAdminRequest(
 					ctx, server.URL+"/directadmin/CMD_API_DNS_CONTROL", username, password,
 					url.Values{
-						"domain": []string{libserver.ARecordNameFull},
-						"action": []string{action},
+						keyDomain: []string{libserver.ARecordNameFull},
+						keyAction: []string{action},
 					},
 				)
 				Expect(statusCode).To(Equal(http.StatusOK))
@@ -191,7 +193,7 @@ var _ = Describe("DirectAdmin", func() {
 			statusCode, resData := doDirectAdminRequest(
 				ctx, server.URL+"/directadmin/CMD_API_DOMAIN_POINTER", username, password,
 				url.Values{
-					"domain": []string{libserver.ZoneName},
+					keyDomain: []string{libserver.ZoneName},
 				},
 			)
 			Expect(statusCode).To(Equal(http.StatusOK))
@@ -206,10 +208,10 @@ var _ = Describe("DirectAdmin", func() {
 				statusCode, resData := doDirectAdminRequest(
 					ctx, server.URL+"/directadmin/CMD_API_DNS_CONTROL", username, password,
 					url.Values{
-						"action": []string{"add"},
-						"type":   []string{libserver.RecordTypeTXT},
-						"name":   []string{libserver.TXTRecordName},
-						"value":  []string{libserver.TXTUpdated},
+						keyAction: []string{actionAdd},
+						keyType:   []string{libserver.RecordTypeTXT},
+						keyName:   []string{libserver.TXTRecordName},
+						keyValue:  []string{libserver.TXTUpdated},
 					},
 				)
 				Expect(statusCode).To(Equal(http.StatusBadRequest))
@@ -221,10 +223,10 @@ var _ = Describe("DirectAdmin", func() {
 				statusCode, resData := doDirectAdminRequest(
 					ctx, server.URL+"/directadmin/CMD_API_DNS_CONTROL", username, password,
 					url.Values{
-						"domain": []string{libserver.ZoneName},
-						"type":   []string{libserver.RecordTypeTXT},
-						"name":   []string{libserver.TXTRecordName},
-						"value":  []string{libserver.TXTUpdated},
+						keyDomain: []string{libserver.ZoneName},
+						keyType:   []string{libserver.RecordTypeTXT},
+						keyName:   []string{libserver.TXTRecordName},
+						keyValue:  []string{libserver.TXTUpdated},
 					},
 				)
 				Expect(statusCode).To(Equal(http.StatusBadRequest))
@@ -236,11 +238,11 @@ var _ = Describe("DirectAdmin", func() {
 				statusCode, resData := doDirectAdminRequest(
 					ctx, server.URL+"/directadmin/CMD_API_DNS_CONTROL", username, password,
 					url.Values{
-						"action": []string{"add"},
-						"domain": []string{libserver.ZoneName},
-						"type":   []string{"madeup"},
-						"name":   []string{libserver.TXTRecordName},
-						"value":  []string{libserver.TXTUpdated},
+						keyAction: []string{actionAdd},
+						keyDomain: []string{libserver.ZoneName},
+						keyType:   []string{"madeup"},
+						keyName:   []string{libserver.TXTRecordName},
+						keyValue:  []string{libserver.TXTUpdated},
 					},
 				)
 				Expect(statusCode).To(Equal(http.StatusBadRequest))
@@ -253,11 +255,11 @@ var _ = Describe("DirectAdmin", func() {
 					statusCode, resData := doDirectAdminRequest(
 						ctx, server.URL+"/directadmin/CMD_API_DNS_CONTROL", username, password,
 						url.Values{
-							"action": []string{"add"},
-							"domain": []string{libserver.ZoneName},
-							"type":   []string{recordType},
-							"name":   []string{libserver.ARecordName},
-							"value":  []string{value},
+							keyAction: []string{actionAdd},
+							keyDomain: []string{libserver.ZoneName},
+							keyType:   []string{recordType},
+							keyName:   []string{libserver.ARecordName},
+							keyValue:  []string{value},
 						},
 					)
 					Expect(statusCode).To(Equal(http.StatusBadRequest))
@@ -274,11 +276,11 @@ var _ = Describe("DirectAdmin", func() {
 				statusCode, resData := doDirectAdminRequest(
 					ctx, server.URL+"/directadmin/CMD_API_DNS_CONTROL", username, password,
 					url.Values{
-						"action": []string{"add"},
-						"domain": []string{libserver.TLD},
-						"type":   []string{libserver.RecordTypeTXT},
-						"name":   []string{""},
-						"value":  []string{libserver.TXTUpdated},
+						keyAction: []string{actionAdd},
+						keyDomain: []string{libserver.TLD},
+						keyType:   []string{libserver.RecordTypeTXT},
+						keyName:   []string{""},
+						keyValue:  []string{libserver.TXTUpdated},
 					},
 				)
 				Expect(statusCode).To(Equal(http.StatusBadRequest))
@@ -298,11 +300,11 @@ var _ = Describe("DirectAdmin", func() {
 					statusCode, resData := doDirectAdminRequest(
 						ctx, server.URL+"/directadmin/CMD_API_DNS_CONTROL", username, password,
 						url.Values{
-							"action": []string{"add"},
-							"domain": []string{domain},
-							"type":   []string{recordType},
-							"name":   []string{name},
-							"value":  []string{value},
+							keyAction: []string{actionAdd},
+							keyDomain: []string{domain},
+							keyType:   []string{recordType},
+							keyName:   []string{name},
+							keyValue:  []string{value},
 						},
 					)
 					Expect(statusCode).To(Equal(http.StatusUnauthorized))

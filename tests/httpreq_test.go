@@ -50,8 +50,8 @@ var _ = Describe("HTTPReq", func() {
 				Expect(doHTTPReqRequest(
 					ctx, server.URL+"/httpreq/present", username, password,
 					map[string]string{
-						"fqdn":  fqdn,
-						"value": libserver.TXTUpdated,
+						keyFQDN:  fqdn,
+						keyValue: libserver.TXTUpdated,
 					},
 				)).To(Equal(http.StatusOK))
 				Expect(api.ReceivedRequests()).To(HaveLen(3))
@@ -74,8 +74,8 @@ var _ = Describe("HTTPReq", func() {
 				Expect(doHTTPReqRequest(
 					ctx, server.URL+"/httpreq/present", username, password,
 					map[string]string{
-						"fqdn":  fqdn,
-						"value": libserver.TXTUpdated,
+						keyFQDN:  fqdn,
+						keyValue: libserver.TXTUpdated,
 					},
 				)).To(Equal(http.StatusOK))
 				Expect(api.ReceivedRequests()).To(HaveLen(4))
@@ -100,8 +100,8 @@ var _ = Describe("HTTPReq", func() {
 				Expect(doHTTPReqRequest(
 					ctx, server.URL+"/httpreq/cleanup", username, password,
 					map[string]string{
-						"fqdn":  fqdn,
-						"value": libserver.TXTExisting,
+						keyFQDN:  fqdn,
+						keyValue: libserver.TXTExisting,
 					},
 				)).To(Equal(http.StatusOK))
 				Expect(api.ReceivedRequests()).To(HaveLen(3))
@@ -121,7 +121,7 @@ var _ = Describe("HTTPReq", func() {
 			Expect(doHTTPReqRequest(
 				ctx, server.URL+"/httpreq/present", username, password,
 				map[string]string{
-					"value": libserver.TXTUpdated,
+					keyValue: libserver.TXTUpdated,
 				},
 			)).To(Equal(http.StatusBadRequest))
 		})
@@ -131,7 +131,7 @@ var _ = Describe("HTTPReq", func() {
 			Expect(doHTTPReqRequest(
 				ctx, server.URL+"/httpreq/present", username, password,
 				map[string]string{
-					"fqdn": libserver.TXTRecordNameFull,
+					keyFQDN: libserver.TXTRecordNameFull,
 				},
 			)).To(Equal(http.StatusBadRequest))
 		})
@@ -141,8 +141,8 @@ var _ = Describe("HTTPReq", func() {
 			Expect(doHTTPReqRequest(
 				ctx, server.URL+"/httpreq/present", username, password,
 				map[string]string{
-					"fqdn":  libserver.TLD,
-					"value": libserver.TXTUpdated,
+					keyFQDN:  libserver.TLD,
+					keyValue: libserver.TXTUpdated,
 				},
 			)).To(Equal(http.StatusBadRequest))
 		})
@@ -153,8 +153,8 @@ var _ = Describe("HTTPReq", func() {
 				Expect(doHTTPReqRequest(
 					ctx, server.URL+"/httpreq/present", username, password,
 					map[string]string{
-						"fqdn":  fqdn,
-						"value": libserver.TXTUpdated,
+						keyFQDN:  fqdn,
+						keyValue: libserver.TXTUpdated,
 					},
 				)).To(Equal(http.StatusUnauthorized))
 			},

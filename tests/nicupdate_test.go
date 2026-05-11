@@ -45,8 +45,8 @@ var _ = Describe("NicUpdate", func() {
 			)
 
 			status, body := doNicRequest(ctx, server.URL+"/nic/update", username, password, url.Values{
-				"hostname": []string{libserver.ARecordNameFull},
-				"myip":     []string{libserver.AUpdated},
+				keyHostname: []string{libserver.ARecordNameFull},
+				keyMyIP:     []string{libserver.AUpdated},
 			})
 			Expect(status).To(Equal(http.StatusOK))
 			Expect(body).To(Equal("good " + libserver.AUpdated))
@@ -64,8 +64,8 @@ var _ = Describe("NicUpdate", func() {
 			)
 
 			status, body := doNicRequest(ctx, server.URL+"/nic/update", username, password, url.Values{
-				"hostname": []string{libserver.AAAARecordNameFull},
-				"myip":     []string{libserver.AAAAUpdated},
+				keyHostname: []string{libserver.AAAARecordNameFull},
+				keyMyIP:     []string{libserver.AAAAUpdated},
 			})
 			Expect(status).To(Equal(http.StatusOK))
 			Expect(body).To(Equal("good " + libserver.AAAAUpdated))
@@ -84,8 +84,8 @@ var _ = Describe("NicUpdate", func() {
 			)
 
 			status, body := doNicRequest(ctx, server.URL+"/nic/update", username, password, url.Values{
-				"hostname": []string{libserver.ARecordNameFull},
-				"myip":     []string{libserver.AUpdated},
+				keyHostname: []string{libserver.ARecordNameFull},
+				keyMyIP:     []string{libserver.AUpdated},
 			})
 			Expect(status).To(Equal(http.StatusOK))
 			Expect(body).To(Equal("good " + libserver.AUpdated))
@@ -104,8 +104,8 @@ var _ = Describe("NicUpdate", func() {
 			)
 
 			status, body := doNicRequest(ctx, server.URL+"/nic/update", username, password, url.Values{
-				"hostname": []string{libserver.AAAARecordNameFull},
-				"myip":     []string{libserver.AAAAUpdated},
+				keyHostname: []string{libserver.AAAARecordNameFull},
+				keyMyIP:     []string{libserver.AAAAUpdated},
 			})
 			Expect(status).To(Equal(http.StatusOK))
 			Expect(body).To(Equal("good " + libserver.AAAAUpdated))
@@ -123,7 +123,7 @@ var _ = Describe("NicUpdate", func() {
 			)
 
 			status, body := doNicRequest(ctx, server.URL+"/nic/update", username, password, url.Values{
-				"hostname": []string{libserver.ARecordNameFull},
+				keyHostname: []string{libserver.ARecordNameFull},
 			})
 			Expect(status).To(Equal(http.StatusOK))
 			Expect(body).To(Equal("good " + libserver.AExisting))
@@ -139,7 +139,7 @@ var _ = Describe("NicUpdate", func() {
 		It("notfqdn when hostname is missing", func(ctx context.Context) {
 			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL)
 			status, body := doNicRequest(ctx, server.URL+"/nic/update", username, password, url.Values{
-				"myip": []string{libserver.AUpdated},
+				keyMyIP: []string{libserver.AUpdated},
 			})
 			Expect(status).To(Equal(http.StatusOK))
 			Expect(body).To(Equal("notfqdn"))
@@ -148,8 +148,8 @@ var _ = Describe("NicUpdate", func() {
 		It("notfqdn when myip is invalid", func(ctx context.Context) {
 			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL)
 			status, body := doNicRequest(ctx, server.URL+"/nic/update", username, password, url.Values{
-				"hostname": []string{libserver.ARecordNameFull},
-				"myip":     []string{"invalid"},
+				keyHostname: []string{libserver.ARecordNameFull},
+				keyMyIP:     []string{invalidValue},
 			})
 			Expect(status).To(Equal(http.StatusOK))
 			Expect(body).To(Equal("notfqdn"))
@@ -158,8 +158,8 @@ var _ = Describe("NicUpdate", func() {
 		It("notfqdn when hostname is malformed", func(ctx context.Context) {
 			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL)
 			status, body := doNicRequest(ctx, server.URL+"/nic/update", username, password, url.Values{
-				"hostname": []string{libserver.TLD},
-				"myip":     []string{libserver.AUpdated},
+				keyHostname: []string{libserver.TLD},
+				keyMyIP:     []string{libserver.AUpdated},
 			})
 			Expect(status).To(Equal(http.StatusOK))
 			Expect(body).To(Equal("notfqdn"))
@@ -168,8 +168,8 @@ var _ = Describe("NicUpdate", func() {
 		It("nohost when ip-only auth denies access", func(ctx context.Context) {
 			server = libserver.NewNoAllowedDomains(api.URL())
 			status, body := doNicRequest(ctx, server.URL+"/nic/update", username, password, url.Values{
-				"hostname": []string{libserver.ARecordNameFull},
-				"myip":     []string{libserver.AUpdated},
+				keyHostname: []string{libserver.ARecordNameFull},
+				keyMyIP:     []string{libserver.AUpdated},
 			})
 			Expect(status).To(Equal(http.StatusOK))
 			Expect(body).To(Equal("nohost"))
@@ -179,8 +179,8 @@ var _ = Describe("NicUpdate", func() {
 			server, _, username, password = libserver.New(api.URL(), libserver.DefaultTTL)
 			status, body := doNicRequest(ctx, server.URL+"/nic/update", username+"x", password,
 				url.Values{
-					"hostname": []string{libserver.ARecordNameFull},
-					"myip":     []string{libserver.AUpdated},
+					keyHostname: []string{libserver.ARecordNameFull},
+					keyMyIP:     []string{libserver.AUpdated},
 				})
 			Expect(status).To(Equal(http.StatusUnauthorized))
 			Expect(body).To(Equal("badauth"))

@@ -16,7 +16,7 @@ fmt: gofumpt ## Run gofumpt against the code.
 
 .PHONY: lint
 lint: ## Download golangci-lint if necessary and run it against the code.
-	test -s $(GOLANGCI_LINT) || curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(LOCALBIN)
+	test -s $(GOLANGCI_LINT) || curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b $(LOCALBIN)
 	CGO_ENABLED=0 $(GOLANGCI_LINT) run --timeout 5m
 
 .PHONY: test

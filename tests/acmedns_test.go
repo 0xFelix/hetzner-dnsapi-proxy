@@ -49,15 +49,15 @@ var _ = Describe("AcmeDNS", func() {
 				statusCode, resBody := doAcmeDNSRequest(
 					ctx, server.URL+"/acmedns/update", username, password,
 					map[string]string{
-						"subdomain": subdomain,
-						"txt":       libserver.TXTUpdated,
+						keySubdomain: subdomain,
+						keyTXT:       libserver.TXTUpdated,
 					},
 				)
 				Expect(statusCode).To(Equal(http.StatusOK))
 				var resData map[string]string
 				Expect(json.Unmarshal(resBody, &resData)).To(Succeed())
 				Expect(resData).To(gstruct.MatchAllKeys(gstruct.Keys{
-					"txt": Equal(libserver.TXTUpdated),
+					keyTXT: Equal(libserver.TXTUpdated),
 				}))
 				Expect(api.ReceivedRequests()).To(HaveLen(3))
 			},
@@ -79,15 +79,15 @@ var _ = Describe("AcmeDNS", func() {
 				statusCode, resBody := doAcmeDNSRequest(
 					ctx, server.URL+"/acmedns/update", username, password,
 					map[string]string{
-						"subdomain": subdomain,
-						"txt":       libserver.TXTUpdated,
+						keySubdomain: subdomain,
+						keyTXT:       libserver.TXTUpdated,
 					},
 				)
 				Expect(statusCode).To(Equal(http.StatusOK))
 				var resData map[string]string
 				Expect(json.Unmarshal(resBody, &resData)).To(Succeed())
 				Expect(resData).To(gstruct.MatchAllKeys(gstruct.Keys{
-					"txt": Equal(libserver.TXTUpdated),
+					keyTXT: Equal(libserver.TXTUpdated),
 				}))
 				Expect(api.ReceivedRequests()).To(HaveLen(4))
 			},
@@ -108,7 +108,7 @@ var _ = Describe("AcmeDNS", func() {
 			statusCode, resBody := doAcmeDNSRequest(
 				ctx, server.URL+"/acmedns/update", username, password,
 				map[string]string{
-					"txt": libserver.TXTUpdated,
+					keyTXT: libserver.TXTUpdated,
 				},
 			)
 			Expect(statusCode).To(Equal(http.StatusBadRequest))
@@ -120,7 +120,7 @@ var _ = Describe("AcmeDNS", func() {
 			statusCode, resBody := doAcmeDNSRequest(
 				ctx, server.URL+"/acmedns/update", username, password,
 				map[string]string{
-					"subdomain": libserver.TXTRecordNameFull,
+					keySubdomain: libserver.TXTRecordNameFull,
 				},
 			)
 			Expect(statusCode).To(Equal(http.StatusBadRequest))
@@ -132,8 +132,8 @@ var _ = Describe("AcmeDNS", func() {
 			statusCode, resBody := doAcmeDNSRequest(
 				ctx, server.URL+"/acmedns/update", username, password,
 				map[string]string{
-					"subdomain": libserver.TLD,
-					"txt":       libserver.TXTUpdated,
+					keySubdomain: libserver.TLD,
+					keyTXT:       libserver.TXTUpdated,
 				},
 			)
 			Expect(statusCode).To(Equal(http.StatusBadRequest))
@@ -146,8 +146,8 @@ var _ = Describe("AcmeDNS", func() {
 				statusCode, resBody := doAcmeDNSRequest(
 					ctx, server.URL+"/acmedns/update", username, password,
 					map[string]string{
-						"subdomain": subdomain,
-						"txt":       libserver.TXTUpdated,
+						keySubdomain: subdomain,
+						keyTXT:       libserver.TXTUpdated,
 					},
 				)
 				Expect(statusCode).To(Equal(http.StatusUnauthorized))

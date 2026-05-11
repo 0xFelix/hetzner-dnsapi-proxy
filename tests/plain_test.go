@@ -44,8 +44,8 @@ var _ = Describe("Plain", func() {
 			)
 
 			Expect(doPlainRequest(ctx, server.URL+"/plain/update", username, password, url.Values{
-				"hostname": []string{libserver.ARecordNameFull},
-				"ip":       []string{libserver.AUpdated},
+				keyHostname: []string{libserver.ARecordNameFull},
+				keyIP:       []string{libserver.AUpdated},
 			})).To(Equal(http.StatusOK))
 
 			Expect(api.ReceivedRequests()).To(HaveLen(3))
@@ -62,8 +62,8 @@ var _ = Describe("Plain", func() {
 			)
 
 			Expect(doPlainRequest(ctx, server.URL+"/plain/update", username, password, url.Values{
-				"hostname": []string{libserver.AAAARecordNameFull},
-				"ip":       []string{libserver.AAAAUpdated},
+				keyHostname: []string{libserver.AAAARecordNameFull},
+				keyIP:       []string{libserver.AAAAUpdated},
 			})).To(Equal(http.StatusOK))
 
 			Expect(api.ReceivedRequests()).To(HaveLen(3))
@@ -81,8 +81,8 @@ var _ = Describe("Plain", func() {
 			)
 
 			Expect(doPlainRequest(ctx, server.URL+"/plain/update", username, password, url.Values{
-				"hostname": []string{libserver.ARecordNameFull},
-				"ip":       []string{libserver.AUpdated},
+				keyHostname: []string{libserver.ARecordNameFull},
+				keyIP:       []string{libserver.AUpdated},
 			})).To(Equal(http.StatusOK))
 
 			Expect(api.ReceivedRequests()).To(HaveLen(4))
@@ -100,8 +100,8 @@ var _ = Describe("Plain", func() {
 			)
 
 			Expect(doPlainRequest(ctx, server.URL+"/plain/update", username, password, url.Values{
-				"hostname": []string{libserver.AAAARecordNameFull},
-				"ip":       []string{libserver.AAAAUpdated},
+				keyHostname: []string{libserver.AAAARecordNameFull},
+				keyIP:       []string{libserver.AAAAUpdated},
 			})).To(Equal(http.StatusOK))
 
 			Expect(api.ReceivedRequests()).To(HaveLen(4))
@@ -116,38 +116,38 @@ var _ = Describe("Plain", func() {
 		It("when hostname is missing", func(ctx context.Context) {
 			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL)
 			Expect(doPlainRequest(ctx, server.URL+"/plain/update", username, password, url.Values{
-				"ip": []string{libserver.AUpdated},
+				keyIP: []string{libserver.AUpdated},
 			})).To(Equal(http.StatusBadRequest))
 		})
 
 		It("when ip is missing", func(ctx context.Context) {
 			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL)
 			Expect(doPlainRequest(ctx, server.URL+"/plain/update", username, password, url.Values{
-				"hostname": []string{libserver.ARecordNameFull},
+				keyHostname: []string{libserver.ARecordNameFull},
 			})).To(Equal(http.StatusBadRequest))
 		})
 
 		It("when ip is invalid", func(ctx context.Context) {
 			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL)
 			Expect(doPlainRequest(ctx, server.URL+"/plain/update", username, password, url.Values{
-				"hostname": []string{libserver.ARecordNameFull},
-				"ip":       []string{"invalid"},
+				keyHostname: []string{libserver.ARecordNameFull},
+				keyIP:       []string{invalidValue},
 			})).To(Equal(http.StatusBadRequest))
 		})
 
 		It("when hostname is malformed", func(ctx context.Context) {
 			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL)
 			Expect(doPlainRequest(ctx, server.URL+"/plain/update", username, password, url.Values{
-				"hostname": []string{libserver.TLD},
-				"ip":       []string{libserver.AUpdated},
+				keyHostname: []string{libserver.TLD},
+				keyIP:       []string{libserver.AUpdated},
 			})).To(Equal(http.StatusBadRequest))
 		})
 
 		It("when access is denied", func(ctx context.Context) {
 			server = libserver.NewNoAllowedDomains(api.URL())
 			Expect(doPlainRequest(ctx, server.URL+"/plain/update", username, password, url.Values{
-				"hostname": []string{libserver.ARecordNameFull},
-				"ip":       []string{libserver.AUpdated},
+				keyHostname: []string{libserver.ARecordNameFull},
+				keyIP:       []string{libserver.AUpdated},
 			})).To(Equal(http.StatusUnauthorized))
 		})
 	})
