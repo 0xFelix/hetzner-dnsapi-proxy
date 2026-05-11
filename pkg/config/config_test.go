@@ -17,33 +17,38 @@ import (
 var _ = Describe("AllowedDomains", func() {
 	const unexpectedPartsCountErr = "failed to parse allowed domain, length of parts != 2"
 
-	DescribeTable("should read from string successfully", func(text string, expected func() config.AllowedDomains) {
-		allowedDomains := config.AllowedDomains{}
-		Expect(allowedDomains.FromString(text)).To(Succeed())
-		Expect(allowedDomains).To(Equal(expected()))
-	},
-		Entry("wildcard for localhost", "*,127.0.0.1/32",
+	DescribeTable(
+		"should read from string successfully", func(text string, expected func() config.AllowedDomains) {
+			allowedDomains := config.AllowedDomains{}
+			Expect(allowedDomains.FromString(text)).To(Succeed())
+			Expect(allowedDomains).To(Equal(expected()))
+		},
+		Entry(
+			"wildcard for localhost", "*,127.0.0.1/32",
 			func() config.AllowedDomains {
 				_, ipNet, err := net.ParseCIDR("127.0.0.1/32")
 				Expect(err).NotTo(HaveOccurred())
 				return config.AllowedDomains{"*": []*net.IPNet{ipNet}}
 			},
 		),
-		Entry("wildcard for remote host", "*,192.168.0.0/16",
+		Entry(
+			"wildcard for remote host", "*,192.168.0.0/16",
 			func() config.AllowedDomains {
 				_, ipNet, err := net.ParseCIDR("192.168.0.0/16")
 				Expect(err).NotTo(HaveOccurred())
 				return config.AllowedDomains{"*": []*net.IPNet{ipNet}}
 			},
 		),
-		Entry("domain for host", "example.com,192.168.0.1/32",
+		Entry(
+			"domain for host", "example.com,192.168.0.1/32",
 			func() config.AllowedDomains {
 				_, ipNet, err := net.ParseCIDR("192.168.0.1/32")
 				Expect(err).NotTo(HaveOccurred())
 				return config.AllowedDomains{"example.com": []*net.IPNet{ipNet}}
 			},
 		),
-		Entry("two entries", "*,127.0.0.1/32;example.com,192.168.0.1/32",
+		Entry(
+			"two entries", "*,127.0.0.1/32;example.com,192.168.0.1/32",
 			func() config.AllowedDomains {
 				_, ipNetLocalhost, err := net.ParseCIDR("127.0.0.1/32")
 				Expect(err).NotTo(HaveOccurred())
@@ -55,7 +60,8 @@ var _ = Describe("AllowedDomains", func() {
 				}
 			},
 		),
-		Entry("three entries", "*,127.0.0.1/32;example.com,192.168.0.1/32;test.com,127.0.0.1/32",
+		Entry(
+			"three entries", "*,127.0.0.1/32;example.com,192.168.0.1/32;test.com,127.0.0.1/32",
 			func() config.AllowedDomains {
 				_, ipNetLocalhost, err := net.ParseCIDR("127.0.0.1/32")
 				Expect(err).NotTo(HaveOccurred())
@@ -68,7 +74,8 @@ var _ = Describe("AllowedDomains", func() {
 				}
 			},
 		),
-		Entry("multiple entries for same domain", "example.com,127.0.0.1/32;example.com,192.168.0.1/32",
+		Entry(
+			"multiple entries for same domain", "example.com,127.0.0.1/32;example.com,192.168.0.1/32",
 			func() config.AllowedDomains {
 				_, ipNetLocalhost, err := net.ParseCIDR("127.0.0.1/32")
 				Expect(err).NotTo(HaveOccurred())
@@ -81,11 +88,12 @@ var _ = Describe("AllowedDomains", func() {
 		),
 	)
 
-	DescribeTable("should to read fail from string on", func(text, expected string) {
-		allowedDomains := config.AllowedDomains{}
-		Expect(allowedDomains.FromString(text)).To(MatchError(expected))
-		Expect(allowedDomains).To(BeEmpty())
-	},
+	DescribeTable(
+		"should to read fail from string on", func(text, expected string) {
+			allowedDomains := config.AllowedDomains{}
+			Expect(allowedDomains.FromString(text)).To(MatchError(expected))
+			Expect(allowedDomains).To(BeEmpty())
+		},
 		Entry("empty", "", unexpectedPartsCountErr),
 		Entry("empty after entry", "*,127.0.0.1/32;", unexpectedPartsCountErr),
 		Entry("empty before entry", ";*,127.0.0.1/32", unexpectedPartsCountErr),
@@ -196,12 +204,13 @@ var _ = Describe("Config", func() {
 			}))
 		})
 
-		DescribeTable("should fail on invalid environment variables", func(setEnv func(), errMsg string) {
-			setEnv()
-			cfg, err := config.ParseEnv()
-			Expect(err).To(MatchError(ContainSubstring(errMsg)))
-			Expect(cfg).To(BeNil())
-		},
+		DescribeTable(
+			"should fail on invalid environment variables", func(setEnv func(), errMsg string) {
+				setEnv()
+				cfg, err := config.ParseEnv()
+				Expect(err).To(MatchError(ContainSubstring(errMsg)))
+				Expect(cfg).To(BeNil())
+			},
 			Entry("API_TOKEN missing", func() {}, "API_TOKEN environment variable not set"),
 			Entry("ALLOWED_DOMAINS missing", func() {
 				Expect(os.Setenv(envAPIToken, apiToken)).To(Succeed())
@@ -381,17 +390,19 @@ var _ = Describe("Config", func() {
 			}}))
 		})
 
-		DescribeTable("should fail on ", func(cfgFn func() *config.Config, errMsg string) {
-			data, err := yaml.Marshal(cfgFn())
-			Expect(err).ToNot(HaveOccurred())
-			Expect(os.WriteFile(filePath, data, 0o600)).To(Succeed())
+		DescribeTable(
+			"should fail on ", func(cfgFn func() *config.Config, errMsg string) {
+				data, err := yaml.Marshal(cfgFn())
+				Expect(err).ToNot(HaveOccurred())
+				Expect(os.WriteFile(filePath, data, 0o600)).To(Succeed())
 
-			cfgRead, err := config.ReadFile(filePath)
-			Expect(err).To(MatchError(ContainSubstring(errMsg)))
-			Expect(cfgRead).To(BeNil())
-		},
+				cfgRead, err := config.ReadFile(filePath)
+				Expect(err).To(MatchError(ContainSubstring(errMsg)))
+				Expect(cfgRead).To(BeNil())
+			},
 			Entry("missing token", func() *config.Config { return &config.Config{} }, "token is required"),
-			Entry("invalid auth method",
+			Entry(
+				"invalid auth method",
 				func() *config.Config {
 					return &config.Config{
 						Token:     apiToken,
@@ -406,7 +417,8 @@ var _ = Describe("Config", func() {
 				},
 				"invalid auth method: something",
 			),
-			Entry("empty allowed domains with auth method allowedDomains",
+			Entry(
+				"empty allowed domains with auth method allowedDomains",
 				func() *config.Config {
 					return &config.Config{
 						Token:     apiToken,
@@ -420,7 +432,8 @@ var _ = Describe("Config", func() {
 				},
 				"auth.allowedDomains cannot be empty with auth method allowedDomains",
 			),
-			Entry("empty allowed domains with auth method both",
+			Entry(
+				"empty allowed domains with auth method both",
 				func() *config.Config {
 					return &config.Config{
 						Token:     apiToken,
@@ -434,7 +447,8 @@ var _ = Describe("Config", func() {
 				},
 				"auth.allowedDomains cannot be empty with auth method both",
 			),
-			Entry("empty users with auth method users",
+			Entry(
+				"empty users with auth method users",
 				func() *config.Config {
 					return &config.Config{
 						Token:     apiToken,
@@ -448,7 +462,8 @@ var _ = Describe("Config", func() {
 				},
 				"auth.users cannot be empty with auth method users",
 			),
-			Entry("empty users with auth method both",
+			Entry(
+				"empty users with auth method both",
 				func() *config.Config {
 					return &config.Config{
 						Token:     apiToken,
@@ -462,7 +477,8 @@ var _ = Describe("Config", func() {
 				},
 				"auth.users cannot be empty with auth method both",
 			),
-			Entry("empty allowed domains and users with auth method any",
+			Entry(
+				"empty allowed domains and users with auth method any",
 				func() *config.Config {
 					return &config.Config{
 						Token:     apiToken,
@@ -475,7 +491,8 @@ var _ = Describe("Config", func() {
 				},
 				"auth.allowedDomains or auth.users cannot both be empty with auth method any",
 			),
-			Entry("trustedProxies entry is a hostname",
+			Entry(
+				"trustedProxies entry is a hostname",
 				func() *config.Config {
 					return &config.Config{
 						Token:     apiToken,

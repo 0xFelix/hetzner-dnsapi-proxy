@@ -60,19 +60,22 @@ func BindNicUpdate(next http.Handler) http.Handler {
 		}
 
 		username, password, _ := r.BasicAuth()
-		next.ServeHTTP(w, r.WithContext(
-			data.NewContextWithReqData(r.Context(),
-				&data.ReqData{
-					FullName:  hostname,
-					Name:      name,
-					Zone:      zone,
-					Value:     ip,
-					Type:      recordType,
-					Username:  username,
-					Password:  password,
-					BasicAuth: true,
-				},
-			)),
+		next.ServeHTTP(
+			w, r.WithContext(
+				data.NewContextWithReqData(
+					r.Context(),
+					&data.ReqData{
+						FullName:  hostname,
+						Name:      name,
+						Zone:      zone,
+						Value:     ip,
+						Type:      recordType,
+						Username:  username,
+						Password:  password,
+						BasicAuth: true,
+					},
+				),
+			),
 		)
 	})
 }

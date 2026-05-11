@@ -37,69 +37,75 @@ var _ = Describe("HTTPReq", func() {
 	})
 
 	Context("should succeed", func() {
-		DescribeTable("creating a new record", func(ctx context.Context, fqdn string) {
-			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL)
+		DescribeTable(
+			"creating a new record", func(ctx context.Context, fqdn string) {
+				server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL)
 
-			api.AppendHandlers(
-				libcloudapi.GetZone(token, libcloudapi.Zone()),
-				libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.NewRRSetTXT(), false),
-				libcloudapi.CreateRRSet(token, libcloudapi.Zone(), libcloudapi.NewRRSetTXT()),
-			)
+				api.AppendHandlers(
+					libcloudapi.GetZone(token, libcloudapi.Zone()),
+					libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.NewRRSetTXT(), false),
+					libcloudapi.CreateRRSet(token, libcloudapi.Zone(), libcloudapi.NewRRSetTXT()),
+				)
 
-			Expect(doHTTPReqRequest(ctx, server.URL+"/httpreq/present", username, password,
-				map[string]string{
-					"fqdn":  fqdn,
-					"value": libserver.TXTUpdated,
-				},
-			)).To(Equal(http.StatusOK))
-			Expect(api.ReceivedRequests()).To(HaveLen(3))
-		},
+				Expect(doHTTPReqRequest(
+					ctx, server.URL+"/httpreq/present", username, password,
+					map[string]string{
+						"fqdn":  fqdn,
+						"value": libserver.TXTUpdated,
+					},
+				)).To(Equal(http.StatusOK))
+				Expect(api.ReceivedRequests()).To(HaveLen(3))
+			},
 			Entry("with dot suffix", libserver.TXTRecordNameFull+"."),
 			Entry("without dot suffix", libserver.TXTRecordNameFull),
 		)
 
-		DescribeTable("updating an existing record", func(ctx context.Context, fqdn string) {
-			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL)
+		DescribeTable(
+			"updating an existing record", func(ctx context.Context, fqdn string) {
+				server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL)
 
-			api.AppendHandlers(
-				libcloudapi.GetZone(token, libcloudapi.Zone()),
-				libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.ExistingRRSetTXT(), true),
-				libcloudapi.ChangeRRSetTTL(token, libcloudapi.Zone(), libcloudapi.UpdatedRRSetTXT()),
-				libcloudapi.SetRRSetRecords(token, libcloudapi.Zone(), libcloudapi.UpdatedRRSetTXT()),
-			)
+				api.AppendHandlers(
+					libcloudapi.GetZone(token, libcloudapi.Zone()),
+					libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.ExistingRRSetTXT(), true),
+					libcloudapi.ChangeRRSetTTL(token, libcloudapi.Zone(), libcloudapi.UpdatedRRSetTXT()),
+					libcloudapi.SetRRSetRecords(token, libcloudapi.Zone(), libcloudapi.UpdatedRRSetTXT()),
+				)
 
-			Expect(doHTTPReqRequest(ctx, server.URL+"/httpreq/present", username, password,
-				map[string]string{
-					"fqdn":  fqdn,
-					"value": libserver.TXTUpdated,
-				},
-			)).To(Equal(http.StatusOK))
-			Expect(api.ReceivedRequests()).To(HaveLen(4))
-		},
+				Expect(doHTTPReqRequest(
+					ctx, server.URL+"/httpreq/present", username, password,
+					map[string]string{
+						"fqdn":  fqdn,
+						"value": libserver.TXTUpdated,
+					},
+				)).To(Equal(http.StatusOK))
+				Expect(api.ReceivedRequests()).To(HaveLen(4))
+			},
 			Entry("with dot suffix", libserver.TXTRecordNameFull+"."),
 			Entry("without dot suffix", libserver.TXTRecordNameFull),
 		)
 
-		DescribeTable("cleaning up", func(ctx context.Context, fqdn string) {
-			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL)
+		DescribeTable(
+			"cleaning up", func(ctx context.Context, fqdn string) {
+				server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL)
 
-			rrSet := libcloudapi.ExistingRRSetTXT()
-			api.AppendHandlers(
-				libcloudapi.GetZone(token, libcloudapi.Zone()),
-				libcloudapi.GetRRSet(token, libcloudapi.Zone(), rrSet, true),
-				libcloudapi.RemoveRRSetRecords(token, libcloudapi.Zone(), rrSet, []schema.ZoneRRSetRecord{
-					{Value: strconv.Quote(libserver.TXTExisting)},
-				}),
-			)
+				rrSet := libcloudapi.ExistingRRSetTXT()
+				api.AppendHandlers(
+					libcloudapi.GetZone(token, libcloudapi.Zone()),
+					libcloudapi.GetRRSet(token, libcloudapi.Zone(), rrSet, true),
+					libcloudapi.RemoveRRSetRecords(token, libcloudapi.Zone(), rrSet, []schema.ZoneRRSetRecord{
+						{Value: strconv.Quote(libserver.TXTExisting)},
+					}),
+				)
 
-			Expect(doHTTPReqRequest(ctx, server.URL+"/httpreq/cleanup", username, password,
-				map[string]string{
-					"fqdn":  fqdn,
-					"value": libserver.TXTExisting,
-				},
-			)).To(Equal(http.StatusOK))
-			Expect(api.ReceivedRequests()).To(HaveLen(3))
-		},
+				Expect(doHTTPReqRequest(
+					ctx, server.URL+"/httpreq/cleanup", username, password,
+					map[string]string{
+						"fqdn":  fqdn,
+						"value": libserver.TXTExisting,
+					},
+				)).To(Equal(http.StatusOK))
+				Expect(api.ReceivedRequests()).To(HaveLen(3))
+			},
 			Entry("with dot suffix", libserver.TXTRecordNameFull+"."),
 			Entry("without dot suffix", libserver.TXTRecordNameFull),
 		)
@@ -112,7 +118,8 @@ var _ = Describe("HTTPReq", func() {
 
 		It("when fqdn is missing", func(ctx context.Context) {
 			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL)
-			Expect(doHTTPReqRequest(ctx, server.URL+"/httpreq/present", username, password,
+			Expect(doHTTPReqRequest(
+				ctx, server.URL+"/httpreq/present", username, password,
 				map[string]string{
 					"value": libserver.TXTUpdated,
 				},
@@ -121,7 +128,8 @@ var _ = Describe("HTTPReq", func() {
 
 		It("when value is missing", func(ctx context.Context) {
 			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL)
-			Expect(doHTTPReqRequest(ctx, server.URL+"/httpreq/present", username, password,
+			Expect(doHTTPReqRequest(
+				ctx, server.URL+"/httpreq/present", username, password,
 				map[string]string{
 					"fqdn": libserver.TXTRecordNameFull,
 				},
@@ -130,7 +138,8 @@ var _ = Describe("HTTPReq", func() {
 
 		It("when fqdn is malformed", func(ctx context.Context) {
 			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL)
-			Expect(doHTTPReqRequest(ctx, server.URL+"/httpreq/present", username, password,
+			Expect(doHTTPReqRequest(
+				ctx, server.URL+"/httpreq/present", username, password,
 				map[string]string{
 					"fqdn":  libserver.TLD,
 					"value": libserver.TXTUpdated,
@@ -138,15 +147,17 @@ var _ = Describe("HTTPReq", func() {
 			)).To(Equal(http.StatusBadRequest))
 		})
 
-		DescribeTable("when access is denied", func(ctx context.Context, fqdn string) {
-			server = libserver.NewNoAllowedDomains(api.URL())
-			Expect(doHTTPReqRequest(ctx, server.URL+"/httpreq/present", username, password,
-				map[string]string{
-					"fqdn":  fqdn,
-					"value": libserver.TXTUpdated,
-				},
-			)).To(Equal(http.StatusUnauthorized))
-		},
+		DescribeTable(
+			"when access is denied", func(ctx context.Context, fqdn string) {
+				server = libserver.NewNoAllowedDomains(api.URL())
+				Expect(doHTTPReqRequest(
+					ctx, server.URL+"/httpreq/present", username, password,
+					map[string]string{
+						"fqdn":  fqdn,
+						"value": libserver.TXTUpdated,
+					},
+				)).To(Equal(http.StatusUnauthorized))
+			},
 			Entry("with dot suffix", libserver.TXTRecordNameFull+"."),
 			Entry("without dot suffix", libserver.TXTRecordNameFull),
 		)

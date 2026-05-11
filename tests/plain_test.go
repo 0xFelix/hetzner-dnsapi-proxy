@@ -110,7 +110,7 @@ var _ = Describe("Plain", func() {
 
 	Context("should make no api calls and should fail", func() {
 		AfterEach(func() {
-			Expect(api.ReceivedRequests()).To((BeEmpty()))
+			Expect(api.ReceivedRequests()).To(BeEmpty())
 		})
 
 		It("when hostname is missing", func(ctx context.Context) {

@@ -36,57 +36,61 @@ var _ = Describe("AcmeDNS", func() {
 	})
 
 	Context("should succeed", func() {
-		DescribeTable("creating a new record", func(ctx context.Context, subdomain string) {
-			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL)
+		DescribeTable(
+			"creating a new record", func(ctx context.Context, subdomain string) {
+				server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL)
 
-			api.AppendHandlers(
-				libcloudapi.GetZone(token, libcloudapi.Zone()),
-				libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.NewRRSetTXT(), false),
-				libcloudapi.CreateRRSet(token, libcloudapi.Zone(), libcloudapi.NewRRSetTXT()),
-			)
+				api.AppendHandlers(
+					libcloudapi.GetZone(token, libcloudapi.Zone()),
+					libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.NewRRSetTXT(), false),
+					libcloudapi.CreateRRSet(token, libcloudapi.Zone(), libcloudapi.NewRRSetTXT()),
+				)
 
-			statusCode, resBody := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", username, password,
-				map[string]string{
-					"subdomain": subdomain,
-					"txt":       libserver.TXTUpdated,
-				},
-			)
-			Expect(statusCode).To(Equal(http.StatusOK))
-			var resData map[string]string
-			Expect(json.Unmarshal(resBody, &resData)).To(Succeed())
-			Expect(resData).To(gstruct.MatchAllKeys(gstruct.Keys{
-				"txt": Equal(libserver.TXTUpdated),
-			}))
-			Expect(api.ReceivedRequests()).To(HaveLen(3))
-		},
+				statusCode, resBody := doAcmeDNSRequest(
+					ctx, server.URL+"/acmedns/update", username, password,
+					map[string]string{
+						"subdomain": subdomain,
+						"txt":       libserver.TXTUpdated,
+					},
+				)
+				Expect(statusCode).To(Equal(http.StatusOK))
+				var resData map[string]string
+				Expect(json.Unmarshal(resBody, &resData)).To(Succeed())
+				Expect(resData).To(gstruct.MatchAllKeys(gstruct.Keys{
+					"txt": Equal(libserver.TXTUpdated),
+				}))
+				Expect(api.ReceivedRequests()).To(HaveLen(3))
+			},
 			Entry("with prefix", libserver.TXTRecordNameFull),
 			Entry("without prefix", libserver.TXTRecordNameNoPrefix),
 		)
 
-		DescribeTable("updating an existing record", func(ctx context.Context, subdomain string) {
-			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL)
+		DescribeTable(
+			"updating an existing record", func(ctx context.Context, subdomain string) {
+				server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL)
 
-			api.AppendHandlers(
-				libcloudapi.GetZone(token, libcloudapi.Zone()),
-				libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.ExistingRRSetTXT(), true),
-				libcloudapi.ChangeRRSetTTL(token, libcloudapi.Zone(), libcloudapi.UpdatedRRSetTXT()),
-				libcloudapi.SetRRSetRecords(token, libcloudapi.Zone(), libcloudapi.UpdatedRRSetTXT()),
-			)
+				api.AppendHandlers(
+					libcloudapi.GetZone(token, libcloudapi.Zone()),
+					libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.ExistingRRSetTXT(), true),
+					libcloudapi.ChangeRRSetTTL(token, libcloudapi.Zone(), libcloudapi.UpdatedRRSetTXT()),
+					libcloudapi.SetRRSetRecords(token, libcloudapi.Zone(), libcloudapi.UpdatedRRSetTXT()),
+				)
 
-			statusCode, resBody := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", username, password,
-				map[string]string{
-					"subdomain": subdomain,
-					"txt":       libserver.TXTUpdated,
-				},
-			)
-			Expect(statusCode).To(Equal(http.StatusOK))
-			var resData map[string]string
-			Expect(json.Unmarshal(resBody, &resData)).To(Succeed())
-			Expect(resData).To(gstruct.MatchAllKeys(gstruct.Keys{
-				"txt": Equal(libserver.TXTUpdated),
-			}))
-			Expect(api.ReceivedRequests()).To(HaveLen(4))
-		},
+				statusCode, resBody := doAcmeDNSRequest(
+					ctx, server.URL+"/acmedns/update", username, password,
+					map[string]string{
+						"subdomain": subdomain,
+						"txt":       libserver.TXTUpdated,
+					},
+				)
+				Expect(statusCode).To(Equal(http.StatusOK))
+				var resData map[string]string
+				Expect(json.Unmarshal(resBody, &resData)).To(Succeed())
+				Expect(resData).To(gstruct.MatchAllKeys(gstruct.Keys{
+					"txt": Equal(libserver.TXTUpdated),
+				}))
+				Expect(api.ReceivedRequests()).To(HaveLen(4))
+			},
 			Entry("with prefix", libserver.TXTRecordNameFull),
 			Entry("without prefix", libserver.TXTRecordNameNoPrefix),
 		)
@@ -101,7 +105,8 @@ var _ = Describe("AcmeDNS", func() {
 
 		It("when subdomain is missing", func(ctx context.Context) {
 			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL)
-			statusCode, resBody := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", username, password,
+			statusCode, resBody := doAcmeDNSRequest(
+				ctx, server.URL+"/acmedns/update", username, password,
 				map[string]string{
 					"txt": libserver.TXTUpdated,
 				},
@@ -112,7 +117,8 @@ var _ = Describe("AcmeDNS", func() {
 
 		It("when txt is missing", func(ctx context.Context) {
 			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL)
-			statusCode, resBody := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", username, password,
+			statusCode, resBody := doAcmeDNSRequest(
+				ctx, server.URL+"/acmedns/update", username, password,
 				map[string]string{
 					"subdomain": libserver.TXTRecordNameFull,
 				},
@@ -123,7 +129,8 @@ var _ = Describe("AcmeDNS", func() {
 
 		It("when subdomain is malformed", func(ctx context.Context) {
 			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL)
-			statusCode, resBody := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", username, password,
+			statusCode, resBody := doAcmeDNSRequest(
+				ctx, server.URL+"/acmedns/update", username, password,
 				map[string]string{
 					"subdomain": libserver.TLD,
 					"txt":       libserver.TXTUpdated,
@@ -133,17 +140,19 @@ var _ = Describe("AcmeDNS", func() {
 			Expect(string(resBody)).To(Equal("invalid fqdn: tld\n"))
 		})
 
-		DescribeTable("when access is denied", func(ctx context.Context, subdomain string) {
-			server = libserver.NewNoAllowedDomains(api.URL())
-			statusCode, resBody := doAcmeDNSRequest(ctx, server.URL+"/acmedns/update", username, password,
-				map[string]string{
-					"subdomain": subdomain,
-					"txt":       libserver.TXTUpdated,
-				},
-			)
-			Expect(statusCode).To(Equal(http.StatusUnauthorized))
-			Expect(resBody).To(BeEmpty())
-		},
+		DescribeTable(
+			"when access is denied", func(ctx context.Context, subdomain string) {
+				server = libserver.NewNoAllowedDomains(api.URL())
+				statusCode, resBody := doAcmeDNSRequest(
+					ctx, server.URL+"/acmedns/update", username, password,
+					map[string]string{
+						"subdomain": subdomain,
+						"txt":       libserver.TXTUpdated,
+					},
+				)
+				Expect(statusCode).To(Equal(http.StatusUnauthorized))
+				Expect(resBody).To(BeEmpty())
+			},
 			Entry("with prefix", libserver.TXTRecordNameFull),
 			Entry("without prefix", libserver.TXTRecordNameNoPrefix),
 		)

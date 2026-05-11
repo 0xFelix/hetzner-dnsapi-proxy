@@ -89,7 +89,8 @@ var _ = Describe("SetClientIP", func() {
 		Expect(captured).To(Equal("11.0.0.1"))
 	})
 
-	DescribeTable("falls back to the proxy address on an invalid forwarded value",
+	DescribeTable(
+		"falls back to the proxy address on an invalid forwarded value",
 		func(header, value string) {
 			rec := run(
 				[]netip.Prefix{netip.MustParsePrefix("10.0.0.1/32")},

@@ -56,19 +56,22 @@ func BindPlain(next http.Handler) http.Handler {
 		}
 
 		username, password, _ := r.BasicAuth()
-		next.ServeHTTP(w, r.WithContext(
-			data.NewContextWithReqData(r.Context(),
-				&data.ReqData{
-					FullName:  hostname,
-					Name:      name,
-					Zone:      zone,
-					Value:     ip,
-					Type:      recordType,
-					Username:  username,
-					Password:  password,
-					BasicAuth: true,
-				},
-			)),
+		next.ServeHTTP(
+			w, r.WithContext(
+				data.NewContextWithReqData(
+					r.Context(),
+					&data.ReqData{
+						FullName:  hostname,
+						Name:      name,
+						Zone:      zone,
+						Value:     ip,
+						Type:      recordType,
+						Username:  username,
+						Password:  password,
+						BasicAuth: true,
+					},
+				),
+			),
 		)
 	})
 }
@@ -104,19 +107,22 @@ func BindAcmeDNS(next http.Handler) http.Handler {
 			name = prefixAcmeChallenge + name
 		}
 
-		next.ServeHTTP(w, r.WithContext(
-			data.NewContextWithReqData(r.Context(),
-				&data.ReqData{
-					FullName:  d.Subdomain,
-					Name:      name,
-					Zone:      zone,
-					Value:     d.TXT,
-					Type:      recordTypeTXT,
-					Username:  r.Header.Get("X-Api-User"),
-					Password:  r.Header.Get("X-Api-Key"),
-					BasicAuth: false,
-				},
-			)),
+		next.ServeHTTP(
+			w, r.WithContext(
+				data.NewContextWithReqData(
+					r.Context(),
+					&data.ReqData{
+						FullName:  d.Subdomain,
+						Name:      name,
+						Zone:      zone,
+						Value:     d.TXT,
+						Type:      recordTypeTXT,
+						Username:  r.Header.Get("X-Api-User"),
+						Password:  r.Header.Get("X-Api-Key"),
+						BasicAuth: false,
+					},
+				),
+			),
 		)
 	})
 }
@@ -152,19 +158,22 @@ func BindHTTPReq(next http.Handler) http.Handler {
 		}
 
 		username, password, _ := r.BasicAuth()
-		next.ServeHTTP(w, r.WithContext(
-			data.NewContextWithReqData(r.Context(),
-				&data.ReqData{
-					FullName:  d.FQDN,
-					Name:      name,
-					Zone:      zone,
-					Value:     d.Value,
-					Type:      recordTypeTXT,
-					Username:  username,
-					Password:  password,
-					BasicAuth: true,
-				},
-			)),
+		next.ServeHTTP(
+			w, r.WithContext(
+				data.NewContextWithReqData(
+					r.Context(),
+					&data.ReqData{
+						FullName:  d.FQDN,
+						Name:      name,
+						Zone:      zone,
+						Value:     d.Value,
+						Type:      recordTypeTXT,
+						Username:  username,
+						Password:  password,
+						BasicAuth: true,
+					},
+				),
+			),
 		)
 	})
 }
@@ -214,19 +223,22 @@ func BindDirectAdmin(next http.Handler) http.Handler {
 		}
 
 		username, password, _ := r.BasicAuth()
-		next.ServeHTTP(w, r.WithContext(
-			data.NewContextWithReqData(r.Context(),
-				&data.ReqData{
-					FullName:  fqdn,
-					Name:      name,
-					Zone:      zone,
-					Value:     value,
-					Type:      recordType,
-					Username:  username,
-					Password:  password,
-					BasicAuth: true,
-				},
-			)),
+		next.ServeHTTP(
+			w, r.WithContext(
+				data.NewContextWithReqData(
+					r.Context(),
+					&data.ReqData{
+						FullName:  fqdn,
+						Name:      name,
+						Zone:      zone,
+						Value:     value,
+						Type:      recordType,
+						Username:  username,
+						Password:  password,
+						BasicAuth: true,
+					},
+				),
+			),
 		)
 	})
 }

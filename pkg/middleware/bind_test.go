@@ -8,12 +8,13 @@ import (
 )
 
 var _ = Describe("SplitFQDN", func() {
-	DescribeTable("should split successfully", func(fullName, expectedName, expectedZone string) {
-		name, zone, err := middleware.SplitFQDN(fullName)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(name).To(Equal(expectedName))
-		Expect(zone).To(Equal(expectedZone))
-	},
+	DescribeTable(
+		"should split successfully", func(fullName, expectedName, expectedZone string) {
+			name, zone, err := middleware.SplitFQDN(fullName)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(name).To(Equal(expectedName))
+			Expect(zone).To(Equal(expectedZone))
+		},
 		Entry("simple domain", "example.com", "", "example.com"),
 		Entry("single subdomain", "test.example.com", "test", "example.com"),
 		Entry("double subdomain", "sub.test.example.com", "sub.test", "example.com"),
