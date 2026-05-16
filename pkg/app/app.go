@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"slices"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/config"
@@ -34,9 +33,8 @@ func New(cfg *config.Config) http.Handler {
 	)
 	authorizer := middleware.NewAuthorizer(cfg, lockout)
 
-	m := &sync.Mutex{}
-	updater := update.New(cfg, m)
-	cleaner := clean.New(cfg, m)
+	updater := update.New(cfg)
+	cleaner := clean.New(cfg)
 
 	limiter := ratelimit.NewLimiter(cfg.RateLimit.RPS, cfg.RateLimit.Burst, time.Duration(cfg.RateLimit.IdleSeconds)*time.Second)
 	rl := middleware.NewRateLimit(limiter, middleware.RateLimitExceeded)
