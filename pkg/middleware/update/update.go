@@ -4,7 +4,6 @@ import (
 	"context"
 	"log"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/config"
@@ -12,8 +11,8 @@ import (
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/middleware/update/cloud"
 )
 
-func New(cfg *config.Config, m *sync.Mutex) func(http.Handler) http.Handler {
-	u := cloud.New(cfg, m)
+func New(cfg *config.Config) func(http.Handler) http.Handler {
+	u := cloud.New(cfg)
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

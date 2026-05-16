@@ -2,7 +2,6 @@ package cloud
 
 import (
 	"context"
-	"sync"
 
 	"github.com/hetznercloud/hcloud-go/v2/hcloud"
 
@@ -14,22 +13,16 @@ import (
 type cleaner struct {
 	cfg    *config.Config
 	client *hcloud.Client
-	m      *sync.Mutex
 }
 
-func New(cfg *config.Config, m *sync.Mutex) *cleaner {
+func New(cfg *config.Config) *cleaner {
 	return &cleaner{
 		cfg:    cfg,
 		client: hetzner.NewHCloudClient(cfg),
-		m:      m,
 	}
 }
 
 func (u *cleaner) Clean(ctx context.Context, reqData *data.ReqData) error {
-	// Ensure only one simultaneous update sequence
-	u.m.Lock()
-	defer u.m.Unlock()
-
 	rrSetType, err := hetzner.RRSetTypeFromString(reqData.Type)
 	if err != nil {
 		return err
