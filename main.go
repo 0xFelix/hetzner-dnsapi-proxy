@@ -2,11 +2,9 @@ package main
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"log"
 	"net/http"
-	"os"
 	"os/signal"
 	"strings"
 	"syscall"
@@ -38,7 +36,7 @@ func main() {
 	log.Printf("Authorization method set to: %s", cfg.Auth.Method)
 	log.Printf("Starting hetzner-dnsapi-proxy, listening on %s", cfg.ListenAddr)
 	if err := runServer(cfg.ListenAddr, app.New(cfg)); err != nil {
-		log.Fatal("Error running server:", err)
+		log.Fatalf("Error running server: %v", err)
 	}
 }
 
@@ -60,16 +58,20 @@ func runServer(listenAddr string, handler http.Handler) error {
 		IdleTimeout:       idleTimeout * time.Second,
 	}
 
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	errCh := make(chan error, 1)
 	go func() {
-		if err := s.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatal(err)
-		}
+		errCh <- s.ListenAndServe()
 	}()
 
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-	log.Println("Shutting down hetzner-dnsapi-proxy")
+	select {
+	case err := <-errCh:
+		return err
+	case <-ctx.Done():
+	}
+	log.Printf("Shutting down hetzner-dnsapi-proxy: %v", context.Cause(ctx))
 
 	c, cancel := context.WithTimeout(context.Background(), shutdownTimeout*time.Second)
 	defer cancel()

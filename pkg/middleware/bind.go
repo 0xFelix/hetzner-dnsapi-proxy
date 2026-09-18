@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"log"
@@ -83,7 +83,7 @@ func BindAcmeDNS(next http.Handler) http.Handler {
 			Subdomain string `json:"subdomain"`
 			TXT       string `json:"txt"`
 		}{}
-		if err := json.NewDecoder(r.Body).Decode(d); err != nil {
+		if err := json.UnmarshalRead(r.Body, d); err != nil {
 			log.Printf(failedParseRequestFmt, err)
 			w.WriteHeader(http.StatusBadRequest)
 			return
@@ -134,7 +134,7 @@ func BindHTTPReq(next http.Handler) http.Handler {
 			FQDN  string `json:"fqdn"`
 			Value string `json:"value"`
 		}{}
-		if err := json.NewDecoder(r.Body).Decode(d); err != nil {
+		if err := json.UnmarshalRead(r.Body, d); err != nil {
 			log.Printf(failedParseRequestFmt, err)
 			w.WriteHeader(http.StatusBadRequest)
 			return

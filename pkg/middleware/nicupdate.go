@@ -190,6 +190,10 @@ func (w *nicErrorWriter) WriteHeader(code int) {
 	}
 }
 
+func (w *nicErrorWriter) Unwrap() http.ResponseWriter {
+	return w.ResponseWriter
+}
+
 func (w *nicErrorWriter) Write(b []byte) (int, error) {
 	if w.handled {
 		return len(b), nil

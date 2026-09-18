@@ -1,6 +1,10 @@
 package middleware_test
 
 import (
+	"net/http"
+	"net/http/httptest"
+	"strings"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -31,4 +35,42 @@ var _ = Describe("SplitFQDN", func() {
 		Expect(name).To(BeEmpty())
 		Expect(zone).To(BeEmpty())
 	})
+})
+
+var _ = Describe("JSON binding", func() {
+	run := func(bind func(http.Handler) http.Handler, body string) (code int, called bool) {
+		next := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
+			called = true
+		})
+		rec := httptest.NewRecorder()
+		bind(next).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/", strings.NewReader(body)))
+		return rec.Code, called
+	}
+
+	DescribeTable(
+		"should accept valid bodies", func(bind func(http.Handler) http.Handler, body string) {
+			code, called := run(bind, body)
+			Expect(code).To(Equal(http.StatusOK))
+			Expect(called).To(BeTrue())
+		},
+		Entry("httpreq", middleware.BindHTTPReq, `{"fqdn":"a.example.com","value":"x"}`),
+		Entry("httpreq with unknown key", middleware.BindHTTPReq, `{"fqdn":"a.example.com","value":"x","other":1}`),
+		Entry("acmedns", middleware.BindAcmeDNS, `{"subdomain":"a.example.com","txt":"x"}`),
+	)
+
+	DescribeTable(
+		"should reject malformed bodies", func(bind func(http.Handler) http.Handler, body string) {
+			code, called := run(bind, body)
+			Expect(code).To(Equal(http.StatusBadRequest))
+			Expect(called).To(BeFalse())
+		},
+		Entry("httpreq with duplicate key", middleware.BindHTTPReq, `{"fqdn":"a.example.com","fqdn":"b.example.com","value":"x"}`),
+		Entry("httpreq with trailing data", middleware.BindHTTPReq, `{"fqdn":"a.example.com","value":"x"}{}`),
+		Entry("httpreq with wrong-case key", middleware.BindHTTPReq, `{"FQDN":"a.example.com","value":"x"}`),
+		Entry("httpreq with invalid UTF-8", middleware.BindHTTPReq, "{\"fqdn\":\"a.example.com\",\"value\":\"\xff\"}"),
+		Entry("acmedns with duplicate key", middleware.BindAcmeDNS, `{"subdomain":"a.example.com","subdomain":"b.example.com","txt":"x"}`),
+		Entry("acmedns with trailing data", middleware.BindAcmeDNS, `{"subdomain":"a.example.com","txt":"x"}{}`),
+		Entry("acmedns with wrong-case key", middleware.BindAcmeDNS, `{"Subdomain":"a.example.com","txt":"x"}`),
+		Entry("acmedns with invalid UTF-8", middleware.BindAcmeDNS, "{\"subdomain\":\"a.example.com\",\"txt\":\"\xff\"}"),
+	)
 })
