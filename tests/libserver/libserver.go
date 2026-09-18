@@ -2,21 +2,17 @@ package libserver
 
 import (
 	"crypto/rand"
-	"math/big"
 	"net"
 	"net/http/httptest"
-
-	. "github.com/onsi/gomega"
 
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/app"
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/config"
 )
 
 func New(url string, ttl int) (server *httptest.Server, token, username, password string) {
-	const randLength = 10
-	token = randString(randLength)
-	username = randString(randLength)
-	password = randString(randLength)
+	token = rand.Text()
+	username = rand.Text()
+	password = rand.Text()
 
 	cfg := &config.Config{
 		BaseURL: url + "/v1",
@@ -56,15 +52,4 @@ func NewNoAllowedDomains(url string) *httptest.Server {
 		Lockout:   config.Lockout{MaxAttempts: 1000, DurationSeconds: 3600, WindowSeconds: 900},
 	}
 	return httptest.NewServer(app.New(cfg))
-}
-
-func randString(n int) string {
-	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
-	s := make([]rune, n)
-	for i := range s {
-		b, err := rand.Int(rand.Reader, big.NewInt(int64(len(letters))))
-		Expect(err).ToNot(HaveOccurred())
-		s[i] = letters[b.Int64()]
-	}
-	return string(s)
 }

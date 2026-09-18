@@ -31,7 +31,7 @@ func ExistingRRSetA() schema.ZoneRRSet {
 		ID:   libserver.ARecordName + "/" + libserver.RecordTypeA,
 		Name: libserver.ARecordName,
 		Type: libserver.RecordTypeA,
-		TTL:  ptr(existingTTL),
+		TTL:  new(existingTTL),
 		Records: []schema.ZoneRRSetRecord{
 			{Value: libserver.AExisting},
 		},
@@ -44,7 +44,7 @@ func ExistingRRSetAAAA() schema.ZoneRRSet {
 		ID:   libserver.AAAARecordName + "/" + libserver.RecordTypeAAAA,
 		Name: libserver.AAAARecordName,
 		Type: libserver.RecordTypeAAAA,
-		TTL:  ptr(existingTTL),
+		TTL:  new(existingTTL),
 		Records: []schema.ZoneRRSetRecord{
 			{Value: libserver.AAAAExisting},
 		},
@@ -57,7 +57,7 @@ func ExistingRRSetTXT() schema.ZoneRRSet {
 		ID:   libserver.TXTRecordName + "/" + libserver.RecordTypeTXT,
 		Name: libserver.TXTRecordName,
 		Type: libserver.RecordTypeTXT,
-		TTL:  ptr(existingTTL),
+		TTL:  new(existingTTL),
 		Records: []schema.ZoneRRSetRecord{
 			{Value: strconv.Quote(libserver.TXTExisting)},
 		},
@@ -70,7 +70,7 @@ func ClientIPRRSetA() schema.ZoneRRSet {
 		ID:   libserver.ARecordName + "/" + libserver.RecordTypeA,
 		Name: libserver.ARecordName,
 		Type: libserver.RecordTypeA,
-		TTL:  ptr(libserver.DefaultTTL),
+		TTL:  new(libserver.DefaultTTL),
 		Records: []schema.ZoneRRSetRecord{
 			{Value: libserver.AExisting},
 		},
@@ -82,7 +82,7 @@ func NewRRSetA() schema.ZoneRRSet {
 	return schema.ZoneRRSet{
 		Name: libserver.ARecordName,
 		Type: libserver.RecordTypeA,
-		TTL:  ptr(libserver.DefaultTTL),
+		TTL:  new(libserver.DefaultTTL),
 		Records: []schema.ZoneRRSetRecord{
 			{Value: libserver.AUpdated},
 		},
@@ -100,7 +100,7 @@ func NewRRSetAAAA() schema.ZoneRRSet {
 	return schema.ZoneRRSet{
 		Name: libserver.AAAARecordName,
 		Type: libserver.RecordTypeAAAA,
-		TTL:  ptr(libserver.DefaultTTL),
+		TTL:  new(libserver.DefaultTTL),
 		Records: []schema.ZoneRRSetRecord{
 			{Value: libserver.AAAAUpdated},
 		},
@@ -118,7 +118,7 @@ func NewRRSetTXT() schema.ZoneRRSet {
 	return schema.ZoneRRSet{
 		Name: libserver.TXTRecordName,
 		Type: libserver.RecordTypeTXT,
-		TTL:  ptr(libserver.DefaultTTL),
+		TTL:  new(libserver.DefaultTTL),
 		Records: []schema.ZoneRRSetRecord{
 			{Value: strconv.Quote(libserver.TXTUpdated)},
 		},
@@ -238,8 +238,4 @@ func mustParseInt(s string) int64 {
 	i, err := strconv.ParseInt(s, 10, 64)
 	Expect(err).ToNot(HaveOccurred())
 	return i
-}
-
-func ptr[T any](v T) *T {
-	return &v
 }

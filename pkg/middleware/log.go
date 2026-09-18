@@ -21,8 +21,7 @@ func LogDebug(next http.Handler) http.Handler {
 		if err != nil {
 			log.Printf("failed to read request body: %v", err)
 			status := http.StatusInternalServerError
-			var maxBytesErr *http.MaxBytesError
-			if errors.As(err, &maxBytesErr) {
+			if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
 				status = http.StatusRequestEntityTooLarge
 			}
 			w.WriteHeader(status)
