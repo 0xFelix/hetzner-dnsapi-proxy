@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Get IMAGE_ID
         run: |
           echo "IMAGE_ID=$(echo ghcr.io/${{ github.repository }} | tr '[A-Z]' '[a-z]')" >> $GITHUB_ENV
@@ -26,7 +26,7 @@ jobs:
           echo ${{ secrets.GITHUB_TOKEN }} | podman login ghcr.io --username ${{ github.actor }} --password-stdin
       - name: Build container image
         run: |
-          podman build -t ${{ env.IMAGE_ID }}:${{ env.SHORT_SHA }} -t ${{ env.IMAGE_ID }}:latest .
+          podman build --build-arg VERSION=${{ env.SHORT_SHA }} -t ${{ env.IMAGE_ID }}:${{ env.SHORT_SHA }} -t ${{ env.IMAGE_ID }}:latest .
       - name: Push container image
         run: |
           podman push ${{ env.IMAGE_ID }}:${{ env.SHORT_SHA }}

@@ -13,3 +13,9 @@ updates:
         dependency-type: "development"
     assignees:
       - "0xFelix"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    assignees:
+      - "0xFelix"
