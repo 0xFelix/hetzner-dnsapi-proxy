@@ -10,24 +10,31 @@ import (
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/config"
 )
 
-func NewHCloudClient(cfg *config.Config) *hcloud.Client {
-	version := "dev"
-	if info, ok := debug.ReadBuildInfo(); ok {
-		for _, setting := range info.Settings {
-			if setting.Key == "vcs.revision" {
-				version = setting.Value
-				break
-			}
-		}
-	}
+// version is set at build time via -ldflags -X.
+var version string
 
+func NewHCloudClient(cfg *config.Config) *hcloud.Client {
 	opts := []hcloud.ClientOption{
 		hcloud.WithToken(cfg.Token),
-		hcloud.WithApplication("hetzner-dnsapi-proxy", version),
+		hcloud.WithApplication("hetzner-dnsapi-proxy", appVersion()),
 		hcloud.WithEndpoint(cfg.BaseURL),
 	}
 
 	return hcloud.NewClient(opts...)
+}
+
+func appVersion() string {
+	if version != "" {
+		return version
+	}
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, setting := range info.Settings {
+			if setting.Key == "vcs.revision" {
+				return setting.Value
+			}
+		}
+	}
+	return "dev"
 }
 
 func RRSetTypeFromString(rType string) (hcloud.ZoneRRSetType, error) {

@@ -2,21 +2,24 @@ LOCALBIN ?= $(shell pwd)/bin
 $(LOCALBIN): ## Location to install dependencies into.
 	mkdir -p $(LOCALBIN)
 
-GOFUMPT ?= $(LOCALBIN)/gofumpt
 GOLANGCI_LINT ?= $(LOCALBIN)/golangci-lint
 
-.PHONY: gofumpt
-gofumpt: $(GOFUMPT) ## Download gofumpt if necessary.
-$(GOFUMPT): $(LOCALBIN)
-	test -s $(LOCALBIN)/gofumpt || GOBIN=$(LOCALBIN) go install mvdan.cc/gofumpt@latest
+LDFLAGS := -w -s
+ifdef VERSION
+LDFLAGS += -X github.com/0xfelix/hetzner-dnsapi-proxy/pkg/hetzner.version=$(VERSION)
+endif
+
+.PHONY: golangci-lint
+golangci-lint: $(GOLANGCI_LINT) ## Download golangci-lint if necessary.
+$(GOLANGCI_LINT): $(LOCALBIN)
+	test -s $(GOLANGCI_LINT) || curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b $(LOCALBIN)
 
 .PHONY: fmt
-fmt: gofumpt ## Run gofumpt against the code.
-	$(GOFUMPT) -w -extra .
+fmt: golangci-lint ## Run the golangci-lint formatters against the code.
+	$(GOLANGCI_LINT) fmt
 
 .PHONY: lint
-lint: ## Download golangci-lint if necessary and run it against the code.
-	test -s $(GOLANGCI_LINT) || curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b $(LOCALBIN)
+lint: golangci-lint ## Run golangci-lint against the code.
 	CGO_ENABLED=0 $(GOLANGCI_LINT) run --timeout 5m
 
 .PHONY: test
@@ -29,7 +32,7 @@ functest: ## Run functional tests against the code.
 
 .PHONY: build
 build: ## Build the hetzner-dnsapi-proxy binary.
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o $(LOCALBIN)/hetzner-dnsapi-proxy .
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="$(LDFLAGS)" -o $(LOCALBIN)/hetzner-dnsapi-proxy .
 
 .PHONY: vendor
 vendor: ## Run go mod tidy and go mod vendor and vendor dependencies.

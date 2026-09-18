@@ -11,7 +11,7 @@ HTTP request, ACMEDNS, DirectAdmin Legacy, plain HTTP, DynDNS2).
 - `make build` - Build the binary (CGO_ENABLED=0, linux/amd64)
 - `make test` - Run unit tests (Ginkgo, in `pkg/`)
 - `make functest` - Run functional tests (Ginkgo, in `tests/`)
-- `make fmt` - Format code with gofumpt
+- `make fmt` - Format code with golangci-lint (gofumpt, goimports)
 - `make lint` - Lint with golangci-lint
 - `make vendor` - Tidy and vendor dependencies
 
@@ -22,7 +22,7 @@ changes. Run `make vendor` after modifying dependencies.
 
 - Use plain ASCII characters only - no em dashes, smart quotes, or Unicode
   punctuation. Prefer single dashes (`-`) over em dashes.
-- Code is formatted with gofumpt (`make fmt`).
+- Code is formatted with gofumpt and goimports via golangci-lint (`make fmt`).
 - Linting config is in `.golangci.yml` - uses a comprehensive set of
   linters including gosec, govet with shadow detection, and ginkgolinter.
 - Imports should group local packages (`github.com/0xfelix/hetzner-dnsapi-proxy`)

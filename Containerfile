@@ -13,7 +13,8 @@ COPY main.go .
 COPY pkg/ pkg/
 COPY vendor/ vendor/
 
-RUN make build
+ARG VERSION=""
+RUN make build VERSION=${VERSION}
 
 # Build image
 
