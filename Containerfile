@@ -1,10 +1,8 @@
 # Build binary
 
-FROM golang:alpine as builder
+FROM golang:alpine AS builder
 
 RUN apk add --update make
-
-RUN adduser --system --shell /bin/false --uid 65532 hetzner-dnsapi-proxy
 
 WORKDIR /workspace
 
@@ -19,12 +17,9 @@ RUN make build
 
 # Build image
 
-FROM scratch
+FROM gcr.io/distroless/static:nonroot
 
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-COPY --from=builder /etc/passwd /etc/passwd
 COPY --from=builder /workspace/bin/hetzner-dnsapi-proxy /
 
-USER 65532:65532
 EXPOSE 8081
 ENTRYPOINT ["/hetzner-dnsapi-proxy"]

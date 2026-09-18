@@ -29,7 +29,7 @@ functest: ## Run functional tests against the code.
 
 .PHONY: build
 build: ## Build the hetzner-dnsapi-proxy binary.
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -tags timetzdata -tags=nomsgpack -o $(LOCALBIN)/hetzner-dnsapi-proxy .
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o $(LOCALBIN)/hetzner-dnsapi-proxy .
 
 .PHONY: vendor
 vendor: ## Run go mod tidy and go mod vendor and vendor dependencies.
