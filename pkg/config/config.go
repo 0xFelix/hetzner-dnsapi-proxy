@@ -172,7 +172,7 @@ func ParseEnv() (*Config, error) {
 		return nil, fmt.Errorf("failed to unset API_TOKEN: %v", err)
 	}
 
-	if err := envInt("API_TIMEOUT", &cfg.Timeout); err != nil {
+	if err := envParse("API_TIMEOUT", &cfg.Timeout, strconv.Atoi); err != nil {
 		return nil, err
 	}
 
@@ -184,14 +184,14 @@ func ParseEnv() (*Config, error) {
 		return nil, fmt.Errorf("failed to parse ALLOWED_DOMAINS: %v", err)
 	}
 
-	if err := envInt("RECORD_TTL", &cfg.RecordTTL); err != nil {
+	if err := envParse("RECORD_TTL", &cfg.RecordTTL, strconv.Atoi); err != nil {
 		return nil, err
 	}
 
 	envString("LISTEN_ADDR", &cfg.ListenAddr)
 	envTrustedProxies(cfg)
 
-	if err := envBool("DEBUG", &cfg.Debug); err != nil {
+	if err := envParse("DEBUG", &cfg.Debug, strconv.ParseBool); err != nil {
 		return nil, err
 	}
 	if err := envRateLimit(&cfg.RateLimit); err != nil {
@@ -221,63 +221,37 @@ func envString(key string, dst *string) {
 	}
 }
 
-func envInt(key string, dst *int) error {
+func envParse[T any](key string, dst *T, parse func(string) (T, error)) error {
 	v, ok := os.LookupEnv(key)
 	if !ok {
 		return nil
 	}
-	i, err := strconv.Atoi(v)
+	parsed, err := parse(v)
 	if err != nil {
 		return fmt.Errorf("failed to parse %s: %v", key, err)
 	}
-	*dst = i
+	*dst = parsed
 	return nil
 }
 
-func envFloat(key string, dst *float64) error {
-	v, ok := os.LookupEnv(key)
-	if !ok {
-		return nil
-	}
-	f, err := strconv.ParseFloat(v, 64)
-	if err != nil {
-		return fmt.Errorf("failed to parse %s: %v", key, err)
-	}
-	*dst = f
-	return nil
-}
-
-func envBool(key string, dst *bool) error {
-	v, ok := os.LookupEnv(key)
-	if !ok {
-		return nil
-	}
-	b, err := strconv.ParseBool(v)
-	if err != nil {
-		return fmt.Errorf("failed to parse %s: %v", key, err)
-	}
-	*dst = b
-	return nil
+func parseFloat(s string) (float64, error) {
+	return strconv.ParseFloat(s, 64)
 }
 
 func envRateLimit(rl *RateLimit) error {
-	if err := envFloat("RATE_LIMIT_RPS", &rl.RPS); err != nil {
-		return err
-	}
-	if err := envInt("RATE_LIMIT_BURST", &rl.Burst); err != nil {
-		return err
-	}
-	return envInt("RATE_LIMIT_IDLE_SECONDS", &rl.IdleSeconds)
+	return errors.Join(
+		envParse("RATE_LIMIT_RPS", &rl.RPS, parseFloat),
+		envParse("RATE_LIMIT_BURST", &rl.Burst, strconv.Atoi),
+		envParse("RATE_LIMIT_IDLE_SECONDS", &rl.IdleSeconds, strconv.Atoi),
+	)
 }
 
 func envLockout(l *Lockout) error {
-	if err := envInt("LOCKOUT_MAX_ATTEMPTS", &l.MaxAttempts); err != nil {
-		return err
-	}
-	if err := envInt("LOCKOUT_DURATION_SECONDS", &l.DurationSeconds); err != nil {
-		return err
-	}
-	return envInt("LOCKOUT_WINDOW_SECONDS", &l.WindowSeconds)
+	return errors.Join(
+		envParse("LOCKOUT_MAX_ATTEMPTS", &l.MaxAttempts, strconv.Atoi),
+		envParse("LOCKOUT_DURATION_SECONDS", &l.DurationSeconds, strconv.Atoi),
+		envParse("LOCKOUT_WINDOW_SECONDS", &l.WindowSeconds, strconv.Atoi),
+	)
 }
 
 func envEndpoints(endpoints *Endpoints) error {

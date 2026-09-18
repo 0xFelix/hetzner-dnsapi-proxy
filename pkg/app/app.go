@@ -3,7 +3,6 @@ package app
 import (
 	"log"
 	"net/http"
-	"slices"
 	"strings"
 	"time"
 
@@ -23,6 +22,10 @@ type loggingResponseWriter struct {
 func (lrw *loggingResponseWriter) WriteHeader(code int) {
 	lrw.statusCode = code
 	lrw.ResponseWriter.WriteHeader(code)
+}
+
+func (lrw *loggingResponseWriter) Unwrap() http.ResponseWriter {
+	return lrw.ResponseWriter
 }
 
 func New(cfg *config.Config) http.Handler {
@@ -73,15 +76,17 @@ func New(cfg *config.Config) http.Handler {
 }
 
 func handle(cfg *config.Config, handlers ...func(http.Handler) http.Handler) http.Handler {
-	handlers = slices.Insert(handlers, 0, middleware.NewSetClientIP(cfg.TrustedProxyPrefixes))
-	handlers = slices.Insert(handlers, 0, middleware.SecurityHeaders)
+	var common []func(http.Handler) http.Handler
 	if cfg.Debug {
-		handlers = slices.Insert(handlers, 0, middleware.LogDebug)
+		common = append(common, middleware.LogDebug)
 	}
+	common = append(common, middleware.SecurityHeaders, middleware.NewSetClientIP(cfg.TrustedProxyPrefixes))
+	h := chain(append(common, handlers...))
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		lrw := &loggingResponseWriter{ResponseWriter: w, statusCode: http.StatusOK}
-		chain(handlers).ServeHTTP(lrw, r)
+		h.ServeHTTP(lrw, r)
 		logRequest(r, start, lrw.statusCode)
 	})
 }

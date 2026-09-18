@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"net/netip"
+	"slices"
 	"strings"
 
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/sanitize"
@@ -23,11 +24,11 @@ func NewSetClientIP(trustedProxies []netip.Prefix) func(http.Handler) http.Handl
 
 			remote := addrPort.Addr()
 			r.RemoteAddr = remote.String()
-			if isTrustedProxy(trustedProxies, remote) {
+			if slices.ContainsFunc(trustedProxies, func(p netip.Prefix) bool { return p.Contains(remote) }) {
 				ip := r.Header.Get("X-Real-Ip")
 				if ip == "" {
-					ipList := strings.Split(r.Header.Get("X-Forwarded-For"), ",")
-					ip = strings.TrimSpace(ipList[0])
+					first, _, _ := strings.Cut(r.Header.Get("X-Forwarded-For"), ",")
+					ip = strings.TrimSpace(first)
 				}
 				if ip != "" {
 					parsed, err := netip.ParseAddr(ip)
@@ -44,13 +45,4 @@ func NewSetClientIP(trustedProxies []netip.Prefix) func(http.Handler) http.Handl
 			next.ServeHTTP(w, r)
 		})
 	}
-}
-
-func isTrustedProxy(prefixes []netip.Prefix, addr netip.Addr) bool {
-	for _, p := range prefixes {
-		if p.Contains(addr) {
-			return true
-		}
-	}
-	return false
 }
