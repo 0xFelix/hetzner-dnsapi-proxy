@@ -3,8 +3,8 @@ package middleware
 import (
 	"crypto/subtle"
 	"log"
-	"net"
 	"net/http"
+	"net/netip"
 	"slices"
 	"strings"
 
@@ -89,15 +89,18 @@ func CheckPermission(cfg *config.Config, reqData *data.ReqData, remoteAddr strin
 }
 
 func CheckAllowedDomains(fqdn, clientIP string, allowedDomains config.AllowedDomains) bool {
-	for domain, ipNets := range allowedDomains {
+	addr, err := netip.ParseAddr(clientIP)
+	if err != nil {
+		return false
+	}
+	addr = addr.Unmap()
+
+	for domain, prefixes := range allowedDomains {
 		if fqdn != domain && !IsSubDomain(fqdn, domain) {
 			continue
 		}
-		for _, ipNet := range ipNets {
-			ip := net.ParseIP(clientIP)
-			if ip != nil && ipNet.Contains(ip) {
-				return true
-			}
+		if slices.ContainsFunc(prefixes, func(p netip.Prefix) bool { return p.Contains(addr) }) {
+			return true
 		}
 	}
 	return false

@@ -1,7 +1,7 @@
 package middleware_test
 
 import (
-	"net"
+	"net/netip"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -21,11 +21,8 @@ var _ = Describe("CheckPermission", func() {
 			&config.Config{
 				Auth: config.Auth{
 					Method: config.AuthMethodAllowedDomains,
-					AllowedDomains: config.AllowedDomains{exampleDomain: []*net.IPNet{
-						{
-							IP:   net.IPv4(127, 0, 0, 1),
-							Mask: net.IPv4Mask(255, 255, 255, 255),
-						},
+					AllowedDomains: config.AllowedDomains{exampleDomain: []netip.Prefix{
+						netip.MustParsePrefix("127.0.0.1/32"),
 					}},
 				},
 			},
@@ -58,11 +55,8 @@ var _ = Describe("CheckPermission", func() {
 			&config.Config{
 				Auth: config.Auth{
 					Method: config.AuthMethodBoth,
-					AllowedDomains: config.AllowedDomains{exampleDomain: []*net.IPNet{
-						{
-							IP:   net.IPv4(127, 0, 0, 1),
-							Mask: net.IPv4Mask(255, 255, 255, 255),
-						},
+					AllowedDomains: config.AllowedDomains{exampleDomain: []netip.Prefix{
+						netip.MustParsePrefix("127.0.0.1/32"),
 					}},
 					Users: []config.User{{
 						Username: username,
@@ -83,11 +77,8 @@ var _ = Describe("CheckPermission", func() {
 			&config.Config{
 				Auth: config.Auth{
 					Method: config.AuthMethodAny,
-					AllowedDomains: config.AllowedDomains{exampleDomain: []*net.IPNet{
-						{
-							IP:   net.IPv4(127, 0, 0, 1),
-							Mask: net.IPv4Mask(255, 255, 255, 255),
-						},
+					AllowedDomains: config.AllowedDomains{exampleDomain: []netip.Prefix{
+						netip.MustParsePrefix("127.0.0.1/32"),
 					}},
 				},
 			},
@@ -145,11 +136,8 @@ var _ = Describe("CheckPermission", func() {
 			&config.Config{
 				Auth: config.Auth{
 					Method: config.AuthMethodUsers,
-					AllowedDomains: config.AllowedDomains{exampleDomain: []*net.IPNet{
-						{
-							IP:   net.IPv4(127, 0, 0, 1),
-							Mask: net.IPv4Mask(255, 255, 255, 255),
-						},
+					AllowedDomains: config.AllowedDomains{exampleDomain: []netip.Prefix{
+						netip.MustParsePrefix("127.0.0.1/32"),
 					}},
 				},
 			},
@@ -184,11 +172,8 @@ var _ = Describe("CheckPermission", func() {
 			&config.Config{
 				Auth: config.Auth{
 					Method: config.AuthMethodBoth,
-					AllowedDomains: config.AllowedDomains{exampleDomain: []*net.IPNet{
-						{
-							IP:   net.IPv4(127, 0, 0, 1),
-							Mask: net.IPv4Mask(255, 255, 255, 255),
-						},
+					AllowedDomains: config.AllowedDomains{exampleDomain: []netip.Prefix{
+						netip.MustParsePrefix("127.0.0.1/32"),
 					}},
 				},
 			},
@@ -218,11 +203,8 @@ var _ = Describe("CheckPermission", func() {
 			&config.Config{
 				Auth: config.Auth{
 					Method: "",
-					AllowedDomains: config.AllowedDomains{exampleDomain: []*net.IPNet{
-						{
-							IP:   net.IPv4(127, 0, 0, 1),
-							Mask: net.IPv4Mask(255, 255, 255, 255),
-						},
+					AllowedDomains: config.AllowedDomains{exampleDomain: []netip.Prefix{
+						netip.MustParsePrefix("127.0.0.1/32"),
 					}},
 					Users: []config.User{{
 						Username: username,
@@ -243,11 +225,8 @@ var _ = Describe("CheckPermission", func() {
 			&config.Config{
 				Auth: config.Auth{
 					Method: invalidAuthMethod,
-					AllowedDomains: config.AllowedDomains{exampleDomain: []*net.IPNet{
-						{
-							IP:   net.IPv4(127, 0, 0, 1),
-							Mask: net.IPv4Mask(255, 255, 255, 255),
-						},
+					AllowedDomains: config.AllowedDomains{exampleDomain: []netip.Prefix{
+						netip.MustParsePrefix("127.0.0.1/32"),
 					}},
 					Users: []config.User{{
 						Username: username,
@@ -273,56 +252,38 @@ var _ = Describe("CheckAllowedDomains", func() {
 		},
 		Entry(
 			"with wildcard and matching host", exampleDomain, "127.0.0.1",
-			config.AllowedDomains{"*": []*net.IPNet{
-				{
-					IP:   net.IPv4(127, 0, 0, 1),
-					Mask: net.IPv4Mask(255, 255, 255, 255),
-				},
+			config.AllowedDomains{"*": []netip.Prefix{
+				netip.MustParsePrefix("127.0.0.1/32"),
 			}},
 		),
 		Entry(
 			"with wildcard and matching ipnet", exampleDomain, "192.168.0.1",
-			config.AllowedDomains{"*": []*net.IPNet{
-				{
-					IP:   net.IPv4(192, 168, 0, 0),
-					Mask: net.IPv4Mask(255, 255, 0, 0),
-				},
+			config.AllowedDomains{"*": []netip.Prefix{
+				netip.MustParsePrefix("192.168.0.0/16"),
 			}},
 		),
 		Entry(
 			"when domain equals fqdn and matching host", exampleDomain, "127.0.0.1",
-			config.AllowedDomains{exampleDomain: []*net.IPNet{
-				{
-					IP:   net.IPv4(127, 0, 0, 1),
-					Mask: net.IPv4Mask(255, 255, 255, 255),
-				},
+			config.AllowedDomains{exampleDomain: []netip.Prefix{
+				netip.MustParsePrefix("127.0.0.1/32"),
 			}},
 		),
 		Entry(
 			"when domain equals fqdn and matching ipnet", exampleDomain, "192.168.0.1",
-			config.AllowedDomains{exampleDomain: []*net.IPNet{
-				{
-					IP:   net.IPv4(192, 168, 0, 0),
-					Mask: net.IPv4Mask(255, 255, 0, 0),
-				},
+			config.AllowedDomains{exampleDomain: []netip.Prefix{
+				netip.MustParsePrefix("192.168.0.0/16"),
 			}},
 		),
 		Entry(
 			"when domain is a subdomain and matching host", subExampleDomain, "127.0.0.1",
-			config.AllowedDomains{wildcardExample: []*net.IPNet{
-				{
-					IP:   net.IPv4(127, 0, 0, 1),
-					Mask: net.IPv4Mask(255, 255, 255, 255),
-				},
+			config.AllowedDomains{wildcardExample: []netip.Prefix{
+				netip.MustParsePrefix("127.0.0.1/32"),
 			}},
 		),
 		Entry(
 			"when domain is a subdomain and matching ipnet", subExampleDomain, "192.168.0.1",
-			config.AllowedDomains{wildcardExample: []*net.IPNet{
-				{
-					IP:   net.IPv4(192, 168, 0, 0),
-					Mask: net.IPv4Mask(255, 255, 0, 0),
-				},
+			config.AllowedDomains{wildcardExample: []netip.Prefix{
+				netip.MustParsePrefix("192.168.0.0/16"),
 			}},
 		),
 	)
@@ -333,92 +294,62 @@ var _ = Describe("CheckAllowedDomains", func() {
 		},
 		Entry(
 			"with wildcard and non matching host", exampleDomain, "127.0.0.2",
-			config.AllowedDomains{"*": []*net.IPNet{
-				{
-					IP:   net.IPv4(127, 0, 0, 1),
-					Mask: net.IPv4Mask(255, 255, 255, 255),
-				},
+			config.AllowedDomains{"*": []netip.Prefix{
+				netip.MustParsePrefix("127.0.0.1/32"),
 			}},
 		),
 		Entry(
 			"with wildcard and non matching ipnet", exampleDomain, "127.0.0.1",
-			config.AllowedDomains{"*": []*net.IPNet{
-				{
-					IP:   net.IPv4(192, 168, 0, 0),
-					Mask: net.IPv4Mask(255, 255, 0, 0),
-				},
+			config.AllowedDomains{"*": []netip.Prefix{
+				netip.MustParsePrefix("192.168.0.0/16"),
 			}},
 		),
 		Entry(
 			"with wildcard and invalid client ip", exampleDomain, "127.0.0.x",
-			config.AllowedDomains{"*": []*net.IPNet{
-				{
-					IP:   net.IPv4(127, 0, 0, 1),
-					Mask: net.IPv4Mask(255, 255, 255, 255),
-				},
+			config.AllowedDomains{"*": []netip.Prefix{
+				netip.MustParsePrefix("127.0.0.1/32"),
 			}},
 		),
 		Entry(
 			"when domain does not match and matching host", testDomain, "127.0.0.1",
-			config.AllowedDomains{exampleDomain: []*net.IPNet{
-				{
-					IP:   net.IPv4(127, 0, 0, 1),
-					Mask: net.IPv4Mask(255, 255, 255, 255),
-				},
+			config.AllowedDomains{exampleDomain: []netip.Prefix{
+				netip.MustParsePrefix("127.0.0.1/32"),
 			}},
 		),
 		Entry(
 			"when domain does not match and matching ipnet", testDomain, "192.168.0.1",
-			config.AllowedDomains{exampleDomain: []*net.IPNet{
-				{
-					IP:   net.IPv4(192, 168, 0, 0),
-					Mask: net.IPv4Mask(255, 255, 0, 0),
-				},
+			config.AllowedDomains{exampleDomain: []netip.Prefix{
+				netip.MustParsePrefix("192.168.0.0/16"),
 			}},
 		),
 		Entry(
 			"with matching domain and invalid client ip", exampleDomain, "127.0.0.x",
-			config.AllowedDomains{exampleDomain: []*net.IPNet{
-				{
-					IP:   net.IPv4(127, 0, 0, 1),
-					Mask: net.IPv4Mask(255, 255, 255, 255),
-				},
+			config.AllowedDomains{exampleDomain: []netip.Prefix{
+				netip.MustParsePrefix("127.0.0.1/32"),
 			}},
 		),
 		Entry(
 			"when subdomain does not match and matching host", "sub.test.com", "127.0.0.1",
-			config.AllowedDomains{wildcardExample: []*net.IPNet{
-				{
-					IP:   net.IPv4(127, 0, 0, 1),
-					Mask: net.IPv4Mask(255, 255, 255, 255),
-				},
+			config.AllowedDomains{wildcardExample: []netip.Prefix{
+				netip.MustParsePrefix("127.0.0.1/32"),
 			}},
 		),
 		Entry(
 			"when subdomain does not match and matching ipnet", "sub.test.com", "192.168.0.1",
-			config.AllowedDomains{wildcardExample: []*net.IPNet{
-				{
-					IP:   net.IPv4(192, 168, 0, 0),
-					Mask: net.IPv4Mask(255, 255, 0, 0),
-				},
+			config.AllowedDomains{wildcardExample: []netip.Prefix{
+				netip.MustParsePrefix("192.168.0.0/16"),
 			}},
 		),
 		Entry(
 			"with matching subdomain and invalid client ip", subExampleDomain, "127.0.0.x",
-			config.AllowedDomains{subExampleDomain: []*net.IPNet{
-				{
-					IP:   net.IPv4(127, 0, 0, 1),
-					Mask: net.IPv4Mask(255, 255, 255, 255),
-				},
+			config.AllowedDomains{subExampleDomain: []netip.Prefix{
+				netip.MustParsePrefix("127.0.0.1/32"),
 			}},
 		),
 		Entry(
 			"when subdomains do not match", "test.example.com", "127.0.0.1",
-			config.AllowedDomains{subExampleDomain: []*net.IPNet{
-				{
-					IP:   net.IPv4(127, 0, 0, 1),
-					Mask: net.IPv4Mask(255, 255, 255, 255),
-				},
+			config.AllowedDomains{subExampleDomain: []netip.Prefix{
+				netip.MustParsePrefix("127.0.0.1/32"),
 			}},
 		),
 	)

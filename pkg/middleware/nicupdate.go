@@ -3,8 +3,8 @@ package middleware
 import (
 	"fmt"
 	"log"
-	"net"
 	"net/http"
+	"net/netip"
 
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/config"
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/data"
@@ -42,14 +42,14 @@ func BindNicUpdate(next http.Handler) http.Handler {
 			ip = r.RemoteAddr
 		}
 
-		parsedIP := net.ParseIP(ip)
-		if parsedIP == nil {
+		addr, err := netip.ParseAddr(ip)
+		if err != nil {
 			writeNicToken(w, http.StatusOK, nicTokenNotFQDN)
 			return
 		}
 
 		recordType := recordTypeA
-		if parsedIP.To4() == nil {
+		if !addr.Unmap().Is4() {
 			recordType = recordTypeAAAA
 		}
 

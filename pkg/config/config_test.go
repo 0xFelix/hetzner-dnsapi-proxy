@@ -1,7 +1,7 @@
 package config_test
 
 import (
-	"net"
+	"fmt"
 	"net/netip"
 	"os"
 	"path"
@@ -29,63 +29,45 @@ var _ = Describe("AllowedDomains", func() {
 		Entry(
 			"wildcard for localhost", "*,127.0.0.1/32",
 			func() config.AllowedDomains {
-				_, ipNet, err := net.ParseCIDR("127.0.0.1/32")
-				Expect(err).NotTo(HaveOccurred())
-				return config.AllowedDomains{"*": []*net.IPNet{ipNet}}
+				return config.AllowedDomains{"*": []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32")}}
 			},
 		),
 		Entry(
 			"wildcard for remote host", "*,192.168.0.0/16",
 			func() config.AllowedDomains {
-				_, ipNet, err := net.ParseCIDR("192.168.0.0/16")
-				Expect(err).NotTo(HaveOccurred())
-				return config.AllowedDomains{"*": []*net.IPNet{ipNet}}
+				return config.AllowedDomains{"*": []netip.Prefix{netip.MustParsePrefix("192.168.0.0/16")}}
 			},
 		),
 		Entry(
 			"domain for host", "example.com,192.168.0.1/32",
 			func() config.AllowedDomains {
-				_, ipNet, err := net.ParseCIDR("192.168.0.1/32")
-				Expect(err).NotTo(HaveOccurred())
-				return config.AllowedDomains{exampleDomain: []*net.IPNet{ipNet}}
+				return config.AllowedDomains{exampleDomain: []netip.Prefix{netip.MustParsePrefix("192.168.0.1/32")}}
 			},
 		),
 		Entry(
 			"two entries", "*,127.0.0.1/32;example.com,192.168.0.1/32",
 			func() config.AllowedDomains {
-				_, ipNetLocalhost, err := net.ParseCIDR("127.0.0.1/32")
-				Expect(err).NotTo(HaveOccurred())
-				_, ipNetRemote, err := net.ParseCIDR("192.168.0.1/32")
-				Expect(err).NotTo(HaveOccurred())
 				return config.AllowedDomains{
-					"*":           []*net.IPNet{ipNetLocalhost},
-					exampleDomain: []*net.IPNet{ipNetRemote},
+					"*":           []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32")},
+					exampleDomain: []netip.Prefix{netip.MustParsePrefix("192.168.0.1/32")},
 				}
 			},
 		),
 		Entry(
 			"three entries", "*,127.0.0.1/32;example.com,192.168.0.1/32;test.com,127.0.0.1/32",
 			func() config.AllowedDomains {
-				_, ipNetLocalhost, err := net.ParseCIDR("127.0.0.1/32")
-				Expect(err).NotTo(HaveOccurred())
-				_, ipNetRemote, err := net.ParseCIDR("192.168.0.1/32")
-				Expect(err).NotTo(HaveOccurred())
 				return config.AllowedDomains{
-					"*":           []*net.IPNet{ipNetLocalhost},
-					exampleDomain: []*net.IPNet{ipNetRemote},
-					"test.com":    []*net.IPNet{ipNetLocalhost},
+					"*":           []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32")},
+					exampleDomain: []netip.Prefix{netip.MustParsePrefix("192.168.0.1/32")},
+					"test.com":    []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32")},
 				}
 			},
 		),
 		Entry(
 			"multiple entries for same domain", "example.com,127.0.0.1/32;example.com,192.168.0.1/32",
 			func() config.AllowedDomains {
-				_, ipNetLocalhost, err := net.ParseCIDR("127.0.0.1/32")
-				Expect(err).NotTo(HaveOccurred())
-				_, ipNetRemote, err := net.ParseCIDR("192.168.0.1/32")
-				Expect(err).NotTo(HaveOccurred())
 				return config.AllowedDomains{
-					exampleDomain: []*net.IPNet{ipNetLocalhost, ipNetRemote},
+					exampleDomain: []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32"), netip.MustParsePrefix("192.168.0.1/32")},
 				}
 			},
 		),
@@ -94,14 +76,14 @@ var _ = Describe("AllowedDomains", func() {
 	DescribeTable(
 		"should to read fail from string on", func(text, expected string) {
 			allowedDomains := config.AllowedDomains{}
-			Expect(allowedDomains.FromString(text)).To(MatchError(expected))
+			Expect(allowedDomains.FromString(text)).To(MatchError(ContainSubstring(expected)))
 			Expect(allowedDomains).To(BeEmpty())
 		},
 		Entry("empty", "", unexpectedPartsCountErr),
 		Entry("empty after entry", "*,127.0.0.1/32;", unexpectedPartsCountErr),
 		Entry("empty before entry", ";*,127.0.0.1/32", unexpectedPartsCountErr),
 		Entry("empty between entries", "*,127.0.0.1/32;;*,127.0.0.1/32", unexpectedPartsCountErr),
-		Entry("invalid CIDR", "*,127.0.0.1/64;", "invalid CIDR address: 127.0.0.1/64"),
+		Entry("invalid CIDR", "*,127.0.0.1/64;", `invalid allowed domain "127.0.0.1/64": must be an IP address or CIDR range`),
 	)
 })
 
@@ -148,12 +130,7 @@ var _ = Describe("Config", func() {
 
 		BeforeEach(func() {
 			allowedDomains = config.AllowedDomains{
-				"*": []*net.IPNet{
-					{
-						IP:   net.IPv4(127, 0, 0, 1).To4(),
-						Mask: net.IPv4Mask(255, 255, 255, 255),
-					},
-				},
+				"*": []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32")},
 			}
 		})
 
@@ -261,11 +238,8 @@ var _ = Describe("Config", func() {
 
 		BeforeEach(func() {
 			allowedDomains = config.AllowedDomains{
-				"*": []*net.IPNet{
-					{
-						IP:   net.IPv4(127, 0, 0, 1),
-						Mask: net.IPv4Mask(255, 255, 255, 255),
-					},
+				"*": []netip.Prefix{
+					netip.MustParsePrefix("127.0.0.1/32"),
 				},
 			}
 
@@ -333,64 +307,25 @@ var _ = Describe("Config", func() {
 			}))
 		})
 
-		It("should set default ip mask", func() {
-			cfg := &config.Config{
-				Token: apiToken,
-				Auth: config.Auth{
-					Method: config.AuthMethodAllowedDomains,
-					AllowedDomains: config.AllowedDomains{
-						"*": []*net.IPNet{
-							{
-								IP: net.IPv4(127, 0, 0, 1),
-							},
-						},
-					},
-					Users: users,
-				},
-				RateLimit: validRL(),
-				Lockout:   validLO(),
-			}
+		DescribeTable(
+			"should default the prefix length of a bare ip", func(ip string, expected netip.Prefix) {
+				Expect(os.WriteFile(filePath, []byte(allowedDomainsYAML(apiToken, ip)), 0o600)).To(Succeed())
 
-			data, err := yaml.Marshal(cfg)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(os.WriteFile(filePath, data, 0o600)).To(Succeed())
+				cfgRead, err := config.ReadFile(filePath)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(cfgRead.Auth.AllowedDomains).To(HaveKeyWithValue("*", []netip.Prefix{expected}))
+			},
+			Entry("IPv4", "127.0.0.1", netip.MustParsePrefix("127.0.0.1/32")),
+			Entry("IPv4 CIDR", "192.168.0.0/16", netip.MustParsePrefix("192.168.0.0/16")),
+			Entry("IPv6", "::1", netip.MustParsePrefix("::1/128")),
+			Entry("IPv6 CIDR", "2001:db8::/32", netip.MustParsePrefix("2001:db8::/32")),
+		)
 
-			cfgRead, err := config.ReadFile(filePath)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(cfgRead.Auth.AllowedDomains).To(HaveKeyWithValue("*", []*net.IPNet{{
-				IP:   net.IPv4(127, 0, 0, 1),
-				Mask: net.CIDRMask(32, 32),
-			}}))
-		})
+		It("should fail on an invalid allowed domain entry", func() {
+			Expect(os.WriteFile(filePath, []byte(allowedDomainsYAML(apiToken, "notanip")), 0o600)).To(Succeed())
 
-		It("should set default ip mask for IPv6", func() {
-			cfg := &config.Config{
-				Token: apiToken,
-				Auth: config.Auth{
-					Method: config.AuthMethodAllowedDomains,
-					AllowedDomains: config.AllowedDomains{
-						"*": []*net.IPNet{
-							{
-								IP: net.ParseIP("::1"),
-							},
-						},
-					},
-					Users: users,
-				},
-				RateLimit: validRL(),
-				Lockout:   validLO(),
-			}
-
-			data, err := yaml.Marshal(cfg)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(os.WriteFile(filePath, data, 0o600)).To(Succeed())
-
-			cfgRead, err := config.ReadFile(filePath)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(cfgRead.Auth.AllowedDomains).To(HaveKeyWithValue("*", []*net.IPNet{{
-				IP:   net.ParseIP("::1"),
-				Mask: net.CIDRMask(128, 128),
-			}}))
+			_, err := config.ReadFile(filePath)
+			Expect(err).To(MatchError(ContainSubstring(`invalid allowedDomains entry "notanip"`)))
 		})
 
 		DescribeTable(
@@ -520,3 +455,21 @@ var _ = Describe("Config", func() {
 		})
 	})
 })
+
+func allowedDomainsYAML(token, entry string) string {
+	return fmt.Sprintf(`token: %s
+auth:
+  method: allowedDomains
+  allowedDomains:
+    "*":
+      - %s
+rateLimit:
+  rps: 5
+  burst: 10
+  idleSeconds: 600
+lockout:
+  maxAttempts: 10
+  durationSeconds: 3600
+  windowSeconds: 900
+`, token, entry)
+}

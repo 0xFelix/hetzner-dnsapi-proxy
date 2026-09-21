@@ -108,6 +108,9 @@ Every response includes `X-Content-Type-Options: nosniff`,
 
 ### Configuration file
 
+Entries of `auth.allowedDomains` and `trustedProxies` are CIDR ranges. A bare
+IP address is treated as a single host (`/32` or `/128`).
+
 ```yaml
 token: verysecrettoken
 timeout: 60
@@ -115,12 +118,8 @@ auth:
   method: both
   allowedDomains:
     example.com:
-      - ip: 127.0.0.1
-        mask:
-          - 255
-          - 255
-          - 255
-          - 255
+      - 127.0.0.1/32
+      - 2001:db8::/32
   users:
     - username: user
       password: pass

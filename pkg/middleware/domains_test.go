@@ -1,9 +1,9 @@
 package middleware_test
 
 import (
-	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -29,22 +29,10 @@ var _ = Describe("GetDomains", func() {
 				Auth: config.Auth{
 					Method: authMethod,
 					AllowedDomains: config.AllowedDomains{
-						exampleDomain: []*net.IPNet{{
-							IP:   net.IPv4(127, 0, 0, 1),
-							Mask: net.IPv4Mask(255, 255, 255, 255),
-						}},
-						testDomain: []*net.IPNet{{
-							IP:   net.IPv4(192, 168, 0, 1),
-							Mask: net.IPv4Mask(255, 255, 0, 0),
-						}},
-						niceDomain: []*net.IPNet{{
-							IP:   net.IPv4(127, 0, 0, 1),
-							Mask: net.IPv4Mask(255, 255, 255, 255),
-						}},
-						"*.parent.com": []*net.IPNet{{
-							IP:   net.IPv4(127, 0, 0, 1),
-							Mask: net.IPv4Mask(255, 255, 255, 255),
-						}},
+						exampleDomain:  []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32")},
+						testDomain:     []netip.Prefix{netip.MustParsePrefix("192.168.0.1/16")},
+						niceDomain:     []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32")},
+						"*.parent.com": []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32")},
 					},
 					Users: []config.User{
 						{
@@ -197,10 +185,7 @@ var _ = Describe("NewShowDomainsDirectAdmin", func() {
 	It("returns 401 without WWW-Authenticate in allowedDomains mode on IP mismatch", func() {
 		cfg.Auth.Method = config.AuthMethodAllowedDomains
 		cfg.Auth.AllowedDomains = config.AllowedDomains{
-			exampleDomain: []*net.IPNet{{
-				IP:   net.IPv4(10, 0, 0, 1),
-				Mask: net.IPv4Mask(255, 255, 255, 255),
-			}},
+			exampleDomain: []netip.Prefix{netip.MustParsePrefix("10.0.0.1/32")},
 		}
 		rec := run("", "")
 		Expect(rec.Code).To(Equal(http.StatusUnauthorized))

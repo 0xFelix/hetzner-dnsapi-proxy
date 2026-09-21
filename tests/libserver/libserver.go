@@ -2,8 +2,8 @@ package libserver
 
 import (
 	"crypto/rand"
-	"net"
 	"net/http/httptest"
+	"net/netip"
 
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/app"
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/config"
@@ -21,10 +21,7 @@ func New(url string, ttl int) (server *httptest.Server, token, username, passwor
 		Auth: config.Auth{
 			Method: config.AuthMethodBoth,
 			AllowedDomains: config.AllowedDomains{
-				"*": []*net.IPNet{{
-					IP:   net.IPv4(127, 0, 0, 1),           //nolint:mnd
-					Mask: net.IPv4Mask(255, 255, 255, 255), //nolint:mnd
-				}},
+				"*": []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32")},
 			},
 			Users: []config.User{{
 				Username: username,
