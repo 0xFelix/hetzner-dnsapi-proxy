@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net"
 	"net/http"
+	"net/netip"
 	"strings"
 
 	"golang.org/x/net/publicsuffix"
@@ -38,14 +38,14 @@ func BindPlain(next http.Handler) http.Handler {
 			return
 		}
 
-		parsedIP := net.ParseIP(ip)
-		if parsedIP == nil {
+		addr, err := netip.ParseAddr(ip)
+		if err != nil {
 			http.Error(w, "invalid ip address", http.StatusBadRequest)
 			return
 		}
 
 		recordType := recordTypeA
-		if parsedIP.To4() == nil {
+		if !addr.Unmap().Is4() {
 			recordType = recordTypeAAAA
 		}
 
@@ -245,14 +245,14 @@ func BindDirectAdmin(next http.Handler) http.Handler {
 
 func validateValue(value, recordType string) error {
 	if recordType == recordTypeA || recordType == recordTypeAAAA {
-		parsedIP := net.ParseIP(value)
-		if parsedIP == nil {
+		addr, err := netip.ParseAddr(value)
+		if err != nil {
 			return errors.New("invalid ip address")
 		}
-		if recordType == recordTypeA && parsedIP.To4() == nil {
+		if recordType == recordTypeA && !addr.Unmap().Is4() {
 			return errors.New("invalid ipv4 address")
 		}
-		if recordType == recordTypeAAAA && parsedIP.To4() != nil {
+		if recordType == recordTypeAAAA && addr.Unmap().Is4() {
 			return errors.New("invalid ipv6 address")
 		}
 	}

@@ -3,9 +3,10 @@ package middleware
 import (
 	"log"
 	"maps"
-	"net"
 	"net/http"
+	"net/netip"
 	"net/url"
+	"slices"
 	"strings"
 
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/config"
@@ -105,13 +106,15 @@ func GetDomains(cfg *config.Config, remoteAddr, username, password string) map[s
 
 func getDomainsFromAllowedDomains(allowedDomains config.AllowedDomains, remoteAddr string) map[string]struct{} {
 	domains := map[string]struct{}{}
-	for domain, ipNets := range allowedDomains {
-		for _, ipNet := range ipNets {
-			ip := net.ParseIP(remoteAddr)
-			if ip != nil && ipNet.Contains(ip) {
-				domains[domain] = struct{}{}
-				break
-			}
+	addr, err := netip.ParseAddr(remoteAddr)
+	if err != nil {
+		return domains
+	}
+	addr = addr.Unmap()
+
+	for domain, prefixes := range allowedDomains {
+		if slices.ContainsFunc(prefixes, func(p netip.Prefix) bool { return p.Contains(addr) }) {
+			domains[domain] = struct{}{}
 		}
 	}
 

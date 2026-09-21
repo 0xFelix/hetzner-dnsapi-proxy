@@ -3,7 +3,6 @@ package config
 import (
 	"errors"
 	"fmt"
-	"net"
 	"net/netip"
 	"os"
 	"strconv"
@@ -12,7 +11,7 @@ import (
 	"github.com/goccy/go-yaml"
 )
 
-type AllowedDomains map[string][]*net.IPNet
+type AllowedDomains map[string][]netip.Prefix
 
 func (out *AllowedDomains) FromString(val string) error {
 	allowedDomains := AllowedDomains{}
@@ -24,12 +23,33 @@ func (out *AllowedDomains) FromString(val string) error {
 			return errors.New("failed to parse allowed domain, length of parts != 2")
 		}
 
-		_, ipNet, err := net.ParseCIDR(parts[1])
+		prefix, err := parsePrefix(parts[1])
 		if err != nil {
-			return err
+			return fmt.Errorf("invalid allowed domain %q: %w", parts[1], err)
 		}
 
-		allowedDomains[parts[0]] = append(allowedDomains[parts[0]], ipNet)
+		allowedDomains[parts[0]] = append(allowedDomains[parts[0]], prefix)
+	}
+
+	*out = allowedDomains
+	return nil
+}
+
+func (out *AllowedDomains) UnmarshalYAML(unmarshal func(any) error) error {
+	raw := map[string][]string{}
+	if err := unmarshal(&raw); err != nil {
+		return err
+	}
+
+	allowedDomains := AllowedDomains{}
+	for domain, entries := range raw {
+		for _, entry := range entries {
+			prefix, err := parsePrefix(entry)
+			if err != nil {
+				return fmt.Errorf("invalid allowedDomains entry %q: %w", entry, err)
+			}
+			allowedDomains[domain] = append(allowedDomains[domain], prefix)
+		}
 	}
 
 	*out = allowedDomains
@@ -321,7 +341,6 @@ func ReadFile(path string) (*Config, error) {
 	}
 	cfg.TrustedProxyPrefixes = prefixes
 
-	setDefaultIPMask(cfg.Auth.AllowedDomains)
 	setDefaultBaseURL(cfg)
 
 	return cfg, nil
@@ -359,7 +378,7 @@ func validateRateLimit(rl *RateLimit) error {
 func parseTrustedProxies(proxies []string) ([]netip.Prefix, error) {
 	prefixes := make([]netip.Prefix, 0, len(proxies))
 	for _, p := range proxies {
-		prefix, err := parseTrustedProxy(p)
+		prefix, err := parsePrefix(p)
 		if err != nil {
 			return nil, fmt.Errorf("invalid trustedProxies entry %q: %w", p, err)
 		}
@@ -368,7 +387,7 @@ func parseTrustedProxies(proxies []string) ([]netip.Prefix, error) {
 	return prefixes, nil
 }
 
-func parseTrustedProxy(s string) (netip.Prefix, error) {
+func parsePrefix(s string) (netip.Prefix, error) {
 	if prefix, err := netip.ParsePrefix(s); err == nil {
 		return prefix.Masked(), nil
 	}
@@ -402,25 +421,5 @@ func AuthMethodIsValid(authMethod string) bool {
 func setDefaultBaseURL(c *Config) {
 	if c.BaseURL == "" {
 		c.BaseURL = "https://api.hetzner.cloud/v1"
-	}
-}
-
-func setDefaultIPMask(allowedDomains AllowedDomains) {
-	const (
-		bitsPerByte = 8
-		ipv4Bits    = net.IPv4len * bitsPerByte
-		ipv6Bits    = net.IPv6len * bitsPerByte
-	)
-	for _, allowedDomain := range allowedDomains {
-		for _, ipNet := range allowedDomain {
-			if len(ipNet.Mask) != 0 {
-				continue
-			}
-			if ipNet.IP.To4() != nil {
-				ipNet.Mask = net.CIDRMask(ipv4Bits, ipv4Bits)
-			} else {
-				ipNet.Mask = net.CIDRMask(ipv6Bits, ipv6Bits)
-			}
-		}
 	}
 }
