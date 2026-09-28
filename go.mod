@@ -4,9 +4,9 @@ go 1.26.0
 
 require (
 	github.com/goccy/go-yaml v1.19.2
-	github.com/hetznercloud/hcloud-go/v2 v2.48.0
+	github.com/hetznercloud/hcloud-go/v2 v2.49.0
 	github.com/onsi/ginkgo/v2 v2.33.0
-	github.com/onsi/gomega v1.43.1
+	github.com/onsi/gomega v1.44.0
 	golang.org/x/net v0.59.0
 	golang.org/x/time v0.16.0
 )
