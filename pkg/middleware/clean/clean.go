@@ -9,6 +9,7 @@ import (
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/config"
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/data"
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/middleware/clean/cloud"
+	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/sanitize"
 )
 
 func New(cfg *config.Config) func(http.Handler) http.Handler {
@@ -23,7 +24,7 @@ func New(cfg *config.Config) func(http.Handler) http.Handler {
 				return
 			}
 
-			log.Printf("received request to clean '%s' data of '%s'", reqData.Type, reqData.FullName)
+			logCleanRequest(reqData)
 			ctx, cancel := context.WithTimeout(r.Context(), time.Duration(cfg.Timeout)*time.Second)
 			defer cancel()
 			if err := c.Clean(ctx, reqData); err != nil {
@@ -35,4 +36,10 @@ func New(cfg *config.Config) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func logCleanRequest(reqData *data.ReqData) {
+	typ := sanitize.LogValue(reqData.Type)
+	name := sanitize.LogValue(reqData.FullName)
+	log.Printf("received request to clean '%s' data of '%s'", typ, name)
 }

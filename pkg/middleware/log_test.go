@@ -62,6 +62,17 @@ var _ = Describe("LogDebug", func() {
 		Expect(logged).To(ContainSubstring("probe/1.0"))
 	})
 
+	It("strips newlines from the logged body", func() {
+		req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("{\"value\":\"evil\nforged log line\"}"))
+		rec := httptest.NewRecorder()
+		middleware.LogDebug(inner).ServeHTTP(rec, req)
+
+		Expect(rec.Code).To(Equal(http.StatusOK))
+		logged := logBuf.String()
+		Expect(logged).To(ContainSubstring("forged log line"))
+		Expect(strings.Count(strings.TrimSuffix(logged, "\n"), "\n")).To(Equal(1))
+	})
+
 	It("returns 413 on a body that exceeds the limit", func() {
 		body := strings.Repeat("A", 2<<10) // 2 KB, over the 1 KB limit
 		req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(body))
