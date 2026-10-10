@@ -65,6 +65,50 @@ func ExistingRRSetTXT() schema.ZoneRRSet {
 	}
 }
 
+func ExistingApexRRSetA() schema.ZoneRRSet {
+	return schema.ZoneRRSet{
+		ID:   libserver.ApexName + "/" + libserver.RecordTypeA,
+		Name: libserver.ApexName,
+		Type: libserver.RecordTypeA,
+		TTL:  new(existingTTL),
+		Records: []schema.ZoneRRSetRecord{
+			{Value: libserver.AExisting},
+		},
+		Zone: mustParseInt(libserver.ZoneID),
+	}
+}
+
+func NewApexRRSetA() schema.ZoneRRSet {
+	return schema.ZoneRRSet{
+		Name: libserver.ApexName,
+		Type: libserver.RecordTypeA,
+		TTL:  new(libserver.DefaultTTL),
+		Records: []schema.ZoneRRSetRecord{
+			{Value: libserver.AUpdated},
+		},
+		Zone: mustParseInt(libserver.ZoneID),
+	}
+}
+
+func UpdatedApexRRSetA() schema.ZoneRRSet {
+	r := NewApexRRSetA()
+	r.ID = libserver.ApexName + "/" + libserver.RecordTypeA
+	return r
+}
+
+func ExistingApexRRSetTXT() schema.ZoneRRSet {
+	return schema.ZoneRRSet{
+		ID:   libserver.ApexName + "/" + libserver.RecordTypeTXT,
+		Name: libserver.ApexName,
+		Type: libserver.RecordTypeTXT,
+		TTL:  new(existingTTL),
+		Records: []schema.ZoneRRSetRecord{
+			{Value: strconv.Quote(libserver.TXTExisting)},
+		},
+		Zone: mustParseInt(libserver.ZoneID),
+	}
+}
+
 func ClientIPRRSetA() schema.ZoneRRSet {
 	return schema.ZoneRRSet{
 		ID:   libserver.ARecordName + "/" + libserver.RecordTypeA,

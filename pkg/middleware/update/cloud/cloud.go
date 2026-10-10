@@ -33,7 +33,8 @@ func (u *updater) Update(ctx context.Context, reqData *data.ReqData) error {
 		return err
 	}
 
-	rrSet, _, err := u.client.Zone.GetRRSetByNameAndType(ctx, zone, reqData.Name, rrSetType)
+	name := hetzner.RRSetName(reqData.Name)
+	rrSet, _, err := u.client.Zone.GetRRSetByNameAndType(ctx, zone, name, rrSetType)
 	if err != nil {
 		return err
 	}
@@ -42,7 +43,7 @@ func (u *updater) Update(ctx context.Context, reqData *data.ReqData) error {
 		return u.updateRRSet(ctx, rrSet, reqData.Value)
 	}
 
-	return u.createRRSet(ctx, zone, rrSetType, reqData.Name, reqData.Value)
+	return u.createRRSet(ctx, zone, rrSetType, name, reqData.Value)
 }
 
 func (u *updater) updateRRSet(ctx context.Context, rrSet *hcloud.ZoneRRSet, val string) error {
