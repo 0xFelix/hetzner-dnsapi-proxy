@@ -85,13 +85,14 @@ func GetDomains(cfg *config.Config, remoteAddr, username, password string) map[s
 	domains := map[string]struct{}{}
 	switch cfg.Auth.Method {
 	case config.AuthMethodBoth:
+		// Both must allow the domain, so keep the more specific entry of
+		// every pair that overlaps.
 		for domain := range domainsAllowedDomains {
-			if _, ok := domainsUsers[domain]; ok {
-				domains[domain] = struct{}{}
-				continue
-			}
 			for domainUser := range domainsUsers {
-				if IsSubDomain(domainUser, domain) {
+				switch {
+				case domain == domainUser, IsSubDomain(domain, domainUser):
+					domains[domain] = struct{}{}
+				case IsSubDomain(domainUser, domain):
 					domains[domainUser] = struct{}{}
 				}
 			}

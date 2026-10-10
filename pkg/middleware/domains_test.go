@@ -21,6 +21,7 @@ var _ = Describe("GetDomains", func() {
 		parentDomain    = "parent.com"
 		somethingDomain = "something.com"
 		subParentDomain = "sub.parent.com"
+		wildcardParent  = "*.parent.com"
 	)
 
 	DescribeTable(
@@ -32,7 +33,7 @@ var _ = Describe("GetDomains", func() {
 						exampleDomain:  []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32")},
 						testDomain:     []netip.Prefix{netip.MustParsePrefix("192.168.0.1/16")},
 						niceDomain:     []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32")},
-						"*.parent.com": []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32")},
+						wildcardParent: []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32")},
 					},
 					Users: []config.User{
 						{
@@ -88,6 +89,25 @@ var _ = Describe("GetDomains", func() {
 			},
 		),
 	)
+
+	It("should return the allowed domain if a user wildcard domain matches it", func() {
+		cfg := &config.Config{
+			Auth: config.Auth{
+				Method: config.AuthMethodBoth,
+				AllowedDomains: config.AllowedDomains{
+					subParentDomain: []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32")},
+				},
+				Users: []config.User{{
+					Username: username,
+					Password: password,
+					Domains:  []string{wildcardParent},
+				}},
+			},
+		}
+		Expect(middleware.GetDomains(cfg, remoteAddr, username, password)).To(Equal(map[string]struct{}{
+			subParentDomain: {},
+		}))
+	})
 
 	It("should return nothing if auth method is invalid", func() {
 		cfg := &config.Config{
