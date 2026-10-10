@@ -28,7 +28,7 @@ func LogDebug(next http.Handler) http.Handler {
 			return
 		}
 		r.Body = io.NopCloser(&buf)
-		log.Printf("BODY %s", string(body))
+		log.Printf("BODY %s", sanitize.LogValue(string(body)))
 		header := sanitize.LogValue(fmt.Sprintf("%+v", redactHeader(r.Header)))
 		//nolint:gosec // value is sanitized above
 		log.Printf("HEADER %s", header)
