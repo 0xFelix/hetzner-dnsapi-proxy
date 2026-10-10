@@ -15,10 +15,7 @@ import (
 )
 
 var _ = Describe("AllowedDomains", func() {
-	const (
-		exampleDomain           = "example.com"
-		unexpectedPartsCountErr = "failed to parse allowed domain, length of parts != 2"
-	)
+	const unexpectedPartsCountErr = "failed to parse allowed domain, length of parts != 2"
 
 	DescribeTable(
 		"should read from string successfully", func(text string, expected func() config.AllowedDomains) {
@@ -99,6 +96,8 @@ var _ = Describe("Config", func() {
 		listenAddr        = "127.0.0.1:8080"
 		trustedProxiesStr = "127.0.0.1,192.168.0.1,192.168.0.2"
 		debugStr          = "true"
+		testUsername      = "testname"
+		testPassword      = "testpassword"
 	)
 
 	var (
@@ -188,6 +187,17 @@ var _ = Describe("Config", func() {
 			}))
 		})
 
+		It("should lowercase domains of ALLOWED_DOMAINS", func() {
+			Expect(os.Setenv(envAPIToken, apiToken)).To(Succeed())
+			Expect(os.Setenv(envAllowedDomains, "Example.COM,127.0.0.1/32")).To(Succeed())
+
+			cfg, err := config.ParseEnv()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(cfg.Auth.AllowedDomains).To(Equal(config.AllowedDomains{
+				exampleDomain: []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32")},
+			}))
+		})
+
 		DescribeTable(
 			"should fail on invalid environment variables", func(setEnv func(), errMsg string) {
 				setEnv()
@@ -259,8 +269,8 @@ var _ = Describe("Config", func() {
 
 			users = []config.User{
 				{
-					Username: "testname",
-					Password: "testpassword",
+					Username: testUsername,
+					Password: testPassword,
 					Domains:  []string{"test.tld"},
 				},
 			}
@@ -295,6 +305,36 @@ var _ = Describe("Config", func() {
 			Expect(err).ToNot(HaveOccurred())
 			cfg.TrustedProxyPrefixes = trustedProxyPrefixes
 			Expect(cfgRead).To(Equal(cfg))
+		})
+
+		It("should lowercase domains of allowedDomains and users", func() {
+			cfg := &config.Config{
+				Token: apiToken,
+				Auth: config.Auth{
+					Method: config.AuthMethodBoth,
+					AllowedDomains: config.AllowedDomains{
+						"Example.COM": []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32")},
+					},
+					Users: []config.User{{
+						Username: testUsername,
+						Password: testPassword,
+						Domains:  []string{"*.Example.COM"},
+					}},
+				},
+				RateLimit: validRL(),
+				Lockout:   validLO(),
+			}
+
+			data, err := yaml.Marshal(cfg)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(os.WriteFile(filePath, data, 0o600)).To(Succeed())
+
+			cfgRead, err := config.ReadFile(filePath)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(cfgRead.Auth.AllowedDomains).To(Equal(config.AllowedDomains{
+				exampleDomain: []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32")},
+			}))
+			Expect(cfgRead.Auth.Users[0].Domains).To(Equal([]string{"*." + exampleDomain}))
 		})
 
 		It("should parse CIDR ranges from trustedProxies", func() {
