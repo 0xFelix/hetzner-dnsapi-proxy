@@ -109,6 +109,28 @@ var _ = Describe("HTTPReq", func() {
 			Entry("with dot suffix", libserver.TXTRecordNameFull+"."),
 			Entry("without dot suffix", libserver.TXTRecordNameFull),
 		)
+
+		DescribeTable(
+			"cleaning up a record that does not exist", func(ctx context.Context, fqdn string) {
+				server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL)
+
+				api.AppendHandlers(
+					libcloudapi.GetZone(token, libcloudapi.Zone()),
+					libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.NewRRSetTXT(), false),
+				)
+
+				Expect(doHTTPReqRequest(
+					ctx, server.URL+"/httpreq/cleanup", username, password,
+					map[string]string{
+						keyFQDN:  fqdn,
+						keyValue: libserver.TXTExisting,
+					},
+				)).To(Equal(http.StatusOK))
+				Expect(api.ReceivedRequests()).To(HaveLen(2))
+			},
+			Entry("with dot suffix", libserver.TXTRecordNameFull+"."),
+			Entry("without dot suffix", libserver.TXTRecordNameFull),
+		)
 	})
 
 	Context("should make no api calls and should fail", func() {
