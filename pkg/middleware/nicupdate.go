@@ -31,7 +31,7 @@ func BindNicUpdate(next http.Handler) http.Handler {
 			return
 		}
 
-		hostname := r.Form.Get("hostname")
+		hostname := NormalizeFQDN(r.Form.Get("hostname"))
 		if hostname == "" {
 			writeNicToken(w, http.StatusOK, nicTokenNotFQDN)
 			return

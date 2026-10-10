@@ -7,6 +7,8 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+const exampleDomain = "example.com"
+
 func TestConfig(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "config test suite")

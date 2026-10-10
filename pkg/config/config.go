@@ -230,6 +230,7 @@ func ParseEnv() (*Config, error) {
 	}
 	cfg.TrustedProxyPrefixes = prefixes
 
+	normalizeAuth(&cfg.Auth)
 	if err := validate(cfg); err != nil {
 		return nil, err
 	}
@@ -336,6 +337,7 @@ func ReadFile(path string) (*Config, error) {
 	}
 	cfg.TrustedProxyPrefixes = prefixes
 
+	normalizeAuth(&cfg.Auth)
 	if err := validate(cfg); err != nil {
 		return nil, err
 	}
@@ -343,6 +345,23 @@ func ReadFile(path string) (*Config, error) {
 	setDefaultBaseURL(cfg)
 
 	return cfg, nil
+}
+
+// normalizeAuth lowercases all configured domains, so that comparisons
+// against the names from a request are case-insensitive.
+func normalizeAuth(a *Auth) {
+	allowedDomains := make(AllowedDomains, len(a.AllowedDomains))
+	for domain, prefixes := range a.AllowedDomains {
+		domain = strings.ToLower(domain)
+		allowedDomains[domain] = append(allowedDomains[domain], prefixes...)
+	}
+	a.AllowedDomains = allowedDomains
+
+	for i := range a.Users {
+		for j, domain := range a.Users[i].Domains {
+			a.Users[i].Domains[j] = strings.ToLower(domain)
+		}
+	}
 }
 
 func validate(cfg *Config) error {

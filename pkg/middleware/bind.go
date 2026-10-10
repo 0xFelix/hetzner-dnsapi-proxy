@@ -31,7 +31,7 @@ func BindPlain(next http.Handler) http.Handler {
 			return
 		}
 
-		hostname := r.Form.Get("hostname")
+		hostname := NormalizeFQDN(r.Form.Get("hostname"))
 		ip := r.Form.Get("ip")
 		if hostname == "" || ip == "" {
 			http.Error(w, "hostname or ip address is missing", http.StatusBadRequest)
@@ -94,7 +94,8 @@ func BindAcmeDNS(next http.Handler) http.Handler {
 			return
 		}
 
-		name, zone, err := SplitFQDN(d.Subdomain)
+		fqdn := NormalizeFQDN(d.Subdomain)
+		name, zone, err := SplitFQDN(fqdn)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -102,9 +103,10 @@ func BindAcmeDNS(next http.Handler) http.Handler {
 
 		// prepend prefix if not already given
 		const prefixAcmeChallenge = "_acme-challenge."
-		if !strings.HasPrefix(d.Subdomain, prefixAcmeChallenge) {
-			d.Subdomain = prefixAcmeChallenge + d.Subdomain
-			name = prefixAcmeChallenge + name
+		if !strings.HasPrefix(fqdn, prefixAcmeChallenge) {
+			fqdn = prefixAcmeChallenge + fqdn
+			// the name is empty if the subdomain is the zone apex
+			name = strings.TrimSuffix(prefixAcmeChallenge+name, ".")
 		}
 
 		next.ServeHTTP(
@@ -112,7 +114,7 @@ func BindAcmeDNS(next http.Handler) http.Handler {
 				data.NewContextWithReqData(
 					r.Context(),
 					&data.ReqData{
-						FullName:  d.Subdomain,
+						FullName:  fqdn,
 						Name:      name,
 						Zone:      zone,
 						Value:     d.TXT,
@@ -150,7 +152,7 @@ func BindHTTPReq(next http.Handler) http.Handler {
 			return
 		}
 
-		d.FQDN = strings.TrimRight(d.FQDN, ".")
+		d.FQDN = NormalizeFQDN(d.FQDN)
 		name, zone, err := SplitFQDN(d.FQDN)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -215,6 +217,7 @@ func BindDirectAdmin(next http.Handler) http.Handler {
 		if name := r.Form.Get("name"); name != "" {
 			fqdn = name + "." + domain
 		}
+		fqdn = NormalizeFQDN(fqdn)
 
 		name, zone, err := SplitFQDN(fqdn)
 		if err != nil {
@@ -257,6 +260,12 @@ func validateValue(value, recordType string) error {
 		}
 	}
 	return nil
+}
+
+// NormalizeFQDN strips trailing dots and lowercases the name, so that
+// comparisons against configured domains are case-insensitive.
+func NormalizeFQDN(fqdn string) string {
+	return strings.ToLower(strings.TrimRight(fqdn, "."))
 }
 
 func SplitFQDN(fqdn string) (name, zone string, err error) {

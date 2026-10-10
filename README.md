@@ -53,6 +53,9 @@ The supported authorization methods are:
 - `any`: Combination of `allowedDomains` and `users`, **any** of the two must
   be satisfied
 
+Domain names are compared case-insensitively and a trailing dot in a
+requested name is ignored.
+
 To authorize a domain and all of its subdomains, prefix the entry with `*.`
 (for example `*.example.com` matches `example.com`'s subdomains like
 `foo.example.com` and `bar.foo.example.com`). A bare `example.com` entry only
