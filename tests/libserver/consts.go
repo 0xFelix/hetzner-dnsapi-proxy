@@ -3,6 +3,7 @@ package libserver
 const (
 	TLD                   = "tld"
 	ZoneName              = "test.tld"
+	ApexName              = "@"
 	ARecordName           = "asub"
 	ARecordNameFull       = "asub.test.tld"
 	AAAARecordName        = "aaaasub"

@@ -33,7 +33,7 @@ func (u *cleaner) Clean(ctx context.Context, reqData *data.ReqData) error {
 		return err
 	}
 
-	rrSet, _, err := u.client.Zone.GetRRSetByNameAndType(ctx, zone, reqData.Name, rrSetType)
+	rrSet, _, err := u.client.Zone.GetRRSetByNameAndType(ctx, zone, hetzner.RRSetName(reqData.Name), rrSetType)
 	if err != nil {
 		return err
 	}

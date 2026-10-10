@@ -37,6 +37,16 @@ func appVersion() string {
 	return "dev"
 }
 
+// RRSetName returns the name the API expects for a record name that is
+// relative to its zone. An empty name refers to the zone apex, which the
+// API represents as '@'.
+func RRSetName(name string) string {
+	if name == "" {
+		return "@"
+	}
+	return name
+}
+
 func RRSetTypeFromString(rType string) (hcloud.ZoneRRSetType, error) {
 	switch rrType := hcloud.ZoneRRSetType(rType); rrType {
 	case hcloud.ZoneRRSetTypeA,

@@ -106,6 +106,43 @@ var _ = Describe("Plain", func() {
 
 			Expect(api.ReceivedRequests()).To(HaveLen(4))
 		})
+
+		//nolint:dupl
+		It("creating a new record at the zone apex", func(ctx context.Context) {
+			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL)
+
+			api.AppendHandlers(
+				libcloudapi.GetZone(token, libcloudapi.Zone()),
+				libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.NewApexRRSetA(), false),
+				libcloudapi.CreateRRSet(token, libcloudapi.Zone(), libcloudapi.NewApexRRSetA()),
+			)
+
+			Expect(doPlainRequest(ctx, server.URL+"/plain/update", username, password, url.Values{
+				keyHostname: []string{libserver.ZoneName},
+				keyIP:       []string{libserver.AUpdated},
+			})).To(Equal(http.StatusOK))
+
+			Expect(api.ReceivedRequests()).To(HaveLen(3))
+		})
+
+		//nolint:dupl
+		It("updating an existing record at the zone apex", func(ctx context.Context) {
+			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL)
+
+			api.AppendHandlers(
+				libcloudapi.GetZone(token, libcloudapi.Zone()),
+				libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.ExistingApexRRSetA(), true),
+				libcloudapi.ChangeRRSetTTL(token, libcloudapi.Zone(), libcloudapi.UpdatedApexRRSetA()),
+				libcloudapi.SetRRSetRecords(token, libcloudapi.Zone(), libcloudapi.UpdatedApexRRSetA()),
+			)
+
+			Expect(doPlainRequest(ctx, server.URL+"/plain/update", username, password, url.Values{
+				keyHostname: []string{libserver.ZoneName},
+				keyIP:       []string{libserver.AUpdated},
+			})).To(Equal(http.StatusOK))
+
+			Expect(api.ReceivedRequests()).To(HaveLen(4))
+		})
 	})
 
 	Context("should make no api calls and should fail", func() {
