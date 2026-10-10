@@ -72,7 +72,7 @@ authorizes that exact name - subdomains will be rejected.
 
 ### Rate limiting and auth-failure lockout
 
-Both features per-client-IP defenses:
+Both features are per-client-IP defenses:
 
 - `rateLimit` is a token-bucket throttle applied to every endpoint. Requests
   above `burst` refill at `rps` tokens per second. Excess requests get
@@ -90,11 +90,11 @@ traversing a trusted reverse proxy are counted against the real client.
 By default all endpoint groups are enabled. You can restrict which groups are
 active by listing only the ones you want:
 
-- `plain` — `/plain/update`
-- `nic` — `/nic/update`
-- `acmedns` — `/acmedns/update`
-- `httpreq` — `/httpreq/present`, `/httpreq/cleanup`
-- `directadmin` — `/directadmin/CMD_API_*`
+- `plain` - `/plain/update`
+- `nic` - `/nic/update`
+- `acmedns` - `/acmedns/update`
+- `httpreq` - `/httpreq/present`, `/httpreq/cleanup`
+- `directadmin` - `/directadmin/CMD_API_*`
 
 Via config file set the `endpoints` key; via environment variable set
 `ENDPOINTS` to a comma-separated list (e.g. `ENDPOINTS=plain,nic`). Listing
