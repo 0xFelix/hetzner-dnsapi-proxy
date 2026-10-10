@@ -230,6 +230,10 @@ func ParseEnv() (*Config, error) {
 	}
 	cfg.TrustedProxyPrefixes = prefixes
 
+	if err := validate(cfg); err != nil {
+		return nil, err
+	}
+
 	setDefaultBaseURL(cfg)
 
 	return cfg, nil
@@ -326,24 +330,29 @@ func ReadFile(path string) (*Config, error) {
 		return nil, errors.New("token is required")
 	}
 
-	if err := validateRateLimit(&cfg.RateLimit); err != nil {
-		return nil, err
-	}
-	if err := validateLockout(&cfg.Lockout); err != nil {
-		return nil, err
-	}
-	if err := validateAuth(&cfg.Auth); err != nil {
-		return nil, err
-	}
 	prefixes, parseErr := parseTrustedProxies(cfg.TrustedProxies)
 	if parseErr != nil {
 		return nil, parseErr
 	}
 	cfg.TrustedProxyPrefixes = prefixes
 
+	if err := validate(cfg); err != nil {
+		return nil, err
+	}
+
 	setDefaultBaseURL(cfg)
 
 	return cfg, nil
+}
+
+func validate(cfg *Config) error {
+	if err := validateRateLimit(&cfg.RateLimit); err != nil {
+		return err
+	}
+	if err := validateLockout(&cfg.Lockout); err != nil {
+		return err
+	}
+	return validateAuth(&cfg.Auth)
 }
 
 func validateAuth(a *Auth) error {

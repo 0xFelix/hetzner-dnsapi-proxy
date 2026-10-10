@@ -126,6 +126,8 @@ var _ = Describe("Config", func() {
 			envListenAddr     = "LISTEN_ADDR"
 			envTrustedProxies = "TRUSTED_PROXIES"
 			envDebug          = "DEBUG"
+			envRateLimitRPS   = "RATE_LIMIT_RPS"
+			envLockoutMaxAtt  = "LOCKOUT_MAX_ATTEMPTS"
 		)
 
 		BeforeEach(func() {
@@ -143,6 +145,8 @@ var _ = Describe("Config", func() {
 			Expect(os.Unsetenv(envListenAddr)).To(Succeed())
 			Expect(os.Unsetenv(envTrustedProxies)).To(Succeed())
 			Expect(os.Unsetenv(envDebug)).To(Succeed())
+			Expect(os.Unsetenv(envRateLimitRPS)).To(Succeed())
+			Expect(os.Unsetenv(envLockoutMaxAtt)).To(Succeed())
 		})
 
 		It("should parse environment successfully", func() {
@@ -219,6 +223,16 @@ var _ = Describe("Config", func() {
 				Expect(os.Setenv(envAllowedDomains, allowedDomainsStr)).To(Succeed())
 				Expect(os.Setenv(envTrustedProxies, "10.0.0.0/99")).To(Succeed())
 			}, `invalid trustedProxies entry "10.0.0.0/99": must be an IP address or CIDR range`),
+			Entry("RATE_LIMIT_RPS is zero", func() {
+				Expect(os.Setenv(envAPIToken, apiToken)).To(Succeed())
+				Expect(os.Setenv(envAllowedDomains, allowedDomainsStr)).To(Succeed())
+				Expect(os.Setenv(envRateLimitRPS, "0")).To(Succeed())
+			}, "rateLimit.rps must be > 0"),
+			Entry("LOCKOUT_MAX_ATTEMPTS is zero", func() {
+				Expect(os.Setenv(envAPIToken, apiToken)).To(Succeed())
+				Expect(os.Setenv(envAllowedDomains, allowedDomainsStr)).To(Succeed())
+				Expect(os.Setenv(envLockoutMaxAtt, "0")).To(Succeed())
+			}, "lockout.maxAttempts must be > 0"),
 		)
 	})
 
