@@ -4,7 +4,7 @@ go 1.27.0
 
 require (
 	github.com/goccy/go-yaml v1.19.2
-	github.com/hetznercloud/hcloud-go/v2 v2.52.0
+	github.com/hetznercloud/hcloud-go/v2 v2.53.0
 	github.com/onsi/ginkgo/v2 v2.33.1
 	github.com/onsi/gomega v1.44.0
 	golang.org/x/net v0.61.0
@@ -23,7 +23,7 @@ require (
 	github.com/prometheus/client_golang v1.25.0 // indirect
 	github.com/prometheus/client_model v0.6.3 // indirect
 	github.com/prometheus/common v0.72.1 // indirect
-	github.com/prometheus/procfs v0.22.0 // indirect
+	github.com/prometheus/procfs v0.23.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/mod v0.42.0 // indirect
 	golang.org/x/sync v0.24.0 // indirect
