@@ -51,10 +51,11 @@ func RRSetTypeFromString(rType string) (hcloud.ZoneRRSetType, error) {
 	switch rrType := hcloud.ZoneRRSetType(rType); rrType {
 	case hcloud.ZoneRRSetTypeA,
 		hcloud.ZoneRRSetTypeAAAA,
+		hcloud.ZoneRRSetTypeCNAME,
+		hcloud.ZoneRRSetTypeSRV,
 		hcloud.ZoneRRSetTypeTXT:
 		return rrType, nil
 	case hcloud.ZoneRRSetTypeCAA,
-		hcloud.ZoneRRSetTypeCNAME,
 		hcloud.ZoneRRSetTypeDS,
 		hcloud.ZoneRRSetTypeHINFO,
 		hcloud.ZoneRRSetTypeHTTPS,
@@ -63,7 +64,6 @@ func RRSetTypeFromString(rType string) (hcloud.ZoneRRSetType, error) {
 		hcloud.ZoneRRSetTypePTR,
 		hcloud.ZoneRRSetTypeRP,
 		hcloud.ZoneRRSetTypeSOA,
-		hcloud.ZoneRRSetTypeSRV,
 		hcloud.ZoneRRSetTypeSVCB,
 		hcloud.ZoneRRSetTypeTLSA:
 		return "", fmt.Errorf("unsupported resource record set type %s", rrType)

@@ -127,6 +127,7 @@ var _ = Describe("Config", func() {
 			envDebug          = "DEBUG"
 			envRateLimitRPS   = "RATE_LIMIT_RPS"
 			envLockoutMaxAtt  = "LOCKOUT_MAX_ATTEMPTS"
+			envEndpoints      = "ENDPOINTS"
 		)
 
 		BeforeEach(func() {
@@ -146,6 +147,7 @@ var _ = Describe("Config", func() {
 			Expect(os.Unsetenv(envDebug)).To(Succeed())
 			Expect(os.Unsetenv(envRateLimitRPS)).To(Succeed())
 			Expect(os.Unsetenv(envLockoutMaxAtt)).To(Succeed())
+			Expect(os.Unsetenv(envEndpoints)).To(Succeed())
 		})
 
 		It("should parse environment successfully", func() {
@@ -185,6 +187,28 @@ var _ = Describe("Config", func() {
 				netip.MustParsePrefix("10.0.0.0/8"),
 				netip.MustParsePrefix("2001:db8::/32"),
 			}))
+		})
+
+		It("should enable all endpoints but records when ENDPOINTS is unset", func() {
+			Expect(os.Setenv(envAPIToken, apiToken)).To(Succeed())
+			Expect(os.Setenv(envAllowedDomains, allowedDomainsStr)).To(Succeed())
+
+			cfg, err := config.ParseEnv()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(cfg.Endpoints).To(Equal(config.Endpoints{
+				Plain: true, Nic: true, AcmeDNS: true, HTTPReq: true, DirectAdmin: true,
+			}))
+		})
+
+		It("should enable only the endpoints listed in ENDPOINTS", func() {
+			Expect(os.Setenv(envAPIToken, apiToken)).To(Succeed())
+			Expect(os.Setenv(envAllowedDomains, allowedDomainsStr)).To(Succeed())
+			Expect(os.Setenv(envEndpoints, "plain, records")).To(Succeed())
+
+			cfg, err := config.ParseEnv()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(cfg.Endpoints).To(Equal(config.Endpoints{Plain: true, Records: true}))
+			Expect(cfg.Endpoints.Enabled()).To(Equal([]string{config.EndpointPlain, config.EndpointRecords}))
 		})
 
 		It("should lowercase domains of ALLOWED_DOMAINS", func() {
@@ -243,6 +267,11 @@ var _ = Describe("Config", func() {
 				Expect(os.Setenv(envAllowedDomains, allowedDomainsStr)).To(Succeed())
 				Expect(os.Setenv(envLockoutMaxAtt, "0")).To(Succeed())
 			}, "lockout.maxAttempts must be > 0"),
+			Entry("ENDPOINTS contains an unknown endpoint", func() {
+				Expect(os.Setenv(envAPIToken, apiToken)).To(Succeed())
+				Expect(os.Setenv(envAllowedDomains, allowedDomainsStr)).To(Succeed())
+				Expect(os.Setenv(envEndpoints, "plain,unknown")).To(Succeed())
+			}, `invalid endpoint "unknown" in ENDPOINTS`),
 		)
 	})
 

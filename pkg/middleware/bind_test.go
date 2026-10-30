@@ -152,6 +152,70 @@ var _ = Describe("Binding of names", func() {
 		Entry("trailing dot", "example.com.", "sub"),
 		Entry("upper case", "Example.COM", "SUB"),
 	)
+
+	DescribeTable(
+		"should bind records requests", func(fqdn, recordType, value, expectedName, expectedType, expectedValue string) {
+			reqData, code := bind(middleware.BindRecords, newJSONRequest(
+				`{"fqdn":"`+fqdn+`","type":"`+recordType+`","value":"`+value+`"}`,
+			))
+			Expect(code).To(Equal(http.StatusOK))
+			Expect(reqData.Name).To(Equal(expectedName))
+			Expect(reqData.Zone).To(Equal("example.com"))
+			Expect(reqData.Type).To(Equal(expectedType))
+			Expect(reqData.Value).To(Equal(expectedValue))
+		},
+		Entry("A", "sub.example.com", "A", "127.0.0.1", "sub", "A", "127.0.0.1"),
+		Entry("AAAA", "sub.example.com", "AAAA", "::1", "sub", "AAAA", "::1"),
+		Entry("TXT at the zone apex", "example.com", "TXT", "some text", "", "TXT", "some text"),
+		Entry("lower case type", "sub.example.com", "cname", "target.example.com", "sub", "CNAME", "target.example.com."),
+		Entry("CNAME", "sub.example.com", "CNAME", "target.example.com", "sub", "CNAME", "target.example.com."),
+		Entry(
+			"CNAME with absolute upper case target", "SUB.example.com.", "CNAME", "Target.Example.COM.",
+			"sub", "CNAME", "target.example.com.",
+		),
+		Entry("CNAME with underscore", "sub.example.com", "CNAME", "_dkim.example.com", "sub", "CNAME", "_dkim.example.com."),
+		Entry("SRV", "_sip._tcp.example.com", "SRV", "10 5 5060 sip.example.com", "_sip._tcp", "SRV", "10 5 5060 sip.example.com."),
+		Entry(
+			"SRV with extra whitespace", "_sip._tcp.example.com", "SRV", ` 10  5 5060\tSIP.example.com. `,
+			"_sip._tcp", "SRV", "10 5 5060 sip.example.com.",
+		),
+		Entry(
+			"SRV with maximum values", "_sip._tcp.example.com", "SRV", "65535 65535 65535 sip.example.com",
+			"_sip._tcp", "SRV", "65535 65535 65535 sip.example.com.",
+		),
+		Entry(
+			"SRV with leading zeros", "_sip._tcp.example.com", "SRV", "00 05 05060 sip.example.com",
+			"_sip._tcp", "SRV", "0 5 5060 sip.example.com.",
+		),
+		Entry("SRV with unavailable service", "_sip._tcp.example.com", "SRV", "0 0 0 .", "_sip._tcp", "SRV", "0 0 0 ."),
+	)
+
+	DescribeTable(
+		"should reject invalid records requests", func(body string) {
+			reqData, code := bind(middleware.BindRecords, newJSONRequest(body))
+			Expect(code).To(Equal(http.StatusBadRequest))
+			Expect(reqData).To(BeNil())
+		},
+		Entry("missing fqdn", `{"type":"A","value":"127.0.0.1"}`),
+		Entry("missing type", `{"fqdn":"sub.example.com","value":"127.0.0.1"}`),
+		Entry("missing value", `{"fqdn":"sub.example.com","type":"A"}`),
+		Entry("unsupported type", `{"fqdn":"sub.example.com","type":"MX","value":"10 mx.example.com"}`),
+		Entry("invalid fqdn", `{"fqdn":"com","type":"A","value":"127.0.0.1"}`),
+		Entry("A with ipv6 address", `{"fqdn":"sub.example.com","type":"A","value":"::1"}`),
+		Entry("AAAA with ipv4 address", `{"fqdn":"sub.example.com","type":"AAAA","value":"127.0.0.1"}`),
+		Entry("CNAME at the zone apex", `{"fqdn":"example.com","type":"CNAME","value":"target.example.com"}`),
+		Entry("CNAME with space in target", `{"fqdn":"sub.example.com","type":"CNAME","value":"a b.example.com"}`),
+		Entry("CNAME with empty label", `{"fqdn":"sub.example.com","type":"CNAME","value":"a..example.com"}`),
+		Entry("CNAME with leading hyphen", `{"fqdn":"sub.example.com","type":"CNAME","value":"-a.example.com"}`),
+		Entry("CNAME with too long label", `{"fqdn":"sub.example.com","type":"CNAME","value":"`+strings.Repeat("a", 64)+`.example.com"}`),
+		Entry("CNAME with too long target", `{"fqdn":"sub.example.com","type":"CNAME","value":"`+strings.Repeat("a.", 127)+`com"}`),
+		Entry("SRV with too few fields", `{"fqdn":"_sip._tcp.example.com","type":"SRV","value":"10 5 sip.example.com"}`),
+		Entry("SRV with too many fields", `{"fqdn":"_sip._tcp.example.com","type":"SRV","value":"10 5 5060 sip.example.com x"}`),
+		Entry("SRV with negative priority", `{"fqdn":"_sip._tcp.example.com","type":"SRV","value":"-1 5 5060 sip.example.com"}`),
+		Entry("SRV with non-numeric weight", `{"fqdn":"_sip._tcp.example.com","type":"SRV","value":"10 x 5060 sip.example.com"}`),
+		Entry("SRV with port out of range", `{"fqdn":"_sip._tcp.example.com","type":"SRV","value":"10 5 65536 sip.example.com"}`),
+		Entry("SRV with invalid target", `{"fqdn":"_sip._tcp.example.com","type":"SRV","value":"10 5 5060 sip..example.com"}`),
+	)
 })
 
 var _ = Describe("JSON binding", func() {
