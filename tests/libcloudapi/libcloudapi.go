@@ -176,6 +176,40 @@ func UpdatedRRSetTXT() schema.ZoneRRSet {
 	return r
 }
 
+func NewRRSetCNAME() schema.ZoneRRSet {
+	return schema.ZoneRRSet{
+		Name:    libserver.CNAMERecordName,
+		Type:    libserver.RecordTypeCNAME,
+		TTL:     new(libserver.DefaultTTL),
+		Records: []schema.ZoneRRSetRecord{{Value: libserver.CNAMETarget}},
+		Zone:    mustParseInt(libserver.ZoneID),
+	}
+}
+
+func NewRRSetSRV() schema.ZoneRRSet {
+	return schema.ZoneRRSet{
+		Name:    libserver.SRVRecordName,
+		Type:    libserver.RecordTypeSRV,
+		TTL:     new(libserver.DefaultTTL),
+		Records: []schema.ZoneRRSetRecord{{Value: libserver.SRVValue}},
+		Zone:    mustParseInt(libserver.ZoneID),
+	}
+}
+
+func ExistingRRSetCNAME() schema.ZoneRRSet {
+	r := NewRRSetCNAME()
+	r.ID = libserver.CNAMERecordName + "/" + libserver.RecordTypeCNAME
+	r.Records = []schema.ZoneRRSetRecord{{Value: libserver.CNAMEExisting}}
+	return r
+}
+
+func ExistingRRSetSRV() schema.ZoneRRSet {
+	r := NewRRSetSRV()
+	r.ID = libserver.SRVRecordName + "/" + libserver.RecordTypeSRV
+	r.Records = []schema.ZoneRRSetRecord{{Value: libserver.SRVExisting}}
+	return r
+}
+
 func GetZone(token string, zone schema.Zone) http.HandlerFunc {
 	return ghttp.CombineHandlers(
 		ghttp.VerifyRequest(http.MethodGet, "/v1/zones/"+zone.Name),
@@ -251,6 +285,19 @@ func SetRRSetRecords(token string, zone schema.Zone, rrSet schema.ZoneRRSet) htt
 		}),
 		ghttp.VerifyJSONRepresenting(schema.ZoneRRSetSetRecordsRequest{
 			Records: rrSet.Records,
+		}),
+		getResponseSuccess(),
+	)
+}
+
+func AddRRSetRecords(token string, zone schema.Zone, rrSet schema.ZoneRRSet, records []schema.ZoneRRSetRecord) http.HandlerFunc {
+	return ghttp.CombineHandlers(
+		ghttp.VerifyRequest(http.MethodPost, fmt.Sprintf("/v1/zones/%d/rrsets/%s/%s/actions/add_records", zone.ID, rrSet.Name, rrSet.Type)),
+		ghttp.VerifyHeader(http.Header{
+			headerAuthorization: []string{authBearerPrefix + token},
+		}),
+		ghttp.VerifyJSONRepresenting(schema.ZoneRRSetAddRecordsRequest{
+			Records: records,
 		}),
 		getResponseSuccess(),
 	)

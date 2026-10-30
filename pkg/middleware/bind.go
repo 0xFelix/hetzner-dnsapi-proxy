@@ -7,6 +7,8 @@ import (
 	"log"
 	"net/http"
 	"net/netip"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"golang.org/x/net/publicsuffix"
@@ -18,9 +20,15 @@ const (
 	recordTypeA           = "A"
 	recordTypeAAAA        = "AAAA"
 	recordTypeTXT         = "TXT"
+	recordTypeCNAME       = "CNAME"
+	recordTypeSRV         = "SRV"
 	failedParseRequestFmt = "failed to parse request: %v"
 	maxRequestBodySize    = 1 << 10 // 1 KB
+	maxHostnameLength     = 253
+	srvFieldCount         = 4
 )
+
+var hostnameRegexp = regexp.MustCompile(`^([a-z0-9_]([a-z0-9_-]{0,61}[a-z0-9_])?\.)*[a-z0-9_]([a-z0-9_-]{0,61}[a-z0-9_])?$`)
 
 func BindPlain(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -180,6 +188,67 @@ func BindHTTPReq(next http.Handler) http.Handler {
 	})
 }
 
+// BindRecords binds requests of the generic records endpoint, which in
+// addition to A, AAAA and TXT also supports CNAME and SRV records.
+func BindRecords(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
+		d := &struct {
+			FQDN  string `json:"fqdn"`
+			Type  string `json:"type"`
+			Value string `json:"value"`
+		}{}
+		if err := json.UnmarshalRead(r.Body, d); err != nil {
+			log.Printf(failedParseRequestFmt, err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		if d.FQDN == "" || d.Type == "" || d.Value == "" {
+			http.Error(w, "fqdn, type or value is missing", http.StatusBadRequest)
+			return
+		}
+
+		recordType := strings.ToUpper(d.Type)
+		fqdn := NormalizeFQDN(d.FQDN)
+		name, zone, err := SplitFQDN(fqdn)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		if recordType == recordTypeCNAME && name == "" {
+			http.Error(w, "a CNAME record is not allowed at the zone apex", http.StatusBadRequest)
+			return
+		}
+
+		value, err := normalizeRecordValue(d.Value, recordType)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		username, password, _ := r.BasicAuth()
+		next.ServeHTTP(
+			w, r.WithContext(
+				data.NewContextWithReqData(
+					r.Context(),
+					&data.ReqData{
+						FullName:  fqdn,
+						Name:      name,
+						Zone:      zone,
+						Value:     value,
+						Type:      recordType,
+						Username:  username,
+						Password:  password,
+						BasicAuth: true,
+					},
+				),
+			),
+		)
+	})
+}
+
 func BindDirectAdmin(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
@@ -260,6 +329,57 @@ func validateValue(value, recordType string) error {
 		}
 	}
 	return nil
+}
+
+// normalizeRecordValue validates the value for the given record type and
+// returns it in the form expected by the API. Hostnames in CNAME and SRV
+// values are made absolute by appending a trailing dot.
+func normalizeRecordValue(value, recordType string) (string, error) {
+	switch recordType {
+	case recordTypeA, recordTypeAAAA:
+		return value, validateValue(value, recordType)
+	case recordTypeTXT:
+		return value, nil
+	case recordTypeCNAME:
+		target, err := normalizeHostname(value)
+		if err != nil {
+			return "", err
+		}
+		return target + ".", nil
+	case recordTypeSRV:
+		// priority weight port target
+		fields := strings.Fields(value)
+		if len(fields) != srvFieldCount {
+			return "", errors.New("srv value must be 'priority weight port target'")
+		}
+		for i, f := range fields[:srvFieldCount-1] {
+			n, err := strconv.ParseUint(f, 10, 16)
+			if err != nil {
+				return "", errors.New("srv priority, weight and port must be numbers between 0 and 65535")
+			}
+			// Canonicalize, e.g. strip leading zeros, so values compare equal
+			fields[i] = strconv.FormatUint(n, 10)
+		}
+		// A target of '.' means that the service is not available.
+		if fields[srvFieldCount-1] != "." {
+			target, err := normalizeHostname(fields[srvFieldCount-1])
+			if err != nil {
+				return "", err
+			}
+			fields[srvFieldCount-1] = target + "."
+		}
+		return strings.Join(fields, " "), nil
+	default:
+		return "", errors.New("type can only be A, AAAA, TXT, CNAME or SRV")
+	}
+}
+
+func normalizeHostname(host string) (string, error) {
+	host = NormalizeFQDN(host)
+	if len(host) > maxHostnameLength || !hostnameRegexp.MatchString(host) {
+		return "", errors.New("invalid hostname")
+	}
+	return host, nil
 }
 
 // NormalizeFQDN strips trailing dots and lowercases the name, so that

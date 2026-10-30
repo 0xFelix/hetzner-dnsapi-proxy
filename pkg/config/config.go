@@ -77,6 +77,7 @@ type Endpoints struct {
 	AcmeDNS     bool `yaml:"acmedns"`
 	HTTPReq     bool `yaml:"httpreq"`
 	DirectAdmin bool `yaml:"directadmin"`
+	Records     bool `yaml:"records"`
 }
 
 func (e *Endpoints) Enabled() []string {
@@ -95,6 +96,9 @@ func (e *Endpoints) Enabled() []string {
 	}
 	if e.DirectAdmin {
 		names = append(names, EndpointDirectAdmin)
+	}
+	if e.Records {
+		names = append(names, EndpointRecords)
 	}
 	return names
 }
@@ -121,6 +125,7 @@ const (
 	EndpointAcmeDNS     = "acmedns"
 	EndpointHTTPReq     = "httpreq"
 	EndpointDirectAdmin = "directadmin"
+	EndpointRecords     = "records"
 )
 
 const (
@@ -298,6 +303,8 @@ func envEndpoints(endpoints *Endpoints) error {
 			endpoints.HTTPReq = true
 		case EndpointDirectAdmin:
 			endpoints.DirectAdmin = true
+		case EndpointRecords:
+			endpoints.Records = true
 		default:
 			return fmt.Errorf("invalid endpoint %q in ENDPOINTS", name)
 		}

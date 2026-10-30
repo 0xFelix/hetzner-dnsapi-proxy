@@ -2,6 +2,7 @@ package cloud
 
 import (
 	"context"
+	"strings"
 
 	"github.com/hetznercloud/hcloud-go/v2/hcloud"
 
@@ -40,24 +41,37 @@ func (u *updater) Update(ctx context.Context, reqData *data.ReqData) error {
 	}
 
 	if rrSet != nil {
+		// SRV records are commonly spread over several records with the
+		// same name, so they are added to the RRSet instead of replacing it.
+		if rrSetType == hcloud.ZoneRRSetTypeSRV {
+			return u.addRecord(ctx, rrSet, reqData.Value)
+		}
 		return u.updateRRSet(ctx, rrSet, reqData.Value)
 	}
 
 	return u.createRRSet(ctx, zone, rrSetType, name, reqData.Value)
 }
 
+func (u *updater) changeTTL(ctx context.Context, rrSet *hcloud.ZoneRRSet) error {
+	if rrSet.TTL != nil && *rrSet.TTL == u.cfg.RecordTTL {
+		return nil
+	}
+
+	opts := hcloud.ZoneRRSetChangeTTLOpts{TTL: &u.cfg.RecordTTL}
+	action, _, err := u.client.Zone.ChangeRRSetTTL(ctx, rrSet, opts)
+	if err != nil {
+		return err
+	}
+	if action != nil {
+		return u.client.Action.WaitFor(ctx, action)
+	}
+
+	return nil
+}
+
 func (u *updater) updateRRSet(ctx context.Context, rrSet *hcloud.ZoneRRSet, val string) error {
-	if rrSet.TTL == nil || *rrSet.TTL != u.cfg.RecordTTL {
-		opts := hcloud.ZoneRRSetChangeTTLOpts{TTL: &u.cfg.RecordTTL}
-		action, _, err := u.client.Zone.ChangeRRSetTTL(ctx, rrSet, opts)
-		if err != nil {
-			return err
-		}
-		if action != nil {
-			if err := u.client.Action.WaitFor(ctx, action); err != nil {
-				return err
-			}
-		}
+	if err := u.changeTTL(ctx, rrSet); err != nil {
+		return err
 	}
 
 	opts := hcloud.ZoneRRSetSetRecordsOpts{
@@ -66,6 +80,32 @@ func (u *updater) updateRRSet(ctx context.Context, rrSet *hcloud.ZoneRRSet, val 
 		}},
 	}
 	action, _, err := u.client.Zone.SetRRSetRecords(ctx, rrSet, opts)
+	if err != nil {
+		return err
+	}
+	if action != nil {
+		return u.client.Action.WaitFor(ctx, action)
+	}
+
+	return nil
+}
+
+func (u *updater) addRecord(ctx context.Context, rrSet *hcloud.ZoneRRSet, val string) error {
+	if err := u.changeTTL(ctx, rrSet); err != nil {
+		return err
+	}
+
+	val = hetzner.QuoteIfRequired(val, rrSet.Type)
+	for _, record := range rrSet.Records {
+		if strings.EqualFold(record.Value, val) {
+			return nil
+		}
+	}
+
+	opts := hcloud.ZoneRRSetAddRecordsOpts{
+		Records: []hcloud.ZoneRRSetRecord{{Value: val}},
+	}
+	action, _, err := u.client.Zone.AddRRSetRecords(ctx, rrSet, opts)
 	if err != nil {
 		return err
 	}

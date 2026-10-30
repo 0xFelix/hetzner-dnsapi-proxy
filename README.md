@@ -18,6 +18,7 @@ Get the container image from [ghcr.io](https://github.com/0xFelix/hetzner-dnsapi
 | API                | Endpoint                                                                                                                                                                                                                                                                                                                                                           |
 |--------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | lego HTTP request  | POST `/httpreq/present`<br>POST `/httpreq/cleanup`<br>(see https://go-acme.github.io/lego/dns/httpreq/)                                                                                                                                  |
+| Generic records    | POST `/records/present`<br>POST `/records/cleanup`<br>(JSON body `fqdn`, `type` (A, AAAA, TXT, CNAME or SRV) and `value`; SRV values are `priority weight port target` and are added to existing SRV records of the same name, all other types replace existing records; CNAME/SRV targets are made absolute; opt-in, see [Enabled endpoints](#enabled-endpoints)) |
 | ACMEDNS            | POST `/acmedns/update`<br>(see https://github.com/joohoi/acme-dns#update-endpoint)                                                                                                                                                                                 |
 | DirectAdmin Legacy | GET `/directadmin/CMD_API_SHOW_DOMAINS`<br>GET `/directadmin/CMD_API_DNS_CONTROL` (only adding A/AAAA/TXT records, everything else always returns `200 OK`)<br>GET `/directadmin/CMD_API_DOMAIN_POINTER` (only a stub, always returns `200 OK`)<br>(see https://docs.directadmin.com/developer/api/legacy-api.html and https://www.directadmin.com/features.php?id=504) |
 | plain HTTP         | GET `/plain/update` (query params `hostname` and `ip` (can be ipv4 for A or ipv6 for AAAA records), if auth method is `users` then HTTP Basic auth is used) <br/>                                                                                                                                                                                                               |
@@ -98,6 +99,8 @@ active by listing only the ones you want:
 - `acmedns` - `/acmedns/update`
 - `httpreq` - `/httpreq/present`, `/httpreq/cleanup`
 - `directadmin` - `/directadmin/CMD_API_*`
+- `records` - `/records/present`, `/records/cleanup` (supports CNAME and SRV,
+  **not** enabled by default, must be listed explicitly)
 
 Via config file set the `endpoints` key; via environment variable set
 `ENDPOINTS` to a comma-separated list (e.g. `ENDPOINTS=plain,nic`). Listing
@@ -166,5 +169,5 @@ debug: false
 | `LOCKOUT_MAX_ATTEMPTS`     | int    | Failures before lockout                                                                                                                    | N        | `10`                           |
 | `LOCKOUT_DURATION_SECONDS` | int    | Lockout duration in seconds                                                                                                                | N        | `3600`                         |
 | `LOCKOUT_WINDOW_SECONDS`   | int    | Window in seconds during which consecutive failures accumulate                                                                             | N        | `900`                          |
-| `ENDPOINTS`                | string | Comma-separated list of endpoint groups to enable: `plain`, `nic`, `acmedns`, `httpreq`, `directadmin`. All enabled when unset.            | N        | All enabled                    |
+| `ENDPOINTS`                | string | Comma-separated list of endpoint groups to enable: `plain`, `nic`, `acmedns`, `httpreq`, `directadmin`, `records`. All but `records` enabled when unset. | N        | All but `records`              |
 | `DEBUG`                    | bool   | Output debug logs of received requests                                                                                                     | N        | `false`                        |
