@@ -52,14 +52,19 @@ var _ = Describe("NormalizeFQDN", func() {
 })
 
 var _ = Describe("Binding of names", func() {
-	bind := func(b func(http.Handler) http.Handler, r *http.Request) (*data.ReqData, int) {
+	bindWithBody := func(b func(http.Handler) http.Handler, r *http.Request) (*data.ReqData, int, string) {
 		var reqData *data.ReqData
 		next := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 			reqData, _ = data.ReqDataFromContext(r.Context())
 		})
 		rec := httptest.NewRecorder()
 		b(next).ServeHTTP(rec, r)
-		return reqData, rec.Code
+		return reqData, rec.Code, rec.Body.String()
+	}
+
+	bind := func(b func(http.Handler) http.Handler, r *http.Request) (*data.ReqData, int) {
+		reqData, code, _ := bindWithBody(b, r)
+		return reqData, code
 	}
 
 	newJSONRequest := func(body string) *http.Request {
@@ -151,6 +156,75 @@ var _ = Describe("Binding of names", func() {
 		},
 		Entry("trailing dot", "example.com.", "sub"),
 		Entry("upper case", "Example.COM", "SUB"),
+	)
+
+	DescribeTable(
+		"should normalize the ip of plain requests", func(ip, expectedIP, expectedType string) {
+			reqData, code := bind(middleware.BindPlain, httptest.NewRequest(
+				http.MethodGet, "/?hostname=sub.example.com&ip="+ip, http.NoBody,
+			))
+			Expect(code).To(Equal(http.StatusOK))
+			Expect(reqData.Value).To(Equal(expectedIP))
+			Expect(reqData.Type).To(Equal(expectedType))
+		},
+		Entry("ipv4", "127.0.0.1", "127.0.0.1", "A"),
+		Entry("ipv4-mapped ipv6", "::ffff:127.0.0.1", "127.0.0.1", "A"),
+		Entry("non-canonical ipv6", "0:0::1", "::1", "AAAA"),
+	)
+
+	It("should reject plain ips with a zone", func() {
+		reqData, code := bind(middleware.BindPlain, httptest.NewRequest(
+			http.MethodGet, "/?hostname=sub.example.com&ip=fe80::1%25eth0", http.NoBody,
+		))
+		Expect(code).To(Equal(http.StatusBadRequest))
+		Expect(reqData).To(BeNil())
+	})
+
+	DescribeTable(
+		"should normalize the ip of nic requests", func(ip, expectedIP, expectedType string) {
+			reqData, code := bind(middleware.BindNicUpdate, httptest.NewRequest(
+				http.MethodGet, "/?hostname=sub.example.com&myip="+ip, http.NoBody,
+			))
+			Expect(code).To(Equal(http.StatusOK))
+			Expect(reqData.Value).To(Equal(expectedIP))
+			Expect(reqData.Type).To(Equal(expectedType))
+		},
+		Entry("ipv4", "127.0.0.1", "127.0.0.1", "A"),
+		Entry("ipv4-mapped ipv6", "::ffff:127.0.0.1", "127.0.0.1", "A"),
+		Entry("non-canonical ipv6", "0:0::1", "::1", "AAAA"),
+	)
+
+	It("should reject nic ips with a zone", func() {
+		reqData, code, body := bindWithBody(middleware.BindNicUpdate, httptest.NewRequest(
+			http.MethodGet, "/?hostname=sub.example.com&myip=fe80::1%25eth0", http.NoBody,
+		))
+		Expect(code).To(Equal(http.StatusOK))
+		Expect(body).To(ContainSubstring("notfqdn"))
+		Expect(reqData).To(BeNil())
+	})
+
+	DescribeTable(
+		"should normalize the value of directadmin requests", func(recordType, value, expectedValue string) {
+			reqData, code := bind(middleware.BindDirectAdmin, httptest.NewRequest(
+				http.MethodGet, "/?action=add&domain=example.com&name=sub&type="+recordType+"&value="+value, http.NoBody,
+			))
+			Expect(code).To(Equal(http.StatusOK))
+			Expect(reqData.Value).To(Equal(expectedValue))
+		},
+		Entry("ipv4-mapped ipv6 as A", "A", "::ffff:127.0.0.1", "127.0.0.1"),
+		Entry("non-canonical AAAA", "AAAA", "0:0::1", "::1"),
+	)
+
+	DescribeTable(
+		"should reject directadmin ips with a zone", func(recordType, value string) {
+			reqData, code := bind(middleware.BindDirectAdmin, httptest.NewRequest(
+				http.MethodGet, "/?action=add&domain=example.com&name=sub&type="+recordType+"&value="+value, http.NoBody,
+			))
+			Expect(code).To(Equal(http.StatusBadRequest))
+			Expect(reqData).To(BeNil())
+		},
+		Entry("ipv4-mapped ipv6 with zone as A", "A", "::ffff:127.0.0.1%25eth0"),
+		Entry("AAAA with zone", "AAAA", "fe80::1%25eth0"),
 	)
 })
 
