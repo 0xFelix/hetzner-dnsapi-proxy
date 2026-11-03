@@ -38,14 +38,14 @@ func BindPlain(next http.Handler) http.Handler {
 			return
 		}
 
-		addr, err := netip.ParseAddr(ip)
+		addr, err := parseAddr(ip)
 		if err != nil {
-			http.Error(w, "invalid ip address", http.StatusBadRequest)
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
 		recordType := recordTypeA
-		if !addr.Unmap().Is4() {
+		if !addr.Is4() {
 			recordType = recordTypeAAAA
 		}
 
@@ -64,7 +64,7 @@ func BindPlain(next http.Handler) http.Handler {
 						FullName:  hostname,
 						Name:      name,
 						Zone:      zone,
-						Value:     ip,
+						Value:     addr.String(),
 						Type:      recordType,
 						Username:  username,
 						Password:  password,
@@ -208,9 +208,13 @@ func BindDirectAdmin(next http.Handler) http.Handler {
 		}
 
 		value := r.Form.Get("value")
-		if err := validateValue(value, recordType); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
+		if recordType == recordTypeA || recordType == recordTypeAAAA {
+			var err error
+			value, err = normalizeIP(value, recordType)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
 		}
 
 		fqdn := domain
@@ -246,20 +250,33 @@ func BindDirectAdmin(next http.Handler) http.Handler {
 	})
 }
 
-func validateValue(value, recordType string) error {
-	if recordType == recordTypeA || recordType == recordTypeAAAA {
-		addr, err := netip.ParseAddr(value)
-		if err != nil {
-			return errors.New("invalid ip address")
-		}
-		if recordType == recordTypeA && !addr.Unmap().Is4() {
-			return errors.New("invalid ipv4 address")
-		}
-		if recordType == recordTypeAAAA && addr.Unmap().Is4() {
-			return errors.New("invalid ipv6 address")
-		}
+// parseAddr parses an IP address without zone and returns it unmapped, so
+// that IPv4-mapped IPv6 addresses are treated as IPv4 addresses.
+func parseAddr(value string) (netip.Addr, error) {
+	addr, err := netip.ParseAddr(value)
+	if err != nil {
+		return netip.Addr{}, errors.New("invalid ip address")
 	}
-	return nil
+	if addr.Zone() != "" {
+		return netip.Addr{}, errors.New("ip address must not have a zone")
+	}
+	return addr.Unmap(), nil
+}
+
+// normalizeIP validates the value for the given address record type and
+// returns it in its canonical form.
+func normalizeIP(value, recordType string) (string, error) {
+	addr, err := parseAddr(value)
+	if err != nil {
+		return "", err
+	}
+	if recordType == recordTypeA && !addr.Is4() {
+		return "", errors.New("invalid ipv4 address")
+	}
+	if recordType == recordTypeAAAA && addr.Is4() {
+		return "", errors.New("invalid ipv6 address")
+	}
+	return addr.String(), nil
 }
 
 // NormalizeFQDN strips trailing dots and lowercases the name, so that

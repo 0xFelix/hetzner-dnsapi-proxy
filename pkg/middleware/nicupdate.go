@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"net/netip"
 
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/config"
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/data"
@@ -42,14 +41,14 @@ func BindNicUpdate(next http.Handler) http.Handler {
 			ip = r.RemoteAddr
 		}
 
-		addr, err := netip.ParseAddr(ip)
+		addr, err := parseAddr(ip)
 		if err != nil {
 			writeNicToken(w, http.StatusOK, nicTokenNotFQDN)
 			return
 		}
 
 		recordType := recordTypeA
-		if !addr.Unmap().Is4() {
+		if !addr.Is4() {
 			recordType = recordTypeAAAA
 		}
 
@@ -68,7 +67,7 @@ func BindNicUpdate(next http.Handler) http.Handler {
 						FullName:  hostname,
 						Name:      name,
 						Zone:      zone,
-						Value:     ip,
+						Value:     addr.String(),
 						Type:      recordType,
 						Username:  username,
 						Password:  password,
