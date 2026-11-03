@@ -132,6 +132,24 @@ var _ = Describe("HTTPReq", func() {
 			Entry("without dot suffix", libserver.TXTRecordNameFull),
 		)
 
+		It("cleaning up a value that is not in the RRSet", func(ctx context.Context) {
+			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL)
+
+			api.AppendHandlers(
+				libcloudapi.GetZone(token, libcloudapi.Zone()),
+				libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.ExistingRRSetTXT(), true),
+			)
+
+			Expect(doHTTPReqRequest(
+				ctx, server.URL+"/httpreq/cleanup", username, password,
+				map[string]string{
+					keyFQDN:  libserver.TXTRecordNameFull,
+					keyValue: libserver.TXTUpdated,
+				},
+			)).To(Equal(http.StatusOK))
+			Expect(api.ReceivedRequests()).To(HaveLen(2))
+		})
+
 		It("cleaning up at the zone apex", func(ctx context.Context) {
 			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL)
 

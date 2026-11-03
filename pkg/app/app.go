@@ -63,6 +63,15 @@ func New(cfg *config.Config) http.Handler {
 		mux.Handle("POST /httpreq/cleanup",
 			handle(cfg, rl, middleware.ContentTypeJSON, middleware.BindHTTPReq, authorizer, cleaner, middleware.StatusOk))
 	}
+	if cfg.Endpoints.Records {
+		typeAllowed := middleware.NewRecordTypeAllowed(cfg)
+		mux.Handle("POST /records/present", handle(
+			cfg, rl, middleware.ContentTypeJSON, middleware.BindRecords, authorizer, typeAllowed, updater, middleware.StatusOk,
+		))
+		mux.Handle("POST /records/cleanup", handle(
+			cfg, rl, middleware.ContentTypeJSON, middleware.BindRecords, authorizer, typeAllowed, cleaner, middleware.StatusOk,
+		))
+	}
 	if cfg.Endpoints.DirectAdmin {
 		mux.Handle("GET /directadmin/CMD_API_SHOW_DOMAINS",
 			handle(cfg, rl, middleware.NewShowDomainsDirectAdmin(cfg, lockout)))

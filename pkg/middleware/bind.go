@@ -11,13 +11,12 @@ import (
 
 	"golang.org/x/net/publicsuffix"
 
+	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/config"
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/data"
+	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/hetzner"
 )
 
 const (
-	recordTypeA           = "A"
-	recordTypeAAAA        = "AAAA"
-	recordTypeTXT         = "TXT"
 	failedParseRequestFmt = "failed to parse request: %v"
 	maxRequestBodySize    = 1 << 10 // 1 KB
 )
@@ -44,9 +43,9 @@ func BindPlain(next http.Handler) http.Handler {
 			return
 		}
 
-		recordType := recordTypeA
+		recordType := config.RecordTypeA
 		if !addr.Is4() {
-			recordType = recordTypeAAAA
+			recordType = config.RecordTypeAAAA
 		}
 
 		name, zone, err := SplitFQDN(hostname)
@@ -118,7 +117,7 @@ func BindAcmeDNS(next http.Handler) http.Handler {
 						Name:      name,
 						Zone:      zone,
 						Value:     d.TXT,
-						Type:      recordTypeTXT,
+						Type:      config.RecordTypeTXT,
 						Username:  r.Header.Get("X-Api-User"),
 						Password:  r.Header.Get("X-Api-Key"),
 						BasicAuth: false,
@@ -169,10 +168,90 @@ func BindHTTPReq(next http.Handler) http.Handler {
 						Name:      name,
 						Zone:      zone,
 						Value:     d.Value,
-						Type:      recordTypeTXT,
+						Type:      config.RecordTypeTXT,
 						Username:  username,
 						Password:  password,
 						BasicAuth: true,
+					},
+				),
+			),
+		)
+	})
+}
+
+// BindRecords binds requests of the generic records endpoint, which in
+// addition to A, AAAA and TXT also supports CNAME and SRV records. Whether
+// the type is allowed by cfg.RecordTypes is checked after authorization by
+// NewRecordTypeAllowed, so unauthenticated clients cannot probe it.
+func BindRecords(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
+		d := &struct {
+			FQDN    string `json:"fqdn"`
+			Type    string `json:"type"`
+			Value   string `json:"value"`
+			Replace bool   `json:"replace"`
+		}{}
+		if err := json.UnmarshalRead(r.Body, d); err != nil {
+			log.Printf(failedParseRequestFmt, err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		if d.FQDN == "" || d.Type == "" || d.Value == "" {
+			http.Error(w, "fqdn, type or value is missing", http.StatusBadRequest)
+			return
+		}
+
+		recordType := strings.ToUpper(d.Type)
+		if !config.IsSupportedRecordType(recordType) {
+			http.Error(w, config.UnsupportedRecordTypeMsg, http.StatusBadRequest)
+			return
+		}
+
+		fqdn := NormalizeFQDN(d.FQDN)
+		name, zone, err := SplitFQDN(fqdn)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		if recordType == config.RecordTypeCNAME && name == "" {
+			http.Error(w, "a CNAME record is not allowed at the zone apex", http.StatusBadRequest)
+			return
+		}
+
+		value, err := normalizeRecordValue(d.Value, recordType)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		// SRV records usually have several targets sharing one name, so they
+		// are appended unless a replace is requested explicitly. A target of
+		// '.' means that the service is not available and is valid only as
+		// the sole record, so it always replaces.
+		mode := data.ModeReplace
+		if recordType == config.RecordTypeSRV && !d.Replace && !hetzner.SRVUnavailable(value) {
+			mode = data.ModeAppend
+		}
+
+		username, password, _ := r.BasicAuth()
+		next.ServeHTTP(
+			w, r.WithContext(
+				data.NewContextWithReqData(
+					r.Context(),
+					&data.ReqData{
+						FullName:       fqdn,
+						Name:           name,
+						Zone:           zone,
+						Value:          value,
+						Type:           recordType,
+						Username:       username,
+						Password:       password,
+						BasicAuth:      true,
+						Mode:           mode,
+						CheckConflicts: true,
 					},
 				),
 			),
@@ -202,19 +281,15 @@ func BindDirectAdmin(next http.Handler) http.Handler {
 		}
 
 		recordType := r.Form.Get("type")
-		if recordType != recordTypeA && recordType != recordTypeAAAA && recordType != recordTypeTXT {
+		if recordType != config.RecordTypeA && recordType != config.RecordTypeAAAA && recordType != config.RecordTypeTXT {
 			http.Error(w, "type can only be A, AAAA or TXT", http.StatusBadRequest)
 			return
 		}
 
-		value := r.Form.Get("value")
-		if recordType == recordTypeA || recordType == recordTypeAAAA {
-			var err error
-			value, err = normalizeIP(value, recordType)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
+		value, err := normalizeRecordValue(r.Form.Get("value"), recordType)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
 		}
 
 		fqdn := domain
@@ -270,13 +345,36 @@ func normalizeIP(value, recordType string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if recordType == recordTypeA && !addr.Is4() {
+	if recordType == config.RecordTypeA && !addr.Is4() {
 		return "", errors.New("invalid ipv4 address")
 	}
-	if recordType == recordTypeAAAA && addr.Is4() {
+	if recordType == config.RecordTypeAAAA && addr.Is4() {
 		return "", errors.New("invalid ipv6 address")
 	}
 	return addr.String(), nil
+}
+
+// normalizeRecordValue validates the value for the given record type and
+// returns it in the form expected by the API. IP addresses are canonicalized
+// and hostnames in CNAME and SRV values are made absolute by appending a
+// trailing dot.
+func normalizeRecordValue(value, recordType string) (string, error) {
+	switch recordType {
+	case config.RecordTypeA, config.RecordTypeAAAA:
+		return normalizeIP(value, recordType)
+	case config.RecordTypeTXT:
+		return value, nil
+	case config.RecordTypeCNAME:
+		target, err := hetzner.NormalizeHostname(value)
+		if err != nil {
+			return "", err
+		}
+		return target + ".", nil
+	case config.RecordTypeSRV:
+		return hetzner.NormalizeSRV(value)
+	default:
+		return "", errors.New(config.UnsupportedRecordTypeMsg)
+	}
 }
 
 // NormalizeFQDN strips trailing dots and lowercases the name, so that
