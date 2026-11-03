@@ -233,21 +233,26 @@ var _ = Describe("DirectAdmin", func() {
 				Expect(resData).To(Equal(domainActionMissing))
 			})
 
-			It("when type is not A, AAAA or TXT", func(ctx context.Context) {
-				server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL)
-				statusCode, resData := doDirectAdminRequest(
-					ctx, server.URL+"/directadmin/CMD_API_DNS_CONTROL", username, password,
-					url.Values{
-						keyAction: []string{actionAdd},
-						keyDomain: []string{libserver.ZoneName},
-						keyType:   []string{"madeup"},
-						keyName:   []string{libserver.TXTRecordName},
-						keyValue:  []string{libserver.TXTUpdated},
-					},
-				)
-				Expect(statusCode).To(Equal(http.StatusBadRequest))
-				Expect(resData).To(Equal("type can only be A, AAAA or TXT\n"))
-			})
+			DescribeTable(
+				"when type is not A, AAAA or TXT", func(ctx context.Context, recordType, value string) {
+					server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL)
+					statusCode, resData := doDirectAdminRequest(
+						ctx, server.URL+"/directadmin/CMD_API_DNS_CONTROL", username, password,
+						url.Values{
+							keyAction: []string{actionAdd},
+							keyDomain: []string{libserver.ZoneName},
+							keyType:   []string{recordType},
+							keyName:   []string{libserver.TXTRecordName},
+							keyValue:  []string{value},
+						},
+					)
+					Expect(statusCode).To(Equal(http.StatusBadRequest))
+					Expect(resData).To(Equal("type can only be A, AAAA or TXT\n"))
+				},
+				Entry("madeup", "madeup", libserver.TXTUpdated),
+				Entry("CNAME", libserver.RecordTypeCNAME, libserver.CNAMETarget),
+				Entry("SRV", libserver.RecordTypeSRV, libserver.SRVValue),
+			)
 
 			DescribeTable(
 				"when ip is invalid", func(ctx context.Context, recordType, value, expectedError string) {

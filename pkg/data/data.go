@@ -5,6 +5,20 @@ import (
 	"errors"
 )
 
+// ErrConflict is returned when a record cannot be created because it would
+// conflict with an existing record set, e.g. a CNAME next to another type.
+var ErrConflict = errors.New("conflicting record set")
+
+// Mode defines how a value is applied to an existing RRSet.
+type Mode int
+
+const (
+	// ModeReplace sets the RRSet to exactly the given value. It is the zero value.
+	ModeReplace Mode = iota
+	// ModeAppend adds the value to the RRSet unless it is already present.
+	ModeAppend
+)
+
 type ReqData struct {
 	FullName  string
 	Name      string
@@ -14,6 +28,10 @@ type ReqData struct {
 	Username  string
 	Password  string
 	BasicAuth bool
+	Mode      Mode
+	// CheckConflicts makes the updater reject new RRSets that would conflict
+	// with an existing CNAME RRSet (or, for CNAME, with any other RRSet).
+	CheckConflicts bool
 }
 
 // key is an unexported type for keys defined in this package.

@@ -47,9 +47,9 @@ func BindNicUpdate(next http.Handler) http.Handler {
 			return
 		}
 
-		recordType := recordTypeA
+		recordType := config.RecordTypeA
 		if !addr.Is4() {
-			recordType = recordTypeAAAA
+			recordType = config.RecordTypeAAAA
 		}
 
 		name, zone, err := SplitFQDN(hostname)

@@ -42,8 +42,14 @@ func (u *cleaner) Clean(ctx context.Context, reqData *data.ReqData) error {
 		return nil
 	}
 
+	// The stored value may be formatted differently, so remove it in the form it is stored in.
+	val, found := hetzner.FindRecord(rrSet, hetzner.QuoteIfRequired(reqData.Value, rrSetType))
+	if !found {
+		return nil
+	}
+
 	action, _, err := u.client.Zone.RemoveRRSetRecords(ctx, rrSet, hcloud.ZoneRRSetRemoveRecordsOpts{
-		Records: []hcloud.ZoneRRSetRecord{{Value: hetzner.QuoteIfRequired(reqData.Value, rrSetType)}},
+		Records: []hcloud.ZoneRRSetRecord{{Value: val}},
 	})
 	if err != nil {
 		return err

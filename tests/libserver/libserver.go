@@ -10,6 +10,19 @@ import (
 )
 
 func New(url string, ttl int) (server *httptest.Server, token, username, password string) {
+	return NewWithEndpoints(url, ttl, config.Endpoints{
+		Plain: true, Nic: true, AcmeDNS: true, HTTPReq: true, DirectAdmin: true, Records: true,
+	})
+}
+
+func NewWithEndpoints(url string, ttl int, endpoints config.Endpoints) (server *httptest.Server, token, username, password string) {
+	return NewWithConfig(url, ttl, endpoints, nil)
+}
+
+// NewWithConfig is like NewWithEndpoints but allows modifying the config before the server is created.
+func NewWithConfig(
+	url string, ttl int, endpoints config.Endpoints, modify func(*config.Config),
+) (server *httptest.Server, token, username, password string) {
 	token = rand.Text()
 	username = rand.Text()
 	password = rand.Text()
@@ -29,10 +42,14 @@ func New(url string, ttl int) (server *httptest.Server, token, username, passwor
 				Domains:  []string{"*"},
 			}},
 		},
-		Endpoints: config.Endpoints{Plain: true, Nic: true, AcmeDNS: true, HTTPReq: true, DirectAdmin: true},
-		RecordTTL: ttl,
-		RateLimit: config.RateLimit{RPS: 1000, Burst: 1000, IdleSeconds: 600},
-		Lockout:   config.Lockout{MaxAttempts: 1000, DurationSeconds: 3600, WindowSeconds: 900},
+		Endpoints:   endpoints,
+		RecordTTL:   ttl,
+		RecordTypes: config.SupportedRecordTypes(),
+		RateLimit:   config.RateLimit{RPS: 1000, Burst: 1000, IdleSeconds: 600},
+		Lockout:     config.Lockout{MaxAttempts: 1000, DurationSeconds: 3600, WindowSeconds: 900},
+	}
+	if modify != nil {
+		modify(cfg)
 	}
 
 	return httptest.NewServer(app.New(cfg)), token, username, password
@@ -44,9 +61,10 @@ func NewNoAllowedDomains(url string) *httptest.Server {
 		Auth: config.Auth{
 			Method: config.AuthMethodAllowedDomains,
 		},
-		Endpoints: config.Endpoints{Plain: true, Nic: true, AcmeDNS: true, HTTPReq: true, DirectAdmin: true},
-		RateLimit: config.RateLimit{RPS: 1000, Burst: 1000, IdleSeconds: 600},
-		Lockout:   config.Lockout{MaxAttempts: 1000, DurationSeconds: 3600, WindowSeconds: 900},
+		Endpoints:   config.Endpoints{Plain: true, Nic: true, AcmeDNS: true, HTTPReq: true, DirectAdmin: true, Records: true},
+		RecordTypes: config.SupportedRecordTypes(),
+		RateLimit:   config.RateLimit{RPS: 1000, Burst: 1000, IdleSeconds: 600},
+		Lockout:     config.Lockout{MaxAttempts: 1000, DurationSeconds: 3600, WindowSeconds: 900},
 	}
 	return httptest.NewServer(app.New(cfg))
 }

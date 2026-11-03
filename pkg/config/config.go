@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/netip"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -63,6 +64,7 @@ type Config struct {
 	Auth                 Auth           `yaml:"auth"`
 	Endpoints            Endpoints      `yaml:"endpoints"`
 	RecordTTL            int            `yaml:"recordTTL"`
+	RecordTypes          []string       `yaml:"recordTypes,omitempty"`
 	ListenAddr           string         `yaml:"listenAddr"`
 	TrustedProxies       []string       `yaml:"trustedProxies"`
 	TrustedProxyPrefixes []netip.Prefix `yaml:"-"`
@@ -77,6 +79,7 @@ type Endpoints struct {
 	AcmeDNS     bool `yaml:"acmedns"`
 	HTTPReq     bool `yaml:"httpreq"`
 	DirectAdmin bool `yaml:"directadmin"`
+	Records     bool `yaml:"records"`
 }
 
 func (e *Endpoints) Enabled() []string {
@@ -95,6 +98,9 @@ func (e *Endpoints) Enabled() []string {
 	}
 	if e.DirectAdmin {
 		names = append(names, EndpointDirectAdmin)
+	}
+	if e.Records {
+		names = append(names, EndpointRecords)
 	}
 	return names
 }
@@ -121,7 +127,36 @@ const (
 	EndpointAcmeDNS     = "acmedns"
 	EndpointHTTPReq     = "httpreq"
 	EndpointDirectAdmin = "directadmin"
+	EndpointRecords     = "records"
 )
+
+// Record types supported by the records endpoint.
+const (
+	RecordTypeA     = "A"
+	RecordTypeAAAA  = "AAAA"
+	RecordTypeTXT   = "TXT"
+	RecordTypeCNAME = "CNAME"
+	RecordTypeSRV   = "SRV"
+)
+
+var (
+	supportedRecordTypes     = []string{RecordTypeA, RecordTypeAAAA, RecordTypeTXT, RecordTypeCNAME, RecordTypeSRV}
+	supportedRecordTypesList = strings.Join(supportedRecordTypes, ", ")
+)
+
+// UnsupportedRecordTypeMsg is the error message for unsupported record types.
+var UnsupportedRecordTypeMsg = "type can only be " + supportedRecordTypesList
+
+// SupportedRecordTypes returns all record types the records endpoint supports.
+func SupportedRecordTypes() []string {
+	return slices.Clone(supportedRecordTypes)
+}
+
+// IsSupportedRecordType reports whether t is a record type the records
+// endpoint supports. The comparison is case-sensitive.
+func IsSupportedRecordType(t string) bool {
+	return slices.Contains(supportedRecordTypes, t)
+}
 
 const (
 	AuthMethodAllowedDomains = "allowedDomains"
@@ -161,8 +196,9 @@ func NewConfig() *Config {
 			HTTPReq:     true,
 			DirectAdmin: true,
 		},
-		RecordTTL:  60,
-		ListenAddr: ":8081",
+		RecordTTL:   60,
+		RecordTypes: SupportedRecordTypes(),
+		ListenAddr:  ":8081",
 		RateLimit: RateLimit{
 			RPS:         5,
 			Burst:       10,
@@ -208,6 +244,7 @@ func ParseEnv() (*Config, error) {
 		return nil, err
 	}
 
+	envRecordTypes(cfg)
 	envString("LISTEN_ADDR", &cfg.ListenAddr)
 	envTrustedProxies(cfg)
 
@@ -231,6 +268,7 @@ func ParseEnv() (*Config, error) {
 	cfg.TrustedProxyPrefixes = prefixes
 
 	normalizeAuth(&cfg.Auth)
+	normalizeRecordTypes(cfg)
 	if err := validate(cfg); err != nil {
 		return nil, err
 	}
@@ -298,11 +336,29 @@ func envEndpoints(endpoints *Endpoints) error {
 			endpoints.HTTPReq = true
 		case EndpointDirectAdmin:
 			endpoints.DirectAdmin = true
+		case EndpointRecords:
+			endpoints.Records = true
 		default:
 			return fmt.Errorf("invalid endpoint %q in ENDPOINTS", name)
 		}
 	}
 	return nil
+}
+
+func envRecordTypes(cfg *Config) {
+	v, ok := os.LookupEnv("RECORD_TYPES")
+	if !ok {
+		return
+	}
+	// An empty value (or only whitespace and commas) yields no types,
+	// which fails validation if the records endpoint is enabled.
+	var types []string
+	for t := range strings.SplitSeq(v, ",") {
+		if strings.TrimSpace(t) != "" {
+			types = append(types, t)
+		}
+	}
+	cfg.RecordTypes = types
 }
 
 func envTrustedProxies(cfg *Config) {
@@ -338,6 +394,7 @@ func ReadFile(path string) (*Config, error) {
 	cfg.TrustedProxyPrefixes = prefixes
 
 	normalizeAuth(&cfg.Auth)
+	normalizeRecordTypes(cfg)
 	if err := validate(cfg); err != nil {
 		return nil, err
 	}
@@ -364,7 +421,37 @@ func normalizeAuth(a *Auth) {
 	}
 }
 
+// normalizeRecordTypes uppercases and deduplicates the configured record types.
+func normalizeRecordTypes(cfg *Config) {
+	types := make([]string, 0, len(cfg.RecordTypes))
+	for _, t := range cfg.RecordTypes {
+		t = strings.ToUpper(strings.TrimSpace(t))
+		if !slices.Contains(types, t) {
+			types = append(types, t)
+		}
+	}
+	cfg.RecordTypes = types
+}
+
+func validateRecordTypes(types []string) error {
+	if len(types) == 0 {
+		return errors.New("recordTypes cannot be empty")
+	}
+	for _, t := range types {
+		if !IsSupportedRecordType(t) {
+			return fmt.Errorf("invalid record type %q in recordTypes, supported: %s", t, supportedRecordTypesList)
+		}
+	}
+	return nil
+}
+
 func validate(cfg *Config) error {
+	// recordTypes only matters if the records endpoint is enabled
+	if cfg.Endpoints.Records {
+		if err := validateRecordTypes(cfg.RecordTypes); err != nil {
+			return err
+		}
+	}
 	if err := validateRateLimit(&cfg.RateLimit); err != nil {
 		return err
 	}

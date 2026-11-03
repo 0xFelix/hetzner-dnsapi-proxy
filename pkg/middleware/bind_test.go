@@ -1,6 +1,8 @@
 package middleware_test
 
 import (
+	"bytes"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -8,6 +10,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/config"
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/data"
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/middleware"
 )
@@ -159,6 +162,192 @@ var _ = Describe("Binding of names", func() {
 	)
 
 	DescribeTable(
+		"should bind records requests", func(fqdn, recordType, value, expectedFullName, expectedName, expectedType, expectedValue string) {
+			reqData, code := bind(middleware.BindRecords, newJSONRequest(
+				`{"fqdn":"`+fqdn+`","type":"`+recordType+`","value":"`+value+`"}`,
+			))
+			Expect(code).To(Equal(http.StatusOK))
+			Expect(reqData.FullName).To(Equal(expectedFullName))
+			Expect(reqData.Name).To(Equal(expectedName))
+			Expect(reqData.Zone).To(Equal("example.com"))
+			Expect(reqData.Type).To(Equal(expectedType))
+			Expect(reqData.Value).To(Equal(expectedValue))
+		},
+		Entry("A", "sub.example.com", "A", "127.0.0.1", "sub.example.com", "sub", "A", "127.0.0.1"),
+		Entry("A with ipv4-mapped ipv6 address", "sub.example.com", "A", "::ffff:127.0.0.1", "sub.example.com", "sub", "A", "127.0.0.1"),
+		Entry("AAAA", "sub.example.com", "AAAA", "::1", "sub.example.com", "sub", "AAAA", "::1"),
+		Entry("AAAA with non-canonical address", "sub.example.com", "AAAA", "0:0::1", "sub.example.com", "sub", "AAAA", "::1"),
+		Entry("TXT at the zone apex", "example.com", "TXT", "some text", "example.com", "", "TXT", "some text"),
+		Entry(
+			"lower case type", "sub.example.com", "cname", "target.example.com",
+			"sub.example.com", "sub", "CNAME", "target.example.com.",
+		),
+		Entry(
+			"CNAME", "sub.example.com", "CNAME", "target.example.com",
+			"sub.example.com", "sub", "CNAME", "target.example.com.",
+		),
+		Entry(
+			"CNAME with absolute upper case target", "SUB.example.com.", "CNAME", "Target.Example.COM.",
+			"sub.example.com", "sub", "CNAME", "target.example.com.",
+		),
+		Entry(
+			"CNAME with underscore", "sub.example.com", "CNAME", "_dkim.example.com",
+			"sub.example.com", "sub", "CNAME", "_dkim.example.com.",
+		),
+		Entry(
+			"SRV", "_sip._tcp.example.com", "SRV", "10 5 5060 sip.example.com",
+			"_sip._tcp.example.com", "_sip._tcp", "SRV", "10 5 5060 sip.example.com.",
+		),
+		Entry(
+			"SRV with extra whitespace", "_sip._tcp.example.com", "SRV", ` 10  5 5060\tSIP.example.com. `,
+			"_sip._tcp.example.com", "_sip._tcp", "SRV", "10 5 5060 sip.example.com.",
+		),
+		Entry(
+			"SRV with maximum values", "_sip._tcp.example.com", "SRV", "65535 65535 65535 sip.example.com",
+			"_sip._tcp.example.com", "_sip._tcp", "SRV", "65535 65535 65535 sip.example.com.",
+		),
+		Entry(
+			"SRV with leading zeros", "_sip._tcp.example.com", "SRV", "00 05 05060 sip.example.com",
+			"_sip._tcp.example.com", "_sip._tcp", "SRV", "0 5 5060 sip.example.com.",
+		),
+		Entry(
+			"SRV with unavailable service", "_sip._tcp.example.com", "SRV", "0 0 0 .",
+			"_sip._tcp.example.com", "_sip._tcp", "SRV", "0 0 0 .",
+		),
+	)
+
+	DescribeTable(
+		"should select the mode of records requests", func(recordType, value, replace string, expected data.Mode) {
+			reqData, code := bind(middleware.BindRecords, newJSONRequest(
+				`{"fqdn":"_sip._tcp.example.com","type":"`+recordType+`","value":"`+value+`"`+replace+`}`,
+			))
+			Expect(code).To(Equal(http.StatusOK))
+			Expect(reqData.Mode).To(Equal(expected))
+			Expect(reqData.CheckConflicts).To(BeTrue())
+		},
+		Entry("SRV appends", "SRV", "10 5 5060 sip.example.com", "", data.ModeAppend),
+		Entry("SRV with replace false appends", "SRV", "10 5 5060 sip.example.com", `,"replace":false`, data.ModeAppend),
+		Entry("SRV with replace replaces", "SRV", "10 5 5060 sip.example.com", `,"replace":true`, data.ModeReplace),
+		Entry("SRV with unavailable service replaces", "SRV", "0 0 0 .", "", data.ModeReplace),
+		Entry("SRV with unavailable service and replace false replaces", "SRV", "0 0 0 .", `,"replace":false`, data.ModeReplace),
+		Entry("TXT replaces", "TXT", "text", "", data.ModeReplace),
+		Entry("TXT with replace replaces", "TXT", "text", `,"replace":true`, data.ModeReplace),
+		Entry("A replaces", "A", "127.0.0.1", "", data.ModeReplace),
+		Entry("CNAME replaces", "CNAME", "target.example.com", "", data.ModeReplace),
+	)
+
+	DescribeTable(
+		"should not check conflicts or append for other endpoints", func(b func(http.Handler) http.Handler, r *http.Request) {
+			reqData, code := bind(b, r)
+			Expect(code).To(Equal(http.StatusOK))
+			Expect(reqData.Mode).To(Equal(data.ModeReplace))
+			Expect(reqData.CheckConflicts).To(BeFalse())
+		},
+		Entry("plain", middleware.BindPlain, httptest.NewRequest(http.MethodGet, "/?hostname=sub.example.com&ip=127.0.0.1", http.NoBody)),
+		Entry("httpreq", middleware.BindHTTPReq, newJSONRequest(`{"fqdn":"sub.example.com","value":"v"}`)),
+	)
+
+	DescribeTable(
+		"should reject invalid records requests", func(body string) {
+			reqData, code := bind(middleware.BindRecords, newJSONRequest(body))
+			Expect(code).To(Equal(http.StatusBadRequest))
+			Expect(reqData).To(BeNil())
+		},
+		Entry("missing fqdn", `{"type":"A","value":"127.0.0.1"}`),
+		Entry("missing type", `{"fqdn":"sub.example.com","value":"127.0.0.1"}`),
+		Entry("missing value", `{"fqdn":"sub.example.com","type":"A"}`),
+		Entry("unsupported type", `{"fqdn":"sub.example.com","type":"MX","value":"10 mx.example.com"}`),
+		Entry("invalid fqdn", `{"fqdn":"com","type":"A","value":"127.0.0.1"}`),
+		Entry("AAAA with zone", `{"fqdn":"sub.example.com","type":"AAAA","value":"fe80::1%eth0"}`),
+		Entry("A with ipv6 address", `{"fqdn":"sub.example.com","type":"A","value":"::1"}`),
+		Entry("AAAA with ipv4 address", `{"fqdn":"sub.example.com","type":"AAAA","value":"127.0.0.1"}`),
+		Entry("CNAME at the zone apex", `{"fqdn":"example.com","type":"CNAME","value":"target.example.com"}`),
+		Entry("CNAME with space in target", `{"fqdn":"sub.example.com","type":"CNAME","value":"a b.example.com"}`),
+		Entry("CNAME with empty label", `{"fqdn":"sub.example.com","type":"CNAME","value":"a..example.com"}`),
+		Entry("CNAME with leading hyphen", `{"fqdn":"sub.example.com","type":"CNAME","value":"-a.example.com"}`),
+		Entry("CNAME with too long label", `{"fqdn":"sub.example.com","type":"CNAME","value":"`+strings.Repeat("a", 64)+`.example.com"}`),
+		Entry("CNAME with too long target", `{"fqdn":"sub.example.com","type":"CNAME","value":"`+strings.Repeat("a.", 127)+`com"}`),
+		Entry("SRV with too few fields", `{"fqdn":"_sip._tcp.example.com","type":"SRV","value":"10 5 sip.example.com"}`),
+		Entry("SRV with too many fields", `{"fqdn":"_sip._tcp.example.com","type":"SRV","value":"10 5 5060 sip.example.com x"}`),
+		Entry("SRV with negative priority", `{"fqdn":"_sip._tcp.example.com","type":"SRV","value":"-1 5 5060 sip.example.com"}`),
+		Entry("SRV with non-numeric weight", `{"fqdn":"_sip._tcp.example.com","type":"SRV","value":"10 x 5060 sip.example.com"}`),
+		Entry("SRV with port out of range", `{"fqdn":"_sip._tcp.example.com","type":"SRV","value":"10 5 65536 sip.example.com"}`),
+		Entry("SRV with invalid target", `{"fqdn":"_sip._tcp.example.com","type":"SRV","value":"10 5 5060 sip..example.com"}`),
+		Entry("CNAME with multiple trailing dots", `{"fqdn":"sub.example.com","type":"CNAME","value":"a.example.com.."}`),
+		Entry("SRV with multiple trailing dots", `{"fqdn":"_sip._tcp.example.com","type":"SRV","value":"10 5 5060 sip.example.com.."}`),
+	)
+
+	DescribeTable(
+		"should filter records requests by record type", func(path string, allowed []string, body string, expected int) {
+			// The type check runs after the authorizer, which is left out here,
+			// so every request counts as authorized.
+			bindAndCheck := func(next http.Handler) http.Handler {
+				return middleware.BindRecords(middleware.NewRecordTypeAllowed(&config.Config{RecordTypes: allowed})(next))
+			}
+			reqData, code := bind(bindAndCheck, httptest.NewRequest(http.MethodPost, path, strings.NewReader(body)))
+			Expect(code).To(Equal(expected))
+			Expect(reqData != nil).To(Equal(expected == http.StatusOK))
+		},
+		Entry(
+			"allowed type", "/records/present", []string{config.RecordTypeCNAME, config.RecordTypeTXT},
+			`{"fqdn":"sub.example.com","type":"cname","value":"target.example.com"}`, http.StatusOK,
+		),
+		Entry(
+			"type not in list on present", "/records/present", []string{config.RecordTypeCNAME},
+			`{"fqdn":"_sip._tcp.example.com","type":"SRV","value":"10 5 5060 sip.example.com"}`, http.StatusForbidden,
+		),
+		Entry(
+			"type not in list on cleanup", "/records/cleanup", []string{config.RecordTypeCNAME},
+			`{"fqdn":"_sip._tcp.example.com","type":"SRV","value":"10 5 5060 sip.example.com"}`, http.StatusForbidden,
+		),
+		Entry(
+			"empty list", "/records/present", []string{},
+			`{"fqdn":"sub.example.com","type":"A","value":"127.0.0.1"}`, http.StatusForbidden,
+		),
+		Entry(
+			"malformed value is rejected by bind first", "/records/present", []string{config.RecordTypeCNAME},
+			`{"fqdn":"_sip._tcp.example.com","type":"SRV","value":"garbage"}`, http.StatusBadRequest,
+		),
+		Entry(
+			"unsupported type is rejected by bind first", "/records/present", []string{},
+			`{"fqdn":"sub.example.com","type":"MX","value":"10 mx.example.com"}`, http.StatusBadRequest,
+		),
+	)
+
+	It("should log denied record types without leaking the value", func() {
+		logBuf := &bytes.Buffer{}
+		prevOutput := log.Writer()
+		prevFlags := log.Flags()
+		log.SetOutput(logBuf)
+		log.SetFlags(0)
+		DeferCleanup(func() {
+			log.SetOutput(prevOutput)
+			log.SetFlags(prevFlags)
+		})
+
+		req := httptest.NewRequest(http.MethodPost, "/records/present", strings.NewReader(
+			`{"fqdn":"sub.example.com","type":"CNAME","value":"secret-target.example.com"}`,
+		))
+		req.RemoteAddr = "192.0.2.1:1234"
+		_, code := bind(func(next http.Handler) http.Handler {
+			return middleware.BindRecords(middleware.NewRecordTypeAllowed(&config.Config{RecordTypes: []string{}})(next))
+		}, req)
+		Expect(code).To(Equal(http.StatusForbidden))
+		Expect(logBuf.String()).To(Equal(
+			"client '192.0.2.1:1234' is not allowed to set 'CNAME' records of 'sub.example.com'\n",
+		))
+	})
+
+	It("should fail without request data in the context", func() {
+		handler := middleware.NewRecordTypeAllowed(&config.Config{RecordTypes: config.SupportedRecordTypes()})(
+			http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) }),
+		)
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, newJSONRequest(`{}`))
+		Expect(rec.Code).To(Equal(http.StatusInternalServerError))
+	})
+
+	DescribeTable(
 		"should normalize the ip of plain requests", func(ip, expectedIP, expectedType string) {
 			reqData, code := bind(middleware.BindPlain, httptest.NewRequest(
 				http.MethodGet, "/?hostname=sub.example.com&ip="+ip, http.NoBody,
@@ -247,6 +436,8 @@ var _ = Describe("JSON binding", func() {
 		Entry("httpreq", middleware.BindHTTPReq, `{"fqdn":"a.example.com","value":"x"}`),
 		Entry("httpreq with unknown key", middleware.BindHTTPReq, `{"fqdn":"a.example.com","value":"x","other":1}`),
 		Entry("acmedns", middleware.BindAcmeDNS, `{"subdomain":"a.example.com","txt":"x"}`),
+		Entry("records", middleware.BindRecords, `{"fqdn":"a.example.com","type":"TXT","value":"x"}`),
+		Entry("records with unknown key", middleware.BindRecords, `{"fqdn":"a.example.com","type":"TXT","value":"x","other":1}`),
 	)
 
 	DescribeTable(
@@ -263,5 +454,12 @@ var _ = Describe("JSON binding", func() {
 		Entry("acmedns with trailing data", middleware.BindAcmeDNS, `{"subdomain":"a.example.com","txt":"x"}{}`),
 		Entry("acmedns with wrong-case key", middleware.BindAcmeDNS, `{"Subdomain":"a.example.com","txt":"x"}`),
 		Entry("acmedns with invalid UTF-8", middleware.BindAcmeDNS, "{\"subdomain\":\"a.example.com\",\"txt\":\"\xff\"}"),
+		Entry(
+			"records with duplicate key", middleware.BindRecords,
+			`{"fqdn":"a.example.com","fqdn":"b.example.com","type":"TXT","value":"x"}`,
+		),
+		Entry("records with trailing data", middleware.BindRecords, `{"fqdn":"a.example.com","type":"TXT","value":"x"}{}`),
+		Entry("records with wrong-case key", middleware.BindRecords, `{"FQDN":"a.example.com","type":"TXT","value":"x"}`),
+		Entry("records with invalid UTF-8", middleware.BindRecords, "{\"fqdn\":\"a.example.com\",\"type\":\"TXT\",\"value\":\"\xff\"}"),
 	)
 })

@@ -2,6 +2,7 @@ package update
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
 	"time"
@@ -29,6 +30,10 @@ func New(cfg *config.Config) func(http.Handler) http.Handler {
 			defer cancel()
 			if err := u.Update(ctx, reqData); err != nil {
 				log.Printf("failed to update record: %v", err)
+				if errors.Is(err, data.ErrConflict) {
+					http.Error(w, "conflicts with an existing record set", http.StatusConflict)
+					return
+				}
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}

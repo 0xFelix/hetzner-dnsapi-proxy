@@ -18,6 +18,7 @@ Get the container image from [ghcr.io](https://github.com/0xFelix/hetzner-dnsapi
 | API                | Endpoint                                                                                                                                                                                                                                                                                                                                                           |
 |--------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | lego HTTP request  | POST `/httpreq/present`<br>POST `/httpreq/cleanup`<br>(see https://go-acme.github.io/lego/dns/httpreq/)                                                                                                                                  |
+| Generic records    | POST `/records/present`<br>POST `/records/cleanup`<br>(JSON body with `fqdn`, `type` and `value`, opt-in, see [Enabled endpoints](#enabled-endpoints)) |
 | ACMEDNS            | POST `/acmedns/update`<br>(see https://github.com/joohoi/acme-dns#update-endpoint)                                                                                                                                                                                 |
 | DirectAdmin Legacy | GET `/directadmin/CMD_API_SHOW_DOMAINS`<br>GET `/directadmin/CMD_API_DNS_CONTROL` (only adding A/AAAA/TXT records, everything else always returns `200 OK`)<br>GET `/directadmin/CMD_API_DOMAIN_POINTER` (only a stub, always returns `200 OK`)<br>(see https://docs.directadmin.com/developer/api/legacy-api.html and https://www.directadmin.com/features.php?id=504) |
 | plain HTTP         | GET `/plain/update` (query params `hostname` and `ip` (can be ipv4 for A or ipv6 for AAAA records), if auth method is `users` then HTTP Basic auth is used) <br/>                                                                                                                                                                                                               |
@@ -90,18 +91,58 @@ traversing a trusted reverse proxy are counted against the real client.
 
 ### Enabled endpoints
 
-By default all endpoint groups are enabled. You can restrict which groups are
-active by listing only the ones you want:
+By default all endpoint groups except `records` are enabled. You can change
+which groups are active by listing exactly the ones you want:
 
 - `plain` - `/plain/update`
 - `nic` - `/nic/update`
 - `acmedns` - `/acmedns/update`
 - `httpreq` - `/httpreq/present`, `/httpreq/cleanup`
 - `directadmin` - `/directadmin/CMD_API_*`
+- `records` - `/records/present`, `/records/cleanup` (supports CNAME and SRV,
+  **not** enabled by default, must be listed explicitly)
 
 Via config file set the `endpoints` key; via environment variable set
 `ENDPOINTS` to a comma-separated list (e.g. `ENDPOINTS=plain,nic`). Listing
 any endpoint disables all others not listed.
+
+#### Record types of the records endpoint
+
+The `records` endpoint accepts `A`, `AAAA`, `TXT`, `CNAME` and `SRV` by
+default. Use `recordTypes` (config file) or `RECORD_TYPES` (environment
+variable, comma-separated, case-insensitive) to restrict them, e.g.
+`RECORD_TYPES=TXT,CNAME`. Unknown types (e.g. `MX`) and an empty list (also an
+empty `RECORD_TYPES`) are rejected at startup if the `records` endpoint is
+enabled. Requests with a malformed value or an unsupported type get
+`400 Bad Request` before authentication. Authenticated requests for a type
+that is not listed get `403 Forbidden`, unauthenticated requests get
+`401 Unauthorized` as usual. The setting does not affect the other endpoints.
+
+The request body is JSON, e.g.
+`{"fqdn": "_minecraft._tcp.example.com", "type": "SRV", "value": "0 5 25567 mc.example.com"}`.
+
+- `SRV` values are appended to the existing record set, so several targets can
+  share one name. If the value already exists it is not added again (the TTL of
+  the record set is still aligned). Valid values are compared ignoring case, a
+  trailing dot, extra whitespace and leading zeros.
+- An `SRV` value with the target `.` (e.g. `0 0 0 .`, service not available,
+  RFC 2782) always replaces the record set, and adding a target to a record
+  set holding such a value replaces it too.
+- All other types replace the existing values with the given one.
+- The optional boolean `"replace": true` makes an `SRV` request replace the
+  record set with exactly the given value, which allows changing priority,
+  weight or port. It has no effect for other types and for `cleanup`.
+- `cleanup` removes only the given value from the record set. The given value
+  is matched against the stored values, normalized for `SRV` and `CNAME` and
+  exactly for other types. If no stored value matches, nothing is removed.
+- A `CNAME` cannot be created if any other record set exists for the name, and
+  no other type can be created if a `CNAME` exists for the name. Such requests
+  are answered with `409 Conflict` and nothing is created.
+
+Note that permissions (`auth.allowedDomains`, `auth.users`) are checked per
+name only, not per record type. Any user that may update a name can therefore
+set every allowed record type on that name through the `records` endpoint, so
+restrict `recordTypes` to what you actually need.
 
 ### Security headers
 
@@ -134,7 +175,14 @@ endpoints:
   acmedns: true
   httpreq: true
   directadmin: true
+  records: false
 recordTTL: 60
+recordTypes: # only applies to the records endpoint
+  - A
+  - AAAA
+  - TXT
+  - CNAME
+  - SRV
 listenAddr: :8081
 trustedProxies:
   - 127.0.0.1
@@ -157,6 +205,7 @@ debug: false
 | `API_TOKEN`                | string | Auth token for the API                                                                                                                     | Y        |                                |
 | `API_TIMEOUT`              | int    | Timeout for calls to the API in seconds                                                                                                    | N        | 60 seconds                     |
 | `RECORD_TTL`               | int    | TTL that is set when creating/updating records                                                                                             | N        | 60 seconds                     |
+| `RECORD_TYPES`             | string | Comma-separated record types the `records` endpoint accepts, see above | N        | `A,AAAA,TXT,CNAME,SRV`         |
 | `ALLOWED_DOMAINS`          | string | Combination of domains and CIDRs allowed to update them, example:<br>`example1.com,127.0.0.1/32;_acme-challenge.example2.com,127.0.0.1/32` | Y        |                                |
 | `LISTEN_ADDR`              | string | Listen address of hetzner-dnsapi-proxy                                                                                                     | N        | `:8081`                        |
 | `TRUSTED_PROXIES`          | string | Comma-separated list of trusted proxy IPs or CIDR ranges (e.g. `10.0.0.1,192.168.0.0/24`). When empty, `X-Real-Ip` / `X-Forwarded-For` are ignored. | N        | Trust no proxies               |
@@ -166,5 +215,5 @@ debug: false
 | `LOCKOUT_MAX_ATTEMPTS`     | int    | Failures before lockout                                                                                                                    | N        | `10`                           |
 | `LOCKOUT_DURATION_SECONDS` | int    | Lockout duration in seconds                                                                                                                | N        | `3600`                         |
 | `LOCKOUT_WINDOW_SECONDS`   | int    | Window in seconds during which consecutive failures accumulate                                                                             | N        | `900`                          |
-| `ENDPOINTS`                | string | Comma-separated list of endpoint groups to enable: `plain`, `nic`, `acmedns`, `httpreq`, `directadmin`. All enabled when unset.            | N        | All enabled                    |
+| `ENDPOINTS`                | string | Comma-separated list of endpoint groups to enable: `plain`, `nic`, `acmedns`, `httpreq`, `directadmin`, `records`. All but `records` enabled when unset. | N        | All but `records`              |
 | `DEBUG`                    | bool   | Output debug logs of received requests                                                                                                     | N        | `false`                        |

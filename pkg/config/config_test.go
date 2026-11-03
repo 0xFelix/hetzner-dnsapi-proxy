@@ -127,6 +127,8 @@ var _ = Describe("Config", func() {
 			envDebug          = "DEBUG"
 			envRateLimitRPS   = "RATE_LIMIT_RPS"
 			envLockoutMaxAtt  = "LOCKOUT_MAX_ATTEMPTS"
+			envEndpoints      = "ENDPOINTS"
+			envRecordTypes    = "RECORD_TYPES"
 		)
 
 		BeforeEach(func() {
@@ -146,6 +148,8 @@ var _ = Describe("Config", func() {
 			Expect(os.Unsetenv(envDebug)).To(Succeed())
 			Expect(os.Unsetenv(envRateLimitRPS)).To(Succeed())
 			Expect(os.Unsetenv(envLockoutMaxAtt)).To(Succeed())
+			Expect(os.Unsetenv(envEndpoints)).To(Succeed())
+			Expect(os.Unsetenv(envRecordTypes)).To(Succeed())
 		})
 
 		It("should parse environment successfully", func() {
@@ -185,6 +189,91 @@ var _ = Describe("Config", func() {
 				netip.MustParsePrefix("10.0.0.0/8"),
 				netip.MustParsePrefix("2001:db8::/32"),
 			}))
+		})
+
+		It("should enable all endpoints but records when ENDPOINTS is unset", func() {
+			Expect(os.Setenv(envAPIToken, apiToken)).To(Succeed())
+			Expect(os.Setenv(envAllowedDomains, allowedDomainsStr)).To(Succeed())
+
+			cfg, err := config.ParseEnv()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(cfg.Endpoints).To(Equal(config.Endpoints{
+				Plain: true, Nic: true, AcmeDNS: true, HTTPReq: true, DirectAdmin: true,
+			}))
+			Expect(cfg.Endpoints.Enabled()).To(Equal([]string{
+				config.EndpointPlain, config.EndpointNic, config.EndpointAcmeDNS,
+				config.EndpointHTTPReq, config.EndpointDirectAdmin,
+			}))
+		})
+
+		It("should allow all supported record types when RECORD_TYPES is unset", func() {
+			Expect(os.Setenv(envAPIToken, apiToken)).To(Succeed())
+			Expect(os.Setenv(envAllowedDomains, allowedDomainsStr)).To(Succeed())
+
+			cfg, err := config.ParseEnv()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(cfg.RecordTypes).To(Equal(config.SupportedRecordTypes()))
+		})
+
+		DescribeTable(
+			"should reject an empty RECORD_TYPES if the records endpoint is enabled", func(value string) {
+				Expect(os.Setenv(envAPIToken, apiToken)).To(Succeed())
+				Expect(os.Setenv(envAllowedDomains, allowedDomainsStr)).To(Succeed())
+				Expect(os.Setenv(envEndpoints, "records")).To(Succeed())
+				Expect(os.Setenv(envRecordTypes, value)).To(Succeed())
+
+				cfg, err := config.ParseEnv()
+				Expect(err).To(MatchError(ContainSubstring("recordTypes cannot be empty")))
+				Expect(cfg).To(BeNil())
+			},
+			Entry("empty", ""),
+			Entry("whitespace", "  "),
+			Entry("commas and whitespace", " , ,"),
+		)
+
+		DescribeTable(
+			"should accept an empty RECORD_TYPES if the records endpoint is not enabled", func(value string) {
+				Expect(os.Setenv(envAPIToken, apiToken)).To(Succeed())
+				Expect(os.Setenv(envAllowedDomains, allowedDomainsStr)).To(Succeed())
+				Expect(os.Setenv(envRecordTypes, value)).To(Succeed())
+
+				cfg, err := config.ParseEnv()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(cfg.RecordTypes).To(BeEmpty())
+			},
+			Entry("empty", ""),
+			Entry("whitespace", "  "),
+			Entry("commas and whitespace", " , ,"),
+		)
+
+		It("should not validate RECORD_TYPES if the records endpoint is not enabled", func() {
+			Expect(os.Setenv(envAPIToken, apiToken)).To(Succeed())
+			Expect(os.Setenv(envAllowedDomains, allowedDomainsStr)).To(Succeed())
+			Expect(os.Setenv(envRecordTypes, "A,mx")).To(Succeed())
+
+			_, err := config.ParseEnv()
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("should parse, trim and uppercase RECORD_TYPES", func() {
+			Expect(os.Setenv(envAPIToken, apiToken)).To(Succeed())
+			Expect(os.Setenv(envAllowedDomains, allowedDomainsStr)).To(Succeed())
+			Expect(os.Setenv(envRecordTypes, " cname , Srv,CNAME")).To(Succeed())
+
+			cfg, err := config.ParseEnv()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(cfg.RecordTypes).To(Equal([]string{config.RecordTypeCNAME, config.RecordTypeSRV}))
+		})
+
+		It("should enable only the endpoints listed in ENDPOINTS", func() {
+			Expect(os.Setenv(envAPIToken, apiToken)).To(Succeed())
+			Expect(os.Setenv(envAllowedDomains, allowedDomainsStr)).To(Succeed())
+			Expect(os.Setenv(envEndpoints, "plain, records")).To(Succeed())
+
+			cfg, err := config.ParseEnv()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(cfg.Endpoints).To(Equal(config.Endpoints{Plain: true, Records: true}))
+			Expect(cfg.Endpoints.Enabled()).To(Equal([]string{config.EndpointPlain, config.EndpointRecords}))
 		})
 
 		It("should lowercase domains of ALLOWED_DOMAINS", func() {
@@ -243,6 +332,17 @@ var _ = Describe("Config", func() {
 				Expect(os.Setenv(envAllowedDomains, allowedDomainsStr)).To(Succeed())
 				Expect(os.Setenv(envLockoutMaxAtt, "0")).To(Succeed())
 			}, "lockout.maxAttempts must be > 0"),
+			Entry("ENDPOINTS contains an unknown endpoint", func() {
+				Expect(os.Setenv(envAPIToken, apiToken)).To(Succeed())
+				Expect(os.Setenv(envAllowedDomains, allowedDomainsStr)).To(Succeed())
+				Expect(os.Setenv(envEndpoints, "plain,unknown")).To(Succeed())
+			}, `invalid endpoint "unknown" in ENDPOINTS`),
+			Entry("RECORD_TYPES contains an unsupported type", func() {
+				Expect(os.Setenv(envAPIToken, apiToken)).To(Succeed())
+				Expect(os.Setenv(envAllowedDomains, allowedDomainsStr)).To(Succeed())
+				Expect(os.Setenv(envEndpoints, "records")).To(Succeed())
+				Expect(os.Setenv(envRecordTypes, "A,mx")).To(Succeed())
+			}, `invalid record type "MX" in recordTypes`),
 		)
 	})
 
@@ -290,6 +390,7 @@ var _ = Describe("Config", func() {
 				},
 				Endpoints:      config.Endpoints{Plain: true, Nic: true, AcmeDNS: true, HTTPReq: true, DirectAdmin: true},
 				RecordTTL:      recordTTL,
+				RecordTypes:    []string{config.RecordTypeCNAME, config.RecordTypeSRV},
 				ListenAddr:     listenAddr,
 				TrustedProxies: trustedProxies,
 				RateLimit:      validRL(),
@@ -336,6 +437,30 @@ var _ = Describe("Config", func() {
 			}))
 			Expect(cfgRead.Auth.Users[0].Domains).To(Equal([]string{"*." + exampleDomain}))
 		})
+
+		DescribeTable(
+			"should default, normalize and validate recordTypes", func(extra, errSubstr string, expected []string) {
+				Expect(os.WriteFile(filePath, []byte(allowedDomainsYAML(apiToken, "127.0.0.1")+extra), 0o600)).To(Succeed())
+
+				cfgRead, err := config.ReadFile(filePath)
+				if errSubstr != "" {
+					Expect(err).To(MatchError(ContainSubstring(errSubstr)))
+					Expect(cfgRead).To(BeNil())
+					return
+				}
+				Expect(err).ToNot(HaveOccurred())
+				Expect(cfgRead.RecordTypes).To(Equal(expected))
+			},
+			Entry("default", "", "", config.SupportedRecordTypes()),
+			Entry("normalized and deduplicated", "recordTypes: [cname, srv, CNAME]\n", "",
+				[]string{config.RecordTypeCNAME, config.RecordTypeSRV}),
+			Entry("unsupported type ignored if records endpoint is disabled", "recordTypes: [MX]\n", "",
+				[]string{"MX"}),
+			Entry("unsupported type rejected if records endpoint is enabled",
+				"endpoints:\n  records: true\nrecordTypes: [MX]\n", `invalid record type "MX"`, nil),
+			Entry("empty list rejected if records endpoint is enabled",
+				"endpoints:\n  records: true\nrecordTypes: []\n", "recordTypes cannot be empty", nil),
+		)
 
 		It("should parse CIDR ranges from trustedProxies", func() {
 			cfg := &config.Config{
