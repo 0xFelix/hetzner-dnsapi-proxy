@@ -45,7 +45,7 @@ func (u *updater) Update(ctx context.Context, reqData *data.ReqData) error {
 		if reqData.Mode == data.ModeAppend && !hetzner.HasSRVUnavailable(rrSet) {
 			return u.addRRSetRecord(ctx, rrSet, reqData.Value)
 		}
-		return u.updateRRSet(ctx, rrSet, reqData.Value)
+		return u.setRRSetRecords(ctx, rrSet, reqData.Value)
 	}
 
 	if reqData.CheckConflicts {
@@ -89,7 +89,7 @@ func (u *updater) changeTTL(ctx context.Context, rrSet *hcloud.ZoneRRSet) error 
 	return hetzner.WaitForAction(ctx, u.client, action, err)
 }
 
-func (u *updater) updateRRSet(ctx context.Context, rrSet *hcloud.ZoneRRSet, val string) error {
+func (u *updater) setRRSetRecords(ctx context.Context, rrSet *hcloud.ZoneRRSet, val string) error {
 	if err := u.changeTTL(ctx, rrSet); err != nil {
 		return err
 	}
