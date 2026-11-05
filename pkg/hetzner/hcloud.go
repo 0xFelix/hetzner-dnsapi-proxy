@@ -1,6 +1,7 @@
 package hetzner
 
 import (
+	"context"
 	"fmt"
 	"runtime/debug"
 	"strconv"
@@ -77,4 +78,16 @@ func QuoteIfRequired(val string, rrSetType hcloud.ZoneRRSetType) string {
 		return strconv.Quote(val)
 	}
 	return val
+}
+
+// WaitForAction returns err if it is set and otherwise waits for action to
+// complete, if there is one.
+func WaitForAction(ctx context.Context, client *hcloud.Client, action *hcloud.Action, err error) error {
+	if err != nil {
+		return err
+	}
+	if action == nil {
+		return nil
+	}
+	return client.Action.WaitFor(ctx, action)
 }
