@@ -145,6 +145,48 @@ var _ = Describe("Plain", func() {
 		})
 	})
 
+	Context("should handle concurrently created RRSets", func() {
+		It("by replacing the records of a concurrently created RRSet", func(ctx context.Context) {
+			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL)
+
+			api.AppendHandlers(
+				libcloudapi.GetZone(token, libcloudapi.Zone()),
+				libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.NewRRSetA(), false),
+				libcloudapi.CreateRRSetFails(token, libcloudapi.Zone(), libcloudapi.NewRRSetA()),
+				libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.UpdatedRRSetA(), true),
+				libcloudapi.SetRRSetRecords(token, libcloudapi.Zone(), libcloudapi.UpdatedRRSetA()),
+			)
+
+			Expect(doPlainRequest(ctx, server.URL+"/plain/update", username, password, url.Values{
+				keyHostname: []string{libserver.ARecordNameFull},
+				keyIP:       []string{libserver.AUpdated},
+			})).To(Equal(http.StatusOK))
+
+			Expect(api.ReceivedRequests()).To(HaveLen(5))
+		})
+
+		It("by failing if the RRSet still does not exist", func(ctx context.Context) {
+			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL)
+
+			api.AppendHandlers(
+				libcloudapi.GetZone(token, libcloudapi.Zone()),
+				libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.NewRRSetA(), false),
+				libcloudapi.CreateRRSetFails(token, libcloudapi.Zone(), libcloudapi.NewRRSetA()),
+			)
+			// The RRSet is checked again after the failed create.
+			api.AppendHandlers(
+				libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.NewRRSetA(), false),
+			)
+
+			Expect(doPlainRequest(ctx, server.URL+"/plain/update", username, password, url.Values{
+				keyHostname: []string{libserver.ARecordNameFull},
+				keyIP:       []string{libserver.AUpdated},
+			})).To(Equal(http.StatusInternalServerError))
+
+			Expect(api.ReceivedRequests()).To(HaveLen(4))
+		})
+	})
+
 	Context("should make no api calls and should fail", func() {
 		AfterEach(func() {
 			Expect(api.ReceivedRequests()).To(BeEmpty())

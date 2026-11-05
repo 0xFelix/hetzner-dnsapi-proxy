@@ -357,6 +357,85 @@ var _ = Describe("Records", func() {
 		)
 	})
 
+	Context("should handle concurrently created RRSets", func() {
+		It("by replacing the records of a concurrently created RRSet", func(ctx context.Context) {
+			api.AppendHandlers(
+				libcloudapi.GetZone(token, libcloudapi.Zone()),
+				libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.NewRRSetCNAME(), false),
+				libcloudapi.ListRRSets(token, libcloudapi.Zone(), libserver.CNAMERecordName, nil),
+				libcloudapi.CreateRRSetFails(token, libcloudapi.Zone(), libcloudapi.NewRRSetCNAME()),
+				libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.ExistingRRSetCNAME(), true),
+				libcloudapi.SetRRSetRecords(token, libcloudapi.Zone(), libcloudapi.NewRRSetCNAME()),
+			)
+
+			Expect(doRecordsRequest(
+				ctx, server.URL+"/records/present", username, password,
+				rec(libserver.CNAMERecordNameFull, libserver.RecordTypeCNAME, "target.test.tld"),
+			)).To(Equal(http.StatusOK))
+			Expect(api.ReceivedRequests()).To(HaveLen(6))
+		})
+
+		It("by adding to a concurrently created SRV RRSet", func(ctx context.Context) {
+			api.AppendHandlers(
+				libcloudapi.GetZone(token, libcloudapi.Zone()),
+				libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.NewRRSetSRV(), false),
+				libcloudapi.ListRRSets(token, libcloudapi.Zone(), libserver.SRVRecordName, nil),
+				libcloudapi.CreateRRSetFails(token, libcloudapi.Zone(), libcloudapi.NewRRSetSRV()),
+				libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.ExistingRRSetSRV(), true),
+				libcloudapi.AddRRSetRecords(token, libcloudapi.Zone(), libcloudapi.ExistingRRSetSRV(), []schema.ZoneRRSetRecord{
+					{Value: libserver.SRVValue},
+				}),
+			)
+
+			Expect(doRecordsRequest(
+				ctx, server.URL+"/records/present", username, password,
+				rec(libserver.SRVRecordNameFull, libserver.RecordTypeSRV, srvInput),
+			)).To(Equal(http.StatusOK))
+			Expect(api.ReceivedRequests()).To(HaveLen(6))
+		})
+
+		It("by responding with a conflict for a concurrently created conflicting RRSet", func(ctx context.Context) {
+			txt := libcloudapi.ExistingRRSetTXT()
+			txt.Name = libserver.CNAMERecordName
+			api.AppendHandlers(
+				libcloudapi.GetZone(token, libcloudapi.Zone()),
+				libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.NewRRSetCNAME(), false),
+				libcloudapi.ListRRSets(token, libcloudapi.Zone(), libserver.CNAMERecordName, nil),
+				libcloudapi.CreateRRSetFails(token, libcloudapi.Zone(), libcloudapi.NewRRSetCNAME()),
+			)
+			api.AppendHandlers(
+				libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.NewRRSetCNAME(), false),
+				libcloudapi.ListRRSets(token, libcloudapi.Zone(), libserver.CNAMERecordName, []schema.ZoneRRSet{txt}),
+			)
+
+			Expect(doRecordsRequest(
+				ctx, server.URL+"/records/present", username, password,
+				rec(libserver.CNAMERecordNameFull, libserver.RecordTypeCNAME, "target.test.tld"),
+			)).To(Equal(http.StatusConflict))
+			Expect(api.ReceivedRequests()).To(HaveLen(6))
+		})
+
+		It("by failing if the RRSet still does not exist", func(ctx context.Context) {
+			api.AppendHandlers(
+				libcloudapi.GetZone(token, libcloudapi.Zone()),
+				libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.NewRRSetCNAME(), false),
+				libcloudapi.ListRRSets(token, libcloudapi.Zone(), libserver.CNAMERecordName, nil),
+				libcloudapi.CreateRRSetFails(token, libcloudapi.Zone(), libcloudapi.NewRRSetCNAME()),
+			)
+			// The RRSet is checked again after the failed create.
+			api.AppendHandlers(
+				libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.NewRRSetCNAME(), false),
+				libcloudapi.ListRRSets(token, libcloudapi.Zone(), libserver.CNAMERecordName, nil),
+			)
+
+			Expect(doRecordsRequest(
+				ctx, server.URL+"/records/present", username, password,
+				rec(libserver.CNAMERecordNameFull, libserver.RecordTypeCNAME, "target.test.tld"),
+			)).To(Equal(http.StatusInternalServerError))
+			Expect(api.ReceivedRequests()).To(HaveLen(6))
+		})
+	})
+
 	Context("should respond with a conflict and not create a record", func() {
 		It("for a CNAME next to another RRSet", func(ctx context.Context) {
 			api.AppendHandlers(
