@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	maxHostnameLength = 253
+	MaxHostnameLength = 253
 	srvFieldCount     = 4
 
 	// srvTargetUnavailable is the SRV target meaning that the service is not
@@ -25,7 +25,7 @@ var hostnameRegexp = regexp.MustCompile(`^([a-z0-9_]([a-z0-9_-]{0,61}[a-z0-9_])?
 // validates the result.
 func NormalizeHostname(host string) (string, error) {
 	host = strings.ToLower(strings.TrimSuffix(host, "."))
-	if len(host) > maxHostnameLength || !hostnameRegexp.MatchString(host) {
+	if len(host) > MaxHostnameLength || !hostnameRegexp.MatchString(host) {
 		return "", errors.New("invalid hostname")
 	}
 	return host, nil

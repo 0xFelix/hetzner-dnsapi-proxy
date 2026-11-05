@@ -31,6 +31,36 @@ var _ = Describe("SplitFQDN", func() {
 		Entry("subdomain on multi-part TLD (co.uk)", "test.example.co.uk", "test", "example.co.uk"),
 		Entry("multi-part TLD (com.au)", "example.com.au", "", "example.com.au"),
 		Entry("subdomain on multi-part TLD (com.au)", "test.example.com.au", "test", "example.com.au"),
+		Entry("underscore labels", "_sip._tcp.example.com", "_sip._tcp", "example.com"),
+		Entry("wildcard", "*.example.com", "*", "example.com"),
+		Entry("wildcard subdomain", "*.sub.example.com", "*.sub", "example.com"),
+		Entry("maximum length", strings.Repeat("a.", 121)+"example.com", strings.Repeat("a.", 120)+"a", "example.com"),
+	)
+
+	DescribeTable(
+		"should reject invalid names", func(fqdn string) {
+			name, zone, err := middleware.SplitFQDN(fqdn)
+			Expect(err).To(HaveOccurred())
+			Expect(name).To(BeEmpty())
+			Expect(zone).To(BeEmpty())
+		},
+		Entry("empty", ""),
+		Entry("slash", "a/b.example.com"),
+		Entry("dot segment", "../x.example.com"),
+		Entry("question mark", "a?b.example.com"),
+		Entry("percent", "a%2fb.example.com"),
+		Entry("space", "a b.example.com"),
+		Entry("empty label", "a..example.com"),
+		Entry("leading dot", ".example.com"),
+		Entry("leading hyphen", "-a.example.com"),
+		Entry("trailing hyphen", "a-.example.com"),
+		Entry("too long label", strings.Repeat("a", 64)+".example.com"),
+		Entry("too long name", strings.Repeat("a.", 122)+"example.com"),
+		Entry("too long wildcard name", "*."+strings.Repeat("a.", 121)+"example.com"),
+		Entry("wildcard not leftmost", "a.*.example.com"),
+		Entry("partial wildcard label", "a*.example.com"),
+		Entry("bare wildcard", "*"),
+		Entry("wildcard zone", "*.com"),
 	)
 
 	It("should fail on TLD", func() {
@@ -162,6 +192,41 @@ var _ = Describe("Binding of names", func() {
 	)
 
 	DescribeTable(
+		"should reject invalid names", func(b func(http.Handler) http.Handler, r *http.Request, expectedCode int) {
+			reqData, code, body := bindWithBody(b, r)
+			Expect(code).To(Equal(expectedCode))
+			Expect(reqData).To(BeNil())
+			if expectedCode == http.StatusOK {
+				Expect(body).To(Equal("notfqdn"))
+			}
+		},
+		Entry("plain", middleware.BindPlain, httptest.NewRequest(
+			http.MethodGet, "/?hostname=a%2Fb.example.com&ip=127.0.0.1", http.NoBody,
+		), http.StatusBadRequest),
+		Entry("nic", middleware.BindNicUpdate, httptest.NewRequest(
+			http.MethodGet, "/?hostname=a%3Fb.example.com&myip=127.0.0.1", http.NoBody,
+		), http.StatusOK),
+		Entry("httpreq", middleware.BindHTTPReq, newJSONRequest(
+			`{"fqdn":"../x.example.com","value":"v"}`,
+		), http.StatusBadRequest),
+		Entry("acmedns", middleware.BindAcmeDNS, newJSONRequest(
+			`{"subdomain":"a%2fb.example.com","txt":"v"}`,
+		), http.StatusBadRequest),
+		Entry("acmedns with wildcard", middleware.BindAcmeDNS, newJSONRequest(
+			`{"subdomain":"*.example.com","txt":"v"}`,
+		), http.StatusBadRequest),
+		Entry("acmedns too long with prefix", middleware.BindAcmeDNS, newJSONRequest(
+			`{"subdomain":"`+strings.Repeat("a.", 121)+`example.com","txt":"v"}`,
+		), http.StatusBadRequest),
+		Entry("directadmin", middleware.BindDirectAdmin, httptest.NewRequest(
+			http.MethodGet, "/?action=add&domain=example.com&name=a%2Fb&type=A&value=127.0.0.1", http.NoBody,
+		), http.StatusBadRequest),
+		Entry("records", middleware.BindRecords, newJSONRequest(
+			`{"fqdn":"a b.example.com","type":"A","value":"127.0.0.1"}`,
+		), http.StatusBadRequest),
+	)
+
+	DescribeTable(
 		"should bind records requests", func(fqdn, recordType, value, expectedFullName, expectedName, expectedType, expectedValue string) {
 			reqData, code := bind(middleware.BindRecords, newJSONRequest(
 				`{"fqdn":"`+fqdn+`","type":"`+recordType+`","value":"`+value+`"}`,
@@ -178,6 +243,7 @@ var _ = Describe("Binding of names", func() {
 		Entry("AAAA", "sub.example.com", "AAAA", "::1", "sub.example.com", "sub", "AAAA", "::1"),
 		Entry("AAAA with non-canonical address", "sub.example.com", "AAAA", "0:0::1", "sub.example.com", "sub", "AAAA", "::1"),
 		Entry("TXT at the zone apex", "example.com", "TXT", "some text", "example.com", "", "TXT", "some text"),
+		Entry("wildcard", "*.example.com", "A", "127.0.0.1", "*.example.com", "*", "A", "127.0.0.1"),
 		Entry(
 			"lower case type", "sub.example.com", "cname", "target.example.com",
 			"sub.example.com", "sub", "CNAME", "target.example.com.",
