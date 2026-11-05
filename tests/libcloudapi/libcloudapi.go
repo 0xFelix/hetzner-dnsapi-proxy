@@ -293,6 +293,29 @@ func CreateRRSet(token string, zone schema.Zone, rrSet schema.ZoneRRSet) http.Ha
 	)
 }
 
+// CreateRRSetFails expects the creation of rrSet and fails as if it had been
+// created concurrently.
+func CreateRRSetFails(token string, zone schema.Zone, rrSet schema.ZoneRRSet) http.HandlerFunc {
+	return ghttp.CombineHandlers(
+		ghttp.VerifyRequest(http.MethodPost, fmt.Sprintf("/v1/zones/%d/rrsets", zone.ID)),
+		ghttp.VerifyHeader(http.Header{
+			headerAuthorization: []string{authBearerPrefix + token},
+		}),
+		ghttp.VerifyJSONRepresenting(schema.ZoneRRSetCreateRequest{
+			Name:    rrSet.Name,
+			Type:    rrSet.Type,
+			TTL:     rrSet.TTL,
+			Records: rrSet.Records,
+		}),
+		ghttp.RespondWithJSONEncoded(http.StatusConflict, schema.ErrorResponse{
+			Error: schema.Error{
+				Code:    "uniqueness_error",
+				Message: "rrset already exists",
+			},
+		}),
+	)
+}
+
 func ChangeRRSetTTL(token string, zone schema.Zone, rrSet schema.ZoneRRSet) http.HandlerFunc {
 	return ghttp.CombineHandlers(
 		ghttp.VerifyRequest(http.MethodPost, fmt.Sprintf("/v1/zones/%d/rrsets/%s/%s/actions/change_ttl", zone.ID, rrSet.Name, rrSet.Type)),

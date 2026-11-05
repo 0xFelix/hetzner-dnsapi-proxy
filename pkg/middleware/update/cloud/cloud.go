@@ -2,6 +2,7 @@ package cloud
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/hetznercloud/hcloud-go/v2/hcloud"
@@ -41,20 +42,46 @@ func (u *updater) Update(ctx context.Context, reqData *data.ReqData) error {
 	}
 
 	if rrSet != nil {
-		// A '.' SRV target (service not available) must be the sole record, so don't append to it.
-		if reqData.Mode == data.ModeAppend && !hetzner.HasSRVUnavailable(rrSet) {
-			return u.addRRSetRecord(ctx, rrSet, reqData.Value)
-		}
-		return u.setRRSetRecords(ctx, rrSet, reqData.Value)
+		return u.applyToRRSet(ctx, rrSet, reqData)
 	}
 
 	if reqData.CheckConflicts {
-		if err := u.checkConflicts(ctx, zone, rrSetType, name); err != nil {
-			return err
+		if conflictErr := u.checkConflicts(ctx, zone, rrSetType, name); conflictErr != nil {
+			return conflictErr
 		}
 	}
 
-	return u.createRRSet(ctx, zone, rrSetType, name, reqData.Value)
+	err = u.createRRSet(ctx, zone, rrSetType, name, reqData.Value)
+	if err == nil || ctx.Err() != nil {
+		return err
+	}
+
+	// A concurrent request may have created the RRSet, or a conflicting one,
+	// in the meantime. The API error for this is not relied upon, so check
+	// for both after any failed create.
+	rrSet, _, getErr := u.client.Zone.GetRRSetByNameAndType(ctx, zone, name, rrSetType)
+	if getErr != nil {
+		return err
+	}
+	if rrSet != nil {
+		return u.applyToRRSet(ctx, rrSet, reqData)
+	}
+	if reqData.CheckConflicts {
+		if conflictErr := u.checkConflicts(ctx, zone, rrSetType, name); errors.Is(conflictErr, data.ErrConflict) {
+			return conflictErr
+		}
+	}
+
+	return err
+}
+
+// applyToRRSet applies the requested value to an existing RRSet according to reqData.Mode.
+func (u *updater) applyToRRSet(ctx context.Context, rrSet *hcloud.ZoneRRSet, reqData *data.ReqData) error {
+	// A '.' SRV target (service not available) must be the sole record, so don't append to it.
+	if reqData.Mode == data.ModeAppend && !hetzner.HasSRVUnavailable(rrSet) {
+		return u.addRRSetRecord(ctx, rrSet, reqData.Value)
+	}
+	return u.setRRSetRecords(ctx, rrSet, reqData.Value)
 }
 
 // checkConflicts fails with data.ErrConflict if creating an RRSet of the given
