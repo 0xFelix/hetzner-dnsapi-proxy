@@ -32,3 +32,39 @@ var _ = Describe("QuoteIfRequired", func() {
 		Entry("SRV", "0 5 5060 sip.example.com.", hcloud.ZoneRRSetTypeSRV),
 	)
 })
+
+var _ = Describe("RRSetTypeFromString", func() {
+	DescribeTable(
+		"should accept supported types", func(rType string, expected hcloud.ZoneRRSetType) {
+			rrSetType, err := hetzner.RRSetTypeFromString(rType)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(rrSetType).To(Equal(expected))
+		},
+		Entry("A", "A", hcloud.ZoneRRSetTypeA),
+		Entry("AAAA", "AAAA", hcloud.ZoneRRSetTypeAAAA),
+		Entry("CNAME", "CNAME", hcloud.ZoneRRSetTypeCNAME),
+		Entry("SRV", "SRV", hcloud.ZoneRRSetTypeSRV),
+		Entry("TXT", "TXT", hcloud.ZoneRRSetTypeTXT),
+	)
+
+	DescribeTable(
+		"should reject unsupported types", func(rType string) {
+			_, err := hetzner.RRSetTypeFromString(rType)
+			Expect(err).To(MatchError("unsupported resource record set type " + rType))
+		},
+		Entry("CAA", "CAA"),
+		Entry("MX", "MX"),
+		Entry("NS", "NS"),
+		Entry("SOA", "SOA"),
+	)
+
+	DescribeTable(
+		"should reject unrecognized types", func(rType string) {
+			_, err := hetzner.RRSetTypeFromString(rType)
+			Expect(err).To(MatchError("unrecognized resource record set type " + rType))
+		},
+		Entry("empty", ""),
+		Entry("lower case", "a"),
+		Entry("unknown", "FOO"),
+	)
+})
