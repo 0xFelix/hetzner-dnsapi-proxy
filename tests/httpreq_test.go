@@ -61,14 +61,16 @@ var _ = Describe("HTTPReq", func() {
 		)
 
 		DescribeTable(
-			"updating an existing record", func(ctx context.Context, fqdn string) {
+			"adding a value to an existing record", func(ctx context.Context, fqdn string) {
 				server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL)
 
 				api.AppendHandlers(
 					libcloudapi.GetZone(token, libcloudapi.Zone()),
 					libcloudapi.GetRRSet(token, libcloudapi.Zone(), libcloudapi.ExistingRRSetTXT(), true),
 					libcloudapi.ChangeRRSetTTL(token, libcloudapi.Zone(), libcloudapi.UpdatedRRSetTXT()),
-					libcloudapi.SetRRSetRecords(token, libcloudapi.Zone(), libcloudapi.UpdatedRRSetTXT()),
+					libcloudapi.AddRRSetRecords(token, libcloudapi.Zone(), libcloudapi.ExistingRRSetTXT(), []schema.ZoneRRSetRecord{
+						{Value: strconv.Quote(libserver.TXTUpdated)},
+					}),
 				)
 
 				Expect(doHTTPReqRequest(
@@ -83,6 +85,26 @@ var _ = Describe("HTTPReq", func() {
 			Entry("with dot suffix", libserver.TXTRecordNameFull+"."),
 			Entry("without dot suffix", libserver.TXTRecordNameFull),
 		)
+
+		It("presenting a value that already exists", func(ctx context.Context) {
+			server, token, username, password = libserver.New(api.URL(), libserver.DefaultTTL)
+
+			rrSet := libcloudapi.ExistingRRSetTXT()
+			rrSet.TTL = new(libserver.DefaultTTL)
+			api.AppendHandlers(
+				libcloudapi.GetZone(token, libcloudapi.Zone()),
+				libcloudapi.GetRRSet(token, libcloudapi.Zone(), rrSet, true),
+			)
+
+			Expect(doHTTPReqRequest(
+				ctx, server.URL+"/httpreq/present", username, password,
+				map[string]string{
+					keyFQDN:  libserver.TXTRecordNameFull,
+					keyValue: libserver.TXTExisting,
+				},
+			)).To(Equal(http.StatusOK))
+			Expect(api.ReceivedRequests()).To(HaveLen(2))
+		})
 
 		DescribeTable(
 			"cleaning up", func(ctx context.Context, fqdn string) {

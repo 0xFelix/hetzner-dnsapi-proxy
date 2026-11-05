@@ -24,6 +24,20 @@ Get the container image from [ghcr.io](https://github.com/0xFelix/hetzner-dnsapi
 | plain HTTP         | GET `/plain/update` (query params `hostname` and `ip` (can be ipv4 for A or ipv6 for AAAA records), if auth method is `users` then HTTP Basic auth is used) <br/>                                                                                                                                                                                                               |
 | DynDNS2            | GET `/nic/update` (query params `hostname` and optional `myip` (falls back to client IP, ipv4 or ipv6), HTTP Basic auth, responses follow the DynDNS2 token spec)                                                                                                                                                                                                             |
 
+### Present and cleanup behavior
+
+- `/plain/update`, `/nic/update`, `/acmedns/update` and
+  `/directadmin/CMD_API_DNS_CONTROL` replace the record set with the given
+  value. They have no cleanup.
+- `/httpreq/present` adds the TXT value to the record set, so several
+  challenges for the same name (e.g. for `example.com` and `*.example.com`)
+  can be present at once. A value that already exists is not added again.
+  `/httpreq/cleanup` removes only the given value.
+- For `/records/present` and `/records/cleanup` see
+  [Record types of the records endpoint](#record-types-of-the-records-endpoint).
+
+The TTL of the record set is always set to `recordTTL`.
+
 ## Configuration
 
 Configuration can be passed by environment variables or from a file (with 
