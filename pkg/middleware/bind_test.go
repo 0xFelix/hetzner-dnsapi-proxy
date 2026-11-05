@@ -310,8 +310,19 @@ var _ = Describe("Binding of names", func() {
 			Expect(reqData.CheckConflicts).To(BeFalse())
 		},
 		Entry("plain", middleware.BindPlain, httptest.NewRequest(http.MethodGet, "/?hostname=sub.example.com&ip=127.0.0.1", http.NoBody)),
-		Entry("httpreq", middleware.BindHTTPReq, newJSONRequest(`{"fqdn":"sub.example.com","value":"v"}`)),
+		Entry("nic", middleware.BindNicUpdate, httptest.NewRequest(http.MethodGet, "/?hostname=sub.example.com&myip=127.0.0.1", http.NoBody)),
+		Entry("acmedns", middleware.BindAcmeDNS, newJSONRequest(`{"subdomain":"sub.example.com","txt":"v"}`)),
+		Entry("directadmin", middleware.BindDirectAdmin, httptest.NewRequest(
+			http.MethodGet, "/?action=add&domain=example.com&name=sub&type=TXT&value=v", http.NoBody,
+		)),
 	)
+
+	It("should append values of httpreq requests without checking conflicts", func() {
+		reqData, code := bind(middleware.BindHTTPReq, newJSONRequest(`{"fqdn":"sub.example.com","value":"v"}`))
+		Expect(code).To(Equal(http.StatusOK))
+		Expect(reqData.Mode).To(Equal(data.ModeAppend))
+		Expect(reqData.CheckConflicts).To(BeFalse())
+	})
 
 	DescribeTable(
 		"should reject invalid records requests", func(body string) {

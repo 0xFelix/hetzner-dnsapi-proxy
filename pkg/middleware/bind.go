@@ -165,6 +165,9 @@ func BindHTTPReq(next http.Handler) http.Handler {
 			return
 		}
 
+		// Values are appended, so that several challenges for the same name,
+		// e.g. for example.com and *.example.com, can be present at once.
+		// Cleanup removes only the given value.
 		username, password, _ := r.BasicAuth()
 		next.ServeHTTP(
 			w, r.WithContext(
@@ -179,6 +182,7 @@ func BindHTTPReq(next http.Handler) http.Handler {
 						Username:  username,
 						Password:  password,
 						BasicAuth: true,
+						Mode:      data.ModeAppend,
 					},
 				),
 			),
