@@ -55,7 +55,10 @@ The supported authorization methods are:
   be satisfied
 
 Domain names are compared case-insensitively and a trailing dot in a
-requested name is ignored.
+requested name is ignored. Requested names must be valid hostnames (labels of
+letters, digits, `-` and `_`, at most 63 characters each and 253 in total).
+`*` is only allowed as the leftmost label to set wildcard records. Invalid
+names are rejected with `400 Bad Request` (`notfqdn` on `/nic/update`).
 
 To authorize a domain and all of its subdomains, prefix the entry with `*.`
 (for example `*.example.com` matches `example.com`'s subdomains like

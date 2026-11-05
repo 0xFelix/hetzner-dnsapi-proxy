@@ -16,6 +16,8 @@ import (
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/hetzner"
 )
 
+var errInvalidFQDN = errors.New("invalid fqdn")
+
 const (
 	failedParseRequestFmt = "failed to parse request: %v"
 	maxRequestBodySize    = 1 << 10 // 1 KB
@@ -106,6 +108,11 @@ func BindAcmeDNS(next http.Handler) http.Handler {
 			fqdn = prefixAcmeChallenge + fqdn
 			// the name is empty if the subdomain is the zone apex
 			name = strings.TrimSuffix(prefixAcmeChallenge+name, ".")
+			// the prefix can make the name invalid, e.g. too long
+			if err := ValidateFQDN(fqdn); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
 		}
 
 		next.ServeHTTP(
@@ -383,9 +390,28 @@ func NormalizeFQDN(fqdn string) string {
 	return strings.ToLower(strings.TrimRight(fqdn, "."))
 }
 
+// ValidateFQDN checks a normalized name against hostname rules (see
+// hetzner.NormalizeHostname). A '*' is allowed as the leftmost label only, so
+// that wildcard records can be set.
+func ValidateFQDN(fqdn string) error {
+	if len(fqdn) > hetzner.MaxHostnameLength {
+		return errInvalidFQDN
+	}
+	if _, err := hetzner.NormalizeHostname(strings.TrimPrefix(fqdn, "*.")); err != nil {
+		return errInvalidFQDN
+	}
+	return nil
+}
+
+// SplitFQDN validates a normalized name with ValidateFQDN and splits it into
+// the name relative to its zone and the zone.
 func SplitFQDN(fqdn string) (name, zone string, err error) {
+	if vErr := ValidateFQDN(fqdn); vErr != nil {
+		return "", "", vErr
+	}
+
 	zone, err = publicsuffix.EffectiveTLDPlusOne(fqdn)
-	if err != nil {
+	if err != nil || strings.Contains(zone, "*") {
 		return "", "", fmt.Errorf("invalid fqdn: %s", fqdn)
 	}
 
