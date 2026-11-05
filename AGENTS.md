@@ -4,7 +4,8 @@
 
 hetzner-dnsapi-proxy is a Go HTTP server that proxies DNS update requests
 to the Hetzner Cloud API. It supports multiple DNS API protocols (lego
-HTTP request, ACMEDNS, DirectAdmin Legacy, plain HTTP, DynDNS2).
+HTTP request, ACMEDNS, DirectAdmin Legacy, plain HTTP, DynDNS2) and an
+opt-in generic `records` endpoint (A, AAAA, TXT, CNAME, SRV).
 
 ## Building and Testing
 
