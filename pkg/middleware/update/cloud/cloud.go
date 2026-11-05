@@ -86,14 +86,7 @@ func (u *updater) changeTTL(ctx context.Context, rrSet *hcloud.ZoneRRSet) error 
 
 	opts := hcloud.ZoneRRSetChangeTTLOpts{TTL: &u.cfg.RecordTTL}
 	action, _, err := u.client.Zone.ChangeRRSetTTL(ctx, rrSet, opts)
-	if err != nil {
-		return err
-	}
-	if action != nil {
-		return u.client.Action.WaitFor(ctx, action)
-	}
-
-	return nil
+	return hetzner.WaitForAction(ctx, u.client, action, err)
 }
 
 func (u *updater) updateRRSet(ctx context.Context, rrSet *hcloud.ZoneRRSet, val string) error {
@@ -107,14 +100,7 @@ func (u *updater) updateRRSet(ctx context.Context, rrSet *hcloud.ZoneRRSet, val 
 		}},
 	}
 	action, _, err := u.client.Zone.SetRRSetRecords(ctx, rrSet, opts)
-	if err != nil {
-		return err
-	}
-	if action != nil {
-		return u.client.Action.WaitFor(ctx, action)
-	}
-
-	return nil
+	return hetzner.WaitForAction(ctx, u.client, action, err)
 }
 
 func (u *updater) addRRSetRecord(ctx context.Context, rrSet *hcloud.ZoneRRSet, val string) error {
@@ -131,14 +117,7 @@ func (u *updater) addRRSetRecord(ctx context.Context, rrSet *hcloud.ZoneRRSet, v
 		Records: []hcloud.ZoneRRSetRecord{{Value: val}},
 	}
 	action, _, err := u.client.Zone.AddRRSetRecords(ctx, rrSet, opts)
-	if err != nil {
-		return err
-	}
-	if action != nil {
-		return u.client.Action.WaitFor(ctx, action)
-	}
-
-	return nil
+	return hetzner.WaitForAction(ctx, u.client, action, err)
 }
 
 func (u *updater) createRRSet(ctx context.Context, zone *hcloud.Zone, rrSetType hcloud.ZoneRRSetType, name, val string) error {
@@ -151,12 +130,5 @@ func (u *updater) createRRSet(ctx context.Context, zone *hcloud.Zone, rrSetType 
 		}},
 	}
 	result, _, err := u.client.Zone.CreateRRSet(ctx, zone, opts)
-	if err != nil {
-		return err
-	}
-	if result.Action != nil {
-		return u.client.Action.WaitFor(ctx, result.Action)
-	}
-
-	return nil
+	return hetzner.WaitForAction(ctx, u.client, result.Action, err)
 }
