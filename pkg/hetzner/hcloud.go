@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"runtime/debug"
-	"strconv"
+	"strings"
 
 	"github.com/hetznercloud/hcloud-go/v2/hcloud"
 
 	"github.com/0xfelix/hetzner-dnsapi-proxy/pkg/config"
 )
+
+const asciiDEL = 0x7f
 
 // version is set at build time via -ldflags -X.
 var version string
@@ -73,11 +75,29 @@ func RRSetTypeFromString(rType string) (hcloud.ZoneRRSetType, error) {
 	}
 }
 
+// QuoteIfRequired returns TXT values as a quoted character string in zone
+// file format (RFC 1035): '"' and '\' are escaped with a backslash and ASCII
+// control characters as '\DDD'. Values of other types are returned unchanged.
 func QuoteIfRequired(val string, rrSetType hcloud.ZoneRRSetType) string {
-	if rrSetType == hcloud.ZoneRRSetTypeTXT {
-		return strconv.Quote(val)
+	if rrSetType != hcloud.ZoneRRSetTypeTXT {
+		return val
 	}
-	return val
+
+	var b strings.Builder
+	b.WriteByte('"')
+	for i := range len(val) {
+		switch c := val[i]; {
+		case c == '"' || c == '\\':
+			b.WriteByte('\\')
+			b.WriteByte(c)
+		case c < ' ' || c == asciiDEL:
+			fmt.Fprintf(&b, "\\%03d", c)
+		default:
+			b.WriteByte(c)
+		}
+	}
+	b.WriteByte('"')
+	return b.String()
 }
 
 // WaitForAction returns err if it is set and otherwise waits for action to
